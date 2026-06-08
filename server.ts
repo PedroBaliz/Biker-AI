@@ -357,6 +357,79 @@ Gere o planejamento estruturado completo para a Semana ${nextWeekNumber} seguind
 
 
 /**
+ * Endpoint 3: Individual Workout Evaluator
+ * Evaluates a single completed workout based on prescribed targets vs actual performance notes/metrics.
+ */
+app.post("/api/evaluate-workout", async (req, res) => {
+  try {
+    checkApiKey();
+    const { profile, workout } = req.body;
+
+    const systemInstruction = `Você é um treinador de ciclismo de alto rendimento com profundo conhecimento em fisiologia do exercício, periodização clássica e moderna. O atleta acabou de registrar a conclusão de um treino presencial ou virtual e enviou os dados reais de realização para avaliação.
+
+Seu papel é analisar detalhadamente:
+1. O treino sugerido (Objetivo, Tipo, Duração planejada, Zona de Treino, Esforço Planejado).
+2. O treino efetivamente realizado (Duração real, Esforço sentido recebido de 1 a 10, Frequência Cardíaca média, Potência média em Watts e os comentários do atleta).
+
+Diretrizes da sua Análise Científica e Conselhos de Ouro:
+- Se foi um treino "Regenerativo/Folga" (Z1/Z2) e o atleta rodou com esforço maior do que o planejado ou com frequência cardíaca muito alta, explique amigavelmente sobre o erro de "treinar forte no dia fácil", o que gera estresse crônico desnecessário sem adaptação benéfica.
+- Se foi um treino "Forte/Limiar/Intervalos" (Z4/Z5) e o atleta manteve o foco, comemore muito! Diga o que acontece fisiologicamente no corpo dele (melhora do VO2Max, recrutamento de fibras do tipo II, aumento da complacência cardíaca).
+- Relacione os dados reais (Potência em relação ao FTP, e Frequência Cardíaca em relação à FCmax do usuário) caso esses dados tenham sido informados (FTP: ${profile.ftp}W, FCmax: ${profile.maxHeartRate} bpm).
+- Forneça recomendações práticas para as próximas 24-48 horas baseadas no cansaço relatado nas notas pessoais do atleta (ex: alongamentos, hidratação adicional, alimentação regenerativa rica em carboidratos complexos/proteínas, ou um bom sono).
+
+REGRA CRÍTICA DE COMUNICAÇÃO: Nunca utilize a palavra "RPE" ou "Percepção Subjetiva de Esforço" em suas explicações, resumos, descrições ou dicas. Esse termo técnico afasta o ciclista. Use termos muito simples e diretos para explicar o nível de esforço, tais como: "Muito Leve", "Leve", "Moderado", "Forte" ou "Máximo".
+
+Sua resposta deve ser estruturada sob o formato JSON contendo uma única chave:
+{
+  "aiFeedback": "Sua avaliação completa escrita em parágrafos de Markdown bem estruturados e amigáveis, contendo elogios específicos, análises fisiológicas sobre os dados cadastrados, e conselhos práticos de recuperação."
+}`;
+
+    const prompt = `TREINO PRESCRITO:
+- Dia: ${workout.day}
+- Tipo: ${workout.type}
+- Duração Planejada: ${workout.duration} minutos
+- Zona Alvo: ${workout.targetZone}
+- Esforço Sugerido: ${workout.rpe}/10
+
+TREINO REALIZADO PELO ATLETA:
+- Duração Real: ${workout.actualDuration || workout.duration} minutos
+- Esforço Real Sentido: ${workout.actualRpe || 5}/10
+- Frequência Cardíaca Média Registrada: ${workout.actualHr ? `${workout.actualHr} bpm` : "Não informada"} (FCmax do perfil é ${profile.maxHeartRate || "não cadastrada"} bpm)
+- Potência Média Registrada: ${workout.actualPower ? `${workout.actualPower} Watts` : "Não informada"} (FTP do perfil é ${profile.ftp || "não cadastrado"}W)
+- Notas / Observações do Atleta: "${workout.athleteNotes || "Nenhum comentário preenchido pelo atleta."}"
+
+Faça uma avaliação amigável de coach de alto nível e retorne o resultado em JSON.`;
+
+    const response = await ai.models.generateContent({
+      model: "gemini-3.5-flash",
+      contents: prompt,
+      config: {
+        systemInstruction,
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          required: ["aiFeedback"],
+          properties: {
+            aiFeedback: { type: Type.STRING }
+          }
+        }
+      }
+    });
+
+    const resultText = response.text;
+    if (!resultText) {
+      return res.status(500).json({ error: "No response from Gemini API for workout evaluation" });
+    }
+    res.json(JSON.parse(resultText));
+  } catch (error: any) {
+    console.error("Error in evaluate-workout API:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+
+
+/**
  * Endpoint 4: Custom Coach Chat
  * Allows the athlete to ask any scientific/practical coaching question, modify structures manually,
  * etc.

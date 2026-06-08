@@ -24,6 +24,12 @@ export interface Workout {
   rpe: number; // Percepção Subjetiva de Esforço (1-10)
   tip: string;
   completed?: boolean;
+  actualDuration?: number;
+  actualRpe?: number;
+  actualHr?: number;
+  actualPower?: number;
+  athleteNotes?: string;
+  aiFeedback?: string;
 }
 
 export interface TrainingPlan {

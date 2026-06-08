@@ -286,7 +286,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
                     <input 
                       type="text"
                       required
-                      placeholder="Ex: Pedro Ramos"
+                      placeholder="Ex: Lucas Silva"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       className="w-full bg-slate-950 border border-slate-850 hover:border-slate-800 focus:border-lime-500/40 rounded-xl pl-10 pr-4 py-3 text-xs outline-hidden focus:ring-1 focus:ring-lime-500/40 transition-all text-white placeholder:text-slate-600 font-heading font-medium"

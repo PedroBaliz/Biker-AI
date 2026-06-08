@@ -5,6 +5,8 @@ import ZoneCalculator from "./components/ZoneCalculator";
 import LoginScreen from "./components/LoginScreen";
 import AccountSettings from "./components/AccountSettings";
 import VolumeEvolutionChart from "./components/VolumeEvolutionChart";
+import WeeklyCalorieChart from "./components/WeeklyCalorieChart";
+import AchievementsDashboard from "./components/AchievementsDashboard";
 import { motion, AnimatePresence } from "motion/react";
 import { 
   Dumbbell, 
@@ -30,7 +32,8 @@ import {
   LogOut,
   Plus,
   PlusCircle,
-  Trash2
+  Trash2,
+  Trophy
 } from "lucide-react";
 
 export default function App() {
@@ -84,7 +87,7 @@ export default function App() {
   const [isTyping, setIsTyping] = useState(false);
   
   // Dashboard Tabs
-  const [activeTab, setActiveTab] = useState<"planilha" | "zonas" | "chat">("planilha");
+  const [activeTab, setActiveTab] = useState<"planilha" | "desempenho" | "zonas" | "chat">("planilha");
   
   // Training Plan State
   const [plan, setPlan] = useState<TrainingPlan | null>(() => {
@@ -1003,6 +1006,15 @@ export default function App() {
                     <span>Minha Planilha</span>
                   </button>
                   <button 
+                    onClick={() => setActiveTab("desempenho")}
+                    className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-black leading-none font-heading uppercase rounded-xl transition-all cursor-pointer ${
+                      activeTab === "desempenho" ? "bg-slate-900 text-lime-400 shadow-sm" : "text-slate-600 hover:bg-slate-200 hover:text-slate-900"
+                    }`}
+                  >
+                    <Trophy className="w-4 h-4" />
+                    <span>Conquistas & Evolução</span>
+                  </button>
+                  <button 
                     onClick={() => setActiveTab("zonas")}
                     className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-black leading-none font-heading uppercase rounded-xl transition-all cursor-pointer ${
                       activeTab === "zonas" ? "bg-slate-900 text-lime-400 shadow-sm" : "text-slate-600 hover:bg-slate-200 hover:text-slate-900"
@@ -1302,9 +1314,12 @@ export default function App() {
                       })()
                     )}
 
-                    {/* Volume Evolution Chart */}
+                    {/* Charts Panel Grid */}
                     {plan && (
-                      <VolumeEvolutionChart profile={profile} plan={plan} />
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <VolumeEvolutionChart profile={profile} plan={plan} />
+                        <WeeklyCalorieChart profile={profile} plan={plan} />
+                      </div>
                     )}
 
                     {/* Bento Grid of workouts */}
@@ -1313,6 +1328,7 @@ export default function App() {
                         <WorkoutCard 
                           key={`${wk.day}-${index}`} 
                           workout={wk} 
+                          profile={profile}
                           onUpdate={(updatedWorkout) => handleUpdateWorkout(index, updatedWorkout)}
                           onDelete={() => handleDeleteWorkout(index)}
                         />
@@ -1432,7 +1448,17 @@ export default function App() {
                   </motion.div>
                 )}
 
-
+                {activeTab === "desempenho" && (
+                  <motion.div 
+                    key="tab-desempenho" 
+                    initial={{ opacity: 0, scale: 0.98 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.98 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <AchievementsDashboard profile={profile} plan={plan} />
+                  </motion.div>
+                )}
 
                 {activeTab === "zonas" && (
                   <motion.div 
