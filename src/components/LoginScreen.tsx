@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { UserAccount, UserProfile, ChatMessage } from "../types";
 import { motion, AnimatePresence } from "motion/react";
-import { Dumbbell, ShieldAlert, Sparkles, Mail, Lock, User, Eye, EyeOff, Bike, ChevronRight, CheckCircle, RefreshCw } from "lucide-react";
+import { Dumbbell, ShieldAlert, Sparkles, Mail, Lock, User, Eye, EyeOff, Bike, ChevronRight, CheckCircle } from "lucide-react";
 const bikerHero = "/src/assets/images/biker_hero_1780860230528.png";
 
 interface LoginScreenProps {
@@ -17,45 +17,6 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
   const [error, setError] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-
-  const [connectionStatus, setConnectionStatus] = useState<"checking" | "connected" | "disconnected">("checking");
-  const [pingDelay, setPingDelay] = useState<number | null>(null);
-
-  useEffect(() => {
-    let active = true;
-    const checkHealth = async () => {
-      const startTime = Date.now();
-      try {
-        const res = await fetch("/api/health");
-        const delay = Date.now() - startTime;
-        if (res.ok && active) {
-          setConnectionStatus("connected");
-          setPingDelay(delay);
-        } else if (active) {
-          setConnectionStatus("disconnected");
-        }
-      } catch (err) {
-        if (active) {
-          setConnectionStatus("disconnected");
-        }
-      }
-    };
-    checkHealth();
-    const interval = setInterval(checkHealth, 8000); // Check every 8s
-    return () => {
-      active = false;
-      clearInterval(interval);
-    };
-  }, []);
-
-  const handleClearLocalCache = () => {
-    localStorage.removeItem("current_coach_user");
-    localStorage.removeItem("coach_users");
-    setSuccessMsg("Cache do navegador limpo com sucesso! Recarregando...");
-    setTimeout(() => {
-      window.location.reload();
-    }, 1500);
-  };
 
   const validateEmail = (input: string) => {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input);
@@ -375,33 +336,6 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
               <p className="text-[11px] text-slate-450 font-sans max-w-sm mx-auto leading-relaxed">
                 Planos de pedalada simples e sob medida para apaixonados por ciclismo de estrada, MTB e gravel.
               </p>
-
-              {/* Status de Conexão com o Servidor */}
-              <div className="pt-2 flex items-center justify-center gap-2 text-[10px] font-mono">
-                {connectionStatus === "checking" && (
-                  <span className="flex items-center gap-1.5 text-slate-400">
-                    <RefreshCw className="w-3 h-3 animate-spin text-lime-400" />
-                    <span>Verificando comunicação com o servidor...</span>
-                  </span>
-                )}
-                {connectionStatus === "connected" && (
-                  <span className="flex items-center gap-1.5 text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20 shadow-sm shadow-emerald-500/5">
-                    <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span>
-                    <span>Servidor central: Conectado ({pingDelay}ms)</span>
-                  </span>
-                )}
-                {connectionStatus === "disconnected" && (
-                  <div className="flex flex-col items-center gap-1 bg-rose-500/10 p-2.5 rounded-xl border border-rose-500/20 text-rose-400 w-full max-w-xs mx-auto shadow-sm shadow-rose-500/5">
-                    <div className="flex items-center gap-1.5 font-bold">
-                      <span className="w-1.5 h-1.5 bg-rose-500 rounded-full"></span>
-                      <span>Falha de comunicação - Servidor offline</span>
-                    </div>
-                    <span className="text-[9px] font-sans text-slate-350 leading-normal">
-                      Abra o site em uma <strong>nova guia</strong> (link do topo) ou use o resolvedor de cache logo abaixo.
-                    </span>
-                  </div>
-                )}
-              </div>
             </div>
 
             {/* Tab Selector */}
@@ -520,21 +454,6 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
                 <ChevronRight className="w-4 h-4" />
               </button>
             </form>
-
-            {/* Diagnostics and Cache clearing tool */}
-            <div className="mt-5 p-3.5 bg-slate-950/40 border border-slate-850/50 rounded-xl text-center">
-              <p className="text-[10px] text-slate-450 leading-relaxed">
-                Problemas para entrar de outro navegador ou sincronizar?
-              </p>
-              <button
-                type="button"
-                onClick={handleClearLocalCache}
-                className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-750 text-[9px] text-lime-400 font-bold font-heading rounded-lg transition-all cursor-pointer border border-slate-750 uppercase tracking-widest hover:scale-101"
-              >
-                <RefreshCw className="w-3 h-3 text-lime-400" />
-                Limpar Cache e Sincronizar
-              </button>
-            </div>
           </div>
 
           {/* Bottom Branding info */}

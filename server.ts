@@ -21,11 +21,6 @@ try {
 const app = express();
 app.use(express.json());
 
-// Diagnostic health check route
-app.get("/api/health", (req, res) => {
-  res.json({ status: "ok", time: new Date().toISOString() });
-});
-
 // Log all requests to a physical file for request tracing
 app.use((req, res, next) => {
   const logMsg = `[${new Date().toISOString()}] ${req.method} ${req.url} - Headers: ${JSON.stringify(req.headers)}\n`;
