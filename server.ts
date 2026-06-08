@@ -7,8 +7,30 @@ import { createServer as createViteServer } from "vite";
 
 dotenv.config();
 
+// Write startup log to verify server is executing
+try {
+  fs.writeFileSync(
+    path.join(process.cwd(), "server_boot.log"),
+    `Server boot started at: ${new Date().toISOString()}\nLocal DB Path: ${path.join(process.cwd(), "users_db.json")}\n`,
+    "utf-8"
+  );
+} catch (e: any) {
+  console.error("Failed to write startup log:", e);
+}
+
 const app = express();
 app.use(express.json());
+
+// Log all requests to a physical file for request tracing
+app.use((req, res, next) => {
+  const logMsg = `[${new Date().toISOString()}] ${req.method} ${req.url} - Headers: ${JSON.stringify(req.headers)}\n`;
+  try {
+    fs.appendFileSync(path.join(process.cwd(), "server_requests.log"), logMsg, "utf-8");
+  } catch (e) {
+    // ignore logging failure
+  }
+  next();
+});
 
 // JSON file database path for syncing accounts across devices
 const USERS_DB_PATH = path.join(process.cwd(), "users_db.json");
