@@ -517,31 +517,32 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col font-sans selection:bg-lime-200">
+    <div className="min-h-screen bg-transparent flex flex-col font-sans selection:bg-lime-200">
       
       {/* Upper Navigation Bar */}
-      <header id="main-header" className="bg-slate-900 text-white shadow-md border-b border-slate-800 sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 min-h-16 py-3 sm:py-0 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-lime-500 rounded-lg shadow-sm">
-              <Bike className="w-5 h-5 sm:w-6 sm:h-6 text-slate-900 fill-slate-900/10" />
+      <header id="main-header" className="bg-slate-900/95 backdrop-blur-md text-white shadow-xl border-b border-slate-800/80 sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 min-h-16 py-3.5 sm:py-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-3 animate-fadeInUp">
+            <div className="p-2.5 bg-lime-500 text-slate-950 rounded-xl shadow-[0_0_15px_rgba(132,204,22,0.3)] hover:scale-105 transition-transform duration-300">
+              <Bike className="w-5 h-5 sm:w-6 sm:h-6 text-slate-950 fill-slate-950/20" />
             </div>
             <div>
-              <h1 className="font-heading font-extrabold text-base sm:text-lg tracking-tight flex items-center gap-2">
-                BIKER AI <span className="text-lime-400 text-[9px] sm:text-xs bg-slate-850 px-2 py-0.5 rounded-full border border-slate-700">TREINADOR</span>
+              <h1 className="font-heading font-black text-base sm:text-lg tracking-wider flex items-center gap-2 uppercase">
+                BIKER <span className="text-lime-400">AI</span>
+                <span className="text-[9px] font-mono tracking-widest uppercase bg-slate-800 text-lime-400 px-2 py-0.5 rounded-md border border-slate-700 font-bold">TREINADOR</span>
               </h1>
-              <p className="text-[9px] sm:text-[10px] text-slate-400 font-sans tracking-wide">Treinador Inteligente de Ciclismo para Potência e Ritmo</p>
+              <p className="text-[9px] sm:text-[10px] text-slate-400 font-sans tracking-widest uppercase mt-0.5 font-semibold">Plataforma de Treino Inteligente de Ciclismo</p>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center justify-center gap-2">
+          <div className="flex flex-wrap items-center justify-center gap-2 animate-fadeInUp">
             {currentUser && (
               <button 
                 onClick={() => setShowAccountSettings(!showAccountSettings)}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-semibold tracking-wide transition-all cursor-pointer ${
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-bold font-heading uppercase tracking-wider transition-all cursor-pointer ${
                   showAccountSettings 
-                    ? "bg-lime-500 text-slate-950 border-lime-500 hover:bg-lime-450" 
-                    : "border-slate-700 bg-slate-800 text-lime-400 hover:bg-slate-750"
+                    ? "bg-lime-400 text-slate-950 border-lime-400 hover:bg-lime-350" 
+                    : "border-slate-800 bg-slate-800 text-lime-400 hover:bg-slate-750"
                 }`}
                 title="Sua Conta e Dados de Acesso"
               >
@@ -555,17 +556,17 @@ export default function App() {
             {currentUser && plan && (
               <button 
                 onClick={handleReset} 
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-700 hover:bg-slate-850 hover:text-rose-400 text-xs text-slate-300 font-medium transition-all cursor-pointer"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-800 bg-slate-800/50 hover:bg-slate-800 text-xs text-slate-300 font-bold font-heading uppercase tracking-wider transition-all cursor-pointer"
                 title="Resetar todos os dados"
               >
-                <RotateCcw className="w-3.5 h-3.5" />
+                <RotateCcw className="w-3.5 h-3.5 text-rose-500" />
                 <span className="hidden xs:inline">Resetar</span>
               </button>
             )}
             {currentUser && (
               <button 
                 onClick={handleSignOut} 
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-700 hover:bg-slate-850 hover:text-rose-400 text-xs text-slate-300 font-medium transition-all cursor-pointer"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-800 bg-slate-800/50 hover:bg-slate-800 text-xs text-slate-300 font-bold font-heading uppercase tracking-wider transition-all cursor-pointer"
                 title="Sair da conta"
               >
                 <LogOut className="w-3.5 h-3.5" />
@@ -968,54 +969,55 @@ export default function App() {
             >
               
               {/* Profile Brief Top Summary Bar */}
-              <div className="bg-white rounded-2xl border border-slate-100 shadow-xs p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div className="flex items-center gap-3.5">
-                  <div className="w-12 h-12 rounded-full bg-slate-900 border-2 border-lime-400 flex items-center justify-center font-heading font-extrabold text-lime-400 text-lg shadow-sm">
+              <div className="bg-white rounded-3xl border border-slate-100/85 shadow-[0_4px_24px_rgba(15,23,42,0.02)] p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 animate-fadeInUp">
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 rounded-full bg-slate-900 border-2 border-lime-400 flex items-center justify-center font-heading font-black text-lime-400 text-lg shadow-sm relative shrink-0">
                     {profile.name.slice(0, 2).toUpperCase()}
+                    <span className="absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-white"></span>
                   </div>
                   <div>
-                    <h2 className="font-heading font-extrabold text-base text-slate-800 leading-tight">Ciclista: {profile.name}</h2>
-                    <p className="text-xs text-slate-500 leading-relaxed font-sans mt-0.5 flex flex-wrap items-center gap-2">
-                      <span className="bg-slate-100 px-2 py-0.5 rounded text-slate-650 font-semibold">{profile.level}</span>
+                    <h2 className="font-heading font-black text-slate-800 text-lg leading-tight">Ciclista: {profile.name}</h2>
+                    <p className="text-xs text-slate-405 leading-relaxed font-sans mt-1 flex flex-wrap items-center gap-2 font-medium">
+                      <span className="bg-slate-100 text-slate-700 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider">{profile.level}</span>
                       <span className="text-slate-300">•</span>
-                      <span>Foco: <strong>{profile.goal}</strong></span>
+                      <span>Foco: <strong className="text-slate-850">{profile.goal}</strong></span>
                       <span className="text-slate-300">•</span>
                       {profile.hasPowerMeter ? (
-                        <span className="text-amber-600 font-semibold">FTP: {profile.ftp}W</span>
+                        <span className="text-amber-600 font-extrabold font-mono">FTP: {profile.ftp}W</span>
                       ) : (
-                        <span className="text-rose-605 font-semibold">FCmax: {profile.maxHeartRate} bpm</span>
+                        <span className="text-rose-600 font-extrabold font-mono">FCmax: {profile.maxHeartRate} bpm</span>
                       )}
                     </p>
                   </div>
                 </div>
 
                 {/* Tab select Buttons with Sporty design */}
-                <div className="flex flex-wrap gap-1.5 bg-slate-100 p-1 rounded-xl w-full md:w-auto">
+                <div className="flex flex-wrap gap-1 bg-slate-100/80 p-1.5 rounded-2xl w-full md:w-auto border border-slate-200/40 shadow-inner">
                   <button 
                     onClick={() => setActiveTab("planilha")}
-                    className={`flex items-center gap-1.5 px-4 py-2 text-xs font-bold leading-none font-heading uppercase rounded-lg transition-all ${
-                      activeTab === "planilha" ? "bg-slate-900 text-lime-400 shadow-sm" : "text-slate-600 hover:bg-slate-200"
+                    className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-black leading-none font-heading uppercase rounded-xl transition-all cursor-pointer ${
+                      activeTab === "planilha" ? "bg-slate-900 text-lime-400 shadow-sm" : "text-slate-600 hover:bg-slate-200 hover:text-slate-900"
                     }`}
                   >
-                    <Calendar className="w-3.5 h-3.5" />
+                    <Calendar className="w-4 h-4" />
                     <span>Minha Planilha</span>
                   </button>
                   <button 
                     onClick={() => setActiveTab("zonas")}
-                    className={`flex items-center gap-1.5 px-4 py-2 text-xs font-bold leading-none font-heading uppercase rounded-lg transition-all ${
-                      activeTab === "zonas" ? "bg-slate-900 text-lime-400 shadow-sm" : "text-slate-600 hover:bg-slate-200"
+                    className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-black leading-none font-heading uppercase rounded-xl transition-all cursor-pointer ${
+                      activeTab === "zonas" ? "bg-slate-900 text-lime-400 shadow-sm" : "text-slate-600 hover:bg-slate-200 hover:text-slate-900"
                     }`}
                   >
-                    <Sliders className="w-3.5 h-3.5" />
+                    <Sliders className="w-4 h-4" />
                     <span>Minhas Zonas</span>
                   </button>
                   <button 
                     onClick={() => setActiveTab("chat")}
-                    className={`flex items-center gap-1.5 px-4 py-2 text-xs font-bold leading-none font-heading uppercase rounded-lg transition-all ${
-                      activeTab === "chat" ? "bg-slate-900 text-lime-400 shadow-sm" : "text-slate-600 hover:bg-slate-200"
+                    className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-black leading-none font-heading uppercase rounded-xl transition-all cursor-pointer ${
+                      activeTab === "chat" ? "bg-slate-900 text-lime-400 shadow-sm" : "text-slate-600 hover:bg-slate-205 hover:text-slate-900"
                     }`}
                   >
-                    <HelpCircle className="w-3.5 h-3.5" />
+                    <HelpCircle className="w-4 h-4" />
                     <span>Falar com o Coach</span>
                   </button>
                 </div>

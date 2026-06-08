@@ -21,13 +21,21 @@ export default function WorkoutCard({ workout, onUpdate, onDelete }: WorkoutCard
   const [editStructure, setEditStructure] = useState(workout.structure);
   const [editTip, setEditTip] = useState(workout.tip || "");
 
-  // Determine severity border & shadow based on RPE
+  // Determine severity border & shadow based on effort level
   const getRpeStyles = (rpe: number) => {
     if (rpe <= 2) return { text: "text-emerald-600 bg-emerald-50 border-emerald-200", bar: "bg-emerald-500", glow: "border-l-4 border-l-emerald-500" };
     if (rpe <= 4) return { text: "text-sky-600 bg-sky-50 border-sky-200", bar: "bg-sky-400", glow: "border-l-4 border-l-sky-500" };
     if (rpe <= 6) return { text: "text-amber-600 bg-amber-50 border-amber-200", bar: "bg-amber-500", glow: "border-l-4 border-l-amber-500" };
     if (rpe <= 8) return { text: "text-orange-600 bg-orange-50 border-orange-200", bar: "bg-orange-500", glow: "border-l-4 border-l-orange-500" };
     return { text: "text-rose-600 bg-rose-50 border-rose-200", bar: "bg-rose-500", glow: "border-l-4 border-l-rose-500" };
+  };
+
+  const getSimpleEffortText = (rpe: number) => {
+    if (rpe <= 2) return "Muito Leve 👍";
+    if (rpe <= 4) return "Leve 🚴";
+    if (rpe <= 6) return "Moderado 🔥";
+    if (rpe <= 8) return "Forte ⚡";
+    return "Máximo 🚨";
   };
 
   const rpeStyles = getRpeStyles(workout.rpe || 5);
@@ -101,7 +109,7 @@ export default function WorkoutCard({ workout, onUpdate, onDelete }: WorkoutCard
             </div>
           </div>
 
-          {/* Duration & RPE Row */}
+          {/* Duration & Effort Row */}
           <div className="grid grid-cols-2 gap-2">
             <div className="space-y-1">
               <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wide">Duração (minutos)</label>
@@ -113,15 +121,22 @@ export default function WorkoutCard({ workout, onUpdate, onDelete }: WorkoutCard
               />
             </div>
             <div className="space-y-1">
-              <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wide">Esforço (1 a 10)</label>
+              <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wide">Esforço / Intensidade</label>
               <select 
                 value={editRpe} 
                 onChange={(e) => setEditRpe(Number(e.target.value))}
                 className="w-full bg-white border border-slate-200 focus:border-lime-500 rounded-lg px-2 py-1.5 text-xs text-slate-800 outline-hidden"
               >
-                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(val => (
-                  <option key={val} value={val}>{val}/10 {val <= 2 ? '👍 Leve' : val <= 4 ? '🚴 Moderado' : val <= 6 ? '🔥 Firme' : val <= 8 ? '⚡ Forte' : '🚨 Extremo'}</option>
-                ))}
+                <option value={1}>Muito Leve 👍 (Giro Fácil)</option>
+                <option value={2}>Muito Leve 👍 (Recuperação)</option>
+                <option value={3}>Leve 🚴 (Resistência)</option>
+                <option value={4}>Leve 🚴 (Ritmo Confortável)</option>
+                <option value={5}>Moderado 🔥 (Ritmo Firme)</option>
+                <option value={6}>Moderado 🔥 (Firme/Z3)</option>
+                <option value={7}>Forte ⚡ (Intenso/Z4)</option>
+                <option value={8}>Forte ⚡ (Intervalado Ativo)</option>
+                <option value={9}>Máximo 🚨 (Esforço Total)</option>
+                <option value={10}>Máximo 🚨 (VO2 Max/Tiro)</option>
               </select>
             </div>
           </div>
@@ -187,100 +202,101 @@ export default function WorkoutCard({ workout, onUpdate, onDelete }: WorkoutCard
   return (
     <div 
       id={`workout-${workout.day}`} 
-      className={`bg-white rounded-2xl p-5 shadow-xs border transition-all duration-300 flex flex-col justify-between relative overflow-hidden select-none hover:shadow-md ${
+      className={`bg-white rounded-3xl p-6 shadow-[0_4px_20px_rgba(15,23,42,0.03)] border transition-all duration-300 flex flex-col justify-between relative overflow-hidden select-none hover:-translate-y-1.5 hover:shadow-[0_12px_24px_rgba(15,23,42,0.07)] hover:border-slate-200 ${
         workout.completed 
-          ? "border-emerald-500 shadow-emerald-500/5 bg-emerald-50/10 border-l-[6px] border-l-emerald-500" 
+          ? "border-emerald-500 shadow-emerald-500/5 bg-emerald-50/15 border-l-[6px] border-l-emerald-500" 
           : `border-slate-100 ${rpeStyles.glow}`
       }`}
     >
       {/* Visual indicator stamp if completed */}
       {workout.completed && (
-        <div className="absolute -top-1 -right-1 w-14 h-14 bg-emerald-500 text-white rounded-bl-3xl flex items-center justify-center pl-3 pb-3 shadow-xs">
-          <Check className="w-5 h-5 shrink-0 stroke-[3]" />
+        <div className="absolute -top-1 -right-1 w-16 h-16 bg-gradient-to-br from-emerald-500 to-teal-500 text-white rounded-bl-3xl flex items-center justify-center pl-4 pb-4 shadow-sm">
+          <Check className="w-5 h-5 shrink-0 stroke-[3.5] animate-pulse" />
         </div>
       )}
 
-      <div id="card-top-header" className={workout.completed ? "opacity-75" : ""}>
+      <div id="card-top-header" className={workout.completed ? "opacity-80" : ""}>
         {/* Day & Label Badge */}
-        <div className="flex justify-between items-start gap-2 mb-3 pr-8">
+        <div className="flex justify-between items-start gap-2 mb-4 pr-8">
           <div>
-            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider font-sans">{workout.day}</span>
-            <h4 className={`font-heading font-extrabold text-slate-800 text-base leading-tight mt-0.5 ${workout.completed ? 'line-through text-slate-500' : ''}`}>
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono block leading-none mb-1.5">{workout.day}</span>
+            <h4 className={`font-heading font-black text-slate-800 text-base leading-snug ${workout.completed ? 'line-through text-slate-400' : ''}`}>
               {workout.type}
             </h4>
           </div>
-          <span className={`px-2.5 py-1 text-xs font-mono font-semibold rounded-full border shrink-0 ${rpeStyles.text}`}>
+          <span className={`px-3 py-1 text-[10px] font-mono font-bold rounded-full border shrink-0 transition-transform ${rpeStyles.text}`}>
             {workout.targetZone}
           </span>
         </div>
 
         {/* Duration & PSE Row */}
-        <div className="grid grid-cols-2 gap-2 border-y border-slate-50 py-3 my-3">
-          <div className="flex items-center gap-2">
-            <Clock className="w-4 h-4 text-slate-400" />
+        <div className="grid grid-cols-2 gap-3 border-y border-slate-100/60 py-3.5 my-4">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 bg-slate-50 text-slate-500 rounded-xl">
+              <Clock className="w-4 h-4" />
+            </div>
             <div className="flex flex-col">
-              <span className="text-[10px] text-slate-400 font-sans leading-none">DURAÇÃO</span>
-              <span className="text-xs font-mono font-bold text-slate-700 mt-1">{workout.duration} min</span>
+              <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider font-sans leading-none">DURAÇÃO</span>
+              <span className="text-xs font-mono font-extrabold text-slate-800 mt-1">{workout.duration} min</span>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Flame className="w-4 h-4 text-slate-400" />
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 bg-slate-50 text-slate-500 rounded-xl">
+              <Flame className="w-4 h-4" />
+            </div>
             <div className="flex flex-col">
-              <span className="text-[10px] text-slate-400 font-sans leading-none">ESFORÇO ALVO</span>
-              <div className="flex items-center gap-1.5 mt-1">
-                <span className="text-xs font-mono font-bold text-slate-700">{workout.rpe}/10</span>
-                <div id="rpe-progress-bar-container" className="w-12 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                  <div className={`h-full ${rpeStyles.bar}`} style={{ width: `${workout.rpe * 10}%` }}></div>
-                </div>
-              </div>
+              <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider font-sans leading-none">INTENSIDADE</span>
+              <span className="text-xs font-heading font-black text-slate-800 mt-1 uppercase tracking-wide">
+                {getSimpleEffortText(workout.rpe || 5)}
+              </span>
             </div>
           </div>
         </div>
 
         {/* Goal */}
-        <div id="workout-goal-section" className="mb-3.5">
-          <div className="flex items-center gap-1.5 text-slate-500 mb-1">
+        <div id="workout-goal-section" className="mb-4">
+          <div className="flex items-center gap-1.5 text-slate-400 mb-1.5">
             <Compass className="w-3.5 h-3.5" />
-            <span className="text-[10px] font-bold uppercase tracking-wider font-heading">Foco do Treino</span>
+            <span className="text-[9px] font-extrabold uppercase tracking-widest font-heading">Foco do Treino</span>
           </div>
-          <p className="text-xs font-sans text-slate-600 leading-relaxed">{workout.goal}</p>
+          <p className="text-xs font-sans text-slate-600 leading-relaxed font-normal">{workout.goal}</p>
         </div>
 
         {/* Structure */}
-        <div id="workout-structure-section" className="mb-4">
-          <div className="flex items-center gap-1.5 text-slate-500 mb-1">
+        <div id="workout-structure-section" className="mb-5">
+          <div className="flex items-center gap-1.5 text-slate-400 mb-1.5">
             <Bike className="w-3.5 h-3.5" />
-            <span className="text-[10px] font-bold uppercase tracking-wider font-heading">Estrutura do Treino</span>
+            <span className="text-[9px] font-extrabold uppercase tracking-widest font-heading">Estrutura de Ritmo</span>
           </div>
-          <div className="bg-slate-50 border border-slate-100 rounded-xl p-3">
-            <p className="text-xs font-mono text-slate-700 leading-relaxed break-words">{workout.structure}</p>
+          <div className="bg-slate-50/70 border border-slate-100 rounded-2xl p-3.5 shadow-2xs">
+            <p className="text-xs font-mono text-slate-705 leading-relaxed break-words font-medium">{workout.structure}</p>
           </div>
         </div>
 
         {/* Dica do Treino */}
         {workout.tip && (
-          <div id="workout-tip-bubble" className="mt-3.5 mb-4 pt-3 border-t border-slate-50 flex items-start gap-2 text-[11px] text-slate-500 italic bg-amber-50/40 p-2.5 rounded-xl border border-amber-100/50">
-            <MessageSquareCode className="w-3.5 h-3.5 text-amber-550 shrink-0 mt-0.5" />
-            <p className="leading-normal font-sans text-slate-650">{workout.tip}</p>
+          <div id="workout-tip-bubble" className="mt-4 mb-5 p-3.5 rounded-2xl bg-amber-50/50 border border-amber-100/60 flex items-start gap-2.5">
+            <MessageSquareCode className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+            <p className="text-[11px] font-sans font-medium text-slate-650 leading-relaxed italic">{workout.tip}</p>
           </div>
         )}
       </div>
 
       {/* Interactive Controls Bar */}
-      <div className="mt-auto pt-3 border-t border-slate-100 flex gap-2 w-full pt-4">
+      <div className="mt-auto pt-4 border-t border-slate-100 flex gap-2 w-full">
         {/* Trigger Complete Toggle */}
         <button
           type="button"
           onClick={toggleCompleted}
-          className={`flex-1 py-2 px-2.5 rounded-lg text-[11px] font-extrabold uppercase font-heading tracking-wide flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+          className={`flex-1 py-2.5 px-3 rounded-xl text-[10px] font-extrabold uppercase font-heading tracking-wider flex items-center justify-center gap-1.5 transition-all shadow-2xs active:scale-95 cursor-pointer ${
             workout.completed
-              ? "bg-emerald-500 text-white shadow-xs hover:bg-emerald-650"
-              : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+              ? "bg-emerald-500 text-white hover:bg-emerald-600"
+              : "bg-slate-100 text-slate-750 hover:bg-slate-200"
           }`}
         >
           {workout.completed ? (
             <>
-              <Check className="w-3.5 h-3.5 stroke-[3]" />
+              <Check className="w-3.5 h-3.5 stroke-[3.5]" />
               <span>Concluído 🏆</span>
             </>
           ) : (
@@ -295,10 +311,10 @@ export default function WorkoutCard({ workout, onUpdate, onDelete }: WorkoutCard
         <button
           type="button"
           onClick={() => setIsEditing(true)}
-          className="p-2 bg-slate-50 hover:bg-slate-150 border border-slate-200 text-slate-600 rounded-lg transition-colors cursor-pointer flex items-center justify-center"
+          className="p-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-600 rounded-xl transition-colors cursor-pointer flex items-center justify-center active:scale-95"
           title="Editar este treino"
         >
-          <Edit2 className="w-3.5 h-3.5" />
+          <Edit2 className="w-4 h-4" />
         </button>
 
         {/* Trigger Delete if supplied */}
@@ -306,10 +322,10 @@ export default function WorkoutCard({ workout, onUpdate, onDelete }: WorkoutCard
           <button
             type="button"
             onClick={onDelete}
-            className="p-2 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-600 rounded-lg transition-colors cursor-pointer flex items-center justify-center flex-shrink-0"
+            className="p-2.5 bg-rose-50/50 hover:bg-rose-100/70 border border-rose-100 text-rose-600 rounded-xl transition-colors cursor-pointer flex items-center justify-center flex-shrink-0 active:scale-95"
             title="Excluir este treino"
           >
-            <Trash2 className="w-3.5 h-3.5" />
+            <Trash2 className="w-4 h-4" />
           </button>
         )}
       </div>

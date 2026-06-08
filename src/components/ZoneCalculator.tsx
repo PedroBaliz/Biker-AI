@@ -55,28 +55,32 @@ export default function ZoneCalculator({ profile }: ZoneCalculatorProps) {
   };
 
   return (
-    <div id="zone-calculator-section" className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
-      <div id="zone-calc-header" className="flex items-center gap-3 border-b border-slate-100 pb-4 mb-6">
-        <Gauge className="w-5 h-5 text-lime-600" />
+    <div id="zone-calculator-section" className="bg-white rounded-3xl shadow-[0_4px_24px_rgba(15,23,42,0.03)] border border-slate-100/80 p-6 sm:p-8 animate-fadeInUp">
+      <div id="zone-calc-header" className="flex items-center gap-4 border-b border-slate-100 pb-5 mb-8">
+        <div className="p-3 bg-lime-50 text-lime-605 rounded-2xl shadow-2xs">
+          <Gauge className="w-6 h-6" />
+        </div>
         <div>
-          <h3 className="font-heading font-semibold text-lg text-slate-800 leading-tight">Suas Zonas de Ritmo e Esforço</h3>
-          <p className="text-xs text-slate-500 font-sans mt-0.5">Calculadas para ajudar você a dosear a intensidade de cada pedalada</p>
+          <h3 className="font-heading font-black text-slate-800 text-lg leading-snug">Zonas de Intensidade de Ciclismo</h3>
+          <p className="text-xs text-slate-450 font-sans mt-0.5">Calculadas cientificamente para guiar o ritmo correto de cada pedalada</p>
         </div>
       </div>
 
-      <div id="zone-calc-tabs" className="grid grid-cols-1 md:grid-cols-2 gap-8">
+      <div id="zone-calc-tabs" className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Potência */}
-        <div id="power-zones-column">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <Zap className="w-4 h-4 text-amber-500 fill-amber-500/10" />
-              <h4 className="font-heading font-medium text-slate-700 text-sm">Zonas de Potência por Watts</h4>
+        <div id="power-zones-column" className="space-y-4">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-amber-50 rounded-xl">
+                <Zap className="w-4 h-4 text-amber-500 fill-amber-500/10" />
+              </div>
+              <h4 className="font-heading font-bold text-slate-805 text-sm">Zonas de Potência (Watts)</h4>
             </div>
             {profile.hasPowerMeter ? (
-              <span className="text-xs bg-slate-100 px-2 py-0.5 rounded font-mono font-medium text-slate-600">FTP: {ftp}W</span>
+              <span className="text-xs bg-slate-100 px-3 py-1 rounded-xl font-mono font-bold text-slate-700 border border-slate-200">FTP: {ftp}W</span>
             ) : (
-              <span className="text-xs text-slate-400 font-sans italic flex items-center gap-1">
-                <Sparkles className="w-3 h-3 text-amber-500" /> Estimado (Padrão 200W)
+              <span className="text-[10px] text-slate-400 font-sans font-semibold italic flex items-center gap-1 bg-amber-500/10 px-2.5 py-1 rounded-full border border-amber-500/20">
+                <Sparkles className="w-3 h-3 text-amber-600" /> Watts Estimados
               </span>
             )}
           </div>
@@ -86,33 +90,35 @@ export default function ZoneCalculator({ profile }: ZoneCalculatorProps) {
               <div 
                 key={zone.name} 
                 id={`power-zone-${idx + 1}`}
-                className={`p-3 rounded-xl border text-xs transition-all hover:translate-x-1 duration-200 shadow-sm ${getZoneColor(idx, 7)}`}
+                className={`p-4 rounded-2xl border text-xs transition-all hover:translate-x-1.5 duration-200 shadow-3xs ${getZoneColor(idx, 7)}`}
               >
-                <div className="flex justify-between items-center font-semibold mb-1">
-                  <span>{zone.name}</span>
-                  <span className="font-mono bg-white/80 px-2 py-0.5 rounded shadow-xs border border-inherit">{zone.range}</span>
+                <div className="flex justify-between items-center font-black mb-1.5 font-heading">
+                  <span className="text-sm">{zone.name}</span>
+                  <span className="font-mono bg-white/95 px-2.5 py-1 rounded-lg shadow-3xs border border-inherit text-xs font-bold">{zone.range}</span>
                 </div>
-                <div className="flex justify-between text-slate-500 font-medium text-[10px] mb-1">
-                  <span>Porcentagem: {zone.desc}</span>
+                <div className="flex justify-between text-slate-500 font-bold text-[9px] uppercase tracking-wider mb-2 font-sans">
+                  <span>Porcentagem Alvo: {zone.desc}</span>
                 </div>
-                <p className="text-[11px] leading-relaxed text-slate-600 font-sans">{zone.purpose}</p>
+                <p className="text-[11.5px] leading-relaxed text-slate-650 font-sans">{zone.purpose}</p>
               </div>
             ))}
           </div>
         </div>
 
         {/* Frequência Cardíaca */}
-        <div id="hr-zones-column">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <Heart className="w-4 h-4 text-rose-500 fill-rose-500/10" />
-              <h4 className="font-heading font-medium text-slate-700 text-sm">Zonas de Frequência Cardíaca</h4>
+        <div id="hr-zones-column" className="space-y-4">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-rose-50 rounded-xl">
+                <Heart className="w-4 h-4 text-rose-500 fill-rose-500/10" />
+              </div>
+              <h4 className="font-heading font-bold text-slate-850 text-sm">Zonas de Frequência Cardíaca</h4>
             </div>
             {profile.hasHeartRate ? (
-              <span className="text-xs bg-slate-100 px-2 py-0.5 rounded font-mono font-medium text-slate-600">FCmax: {fcMax} bpm</span>
+              <span className="text-xs bg-slate-100 px-3 py-1 rounded-xl font-mono font-bold text-slate-700 border border-slate-200">FCmax: {fcMax} bpm</span>
             ) : (
-              <span className="text-xs text-slate-400 font-sans italic flex items-center gap-1">
-                <Sparkles className="w-3 h-3 text-amber-500" /> Estimado (Padrão 180 bpm)
+              <span className="text-[10px] text-slate-400 font-sans font-semibold italic flex items-center gap-1 bg-amber-500/10 px-2.5 py-1 rounded-full border border-amber-500/20">
+                <Sparkles className="w-3 h-3 text-amber-600" /> BPM Estimados
               </span>
             )}
           </div>
@@ -122,16 +128,16 @@ export default function ZoneCalculator({ profile }: ZoneCalculatorProps) {
               <div 
                 key={zone.name} 
                 id={`hr-zone-${idx + 1}`}
-                className={`p-3 rounded-xl border text-xs transition-all hover:translate-x-1 duration-200 shadow-sm ${getZoneColor(idx, 5)}`}
+                className={`p-4 rounded-2xl border text-xs transition-all hover:translate-x-1.5 duration-200 shadow-3xs ${getZoneColor(idx, 5)}`}
               >
-                <div className="flex justify-between items-center font-semibold mb-1">
-                  <span>{zone.name}</span>
-                  <span className="font-mono bg-white/80 px-2 py-0.5 rounded shadow-xs border border-inherit">{zone.range}</span>
+                <div className="flex justify-between items-center font-black mb-1.5 font-heading">
+                  <span className="text-sm">{zone.name}</span>
+                  <span className="font-mono bg-white/95 px-2.5 py-1 rounded-lg shadow-3xs border border-inherit text-xs font-bold">{zone.range}</span>
                 </div>
-                <div className="flex justify-between text-slate-500 font-medium text-[10px] mb-1">
-                  <span>Porcentagem: {zone.desc}</span>
+                <div className="flex justify-between text-slate-500 font-bold text-[9px] uppercase tracking-wider mb-2 font-sans">
+                  <span>Porcentagem Alvo: {zone.desc}</span>
                 </div>
-                <p className="text-[11px] leading-relaxed text-slate-600 font-sans">{zone.purpose}</p>
+                <p className="text-[11.5px] leading-relaxed text-slate-650 font-sans">{zone.purpose}</p>
               </div>
             ))}
           </div>

@@ -160,6 +160,8 @@ Cálculo de Zonas (mencione de forma implícita ou explícita nas dicas):
 - Se tiver potência (FTP), use zonas de potência Coggan (Z1 a Z7).
 - Se tiver apenas frequência cardíaca (FCmax), use zonas de FC de Karvonen ou Friel (Z1 a Z5).
 
+REGRA CRÍTICA DE COMUNICAÇÃO: Nunca utilize a palavra "RPE" ou "Percepção Subjetiva de Esforço" em suas explicações, resumos, descrições ou dicas. Esse termo técnico afasta o ciclista. Use termos muito simples e diretos para explicar o nível de esforço, tais como: "Muito Leve", "Leve", "Moderado", "Forte" ou "Máximo".
+
 Você DEVE responder rigorosamente no formato JSON com a seguinte estrutura:
 {
   "workouts": [
@@ -170,17 +172,17 @@ Você DEVE responder rigorosamente no formato JSON com a seguinte estrutura:
       "goal": "Objetivo fisiológico do treino",
       "structure": "Estrutura detalhada: ex: 10min aquec + 3x8min Z4 com 4min recup Z1 + 10min volta à calma",
       "targetZone": "Zona alvo de Potência/SFC (ex: Z2 (Endurance) ou Z4 (Limiar))",
-      "rpe": 6, // Percepção de esforço de 1 a 10 (1-2 regenerativo, 3-4 leve, 5-6 moderado, 7-8 difícil, 9-10 extremo)
+      "rpe": 6, // Nota de esforço interno estrutural de 1 a 10 (1-2 Muito Leve, 3-4 Leve, 5-6 Moderado, 7-8 Forte, 9-10 Máximo)
       "tip": "Dica prática e motivadora para o treino"
     }
     // ... incluir os 7 dias da semana
   ],
-  "summary": "Resumo da semana contendo volume total estimado em horas, TSS estimado se aplicável e o foco principal do bloco",
-  "observations": "O que o ciclista deve observar atentamente durante os treinos (ex: hidratação, cadência, fadiga acumulada, limitação de lesão)",
-  "evaluation": "Como avaliar se a semana foi bem executada (KPIs prácticos like manter as faixas de potência, estabilidade de FC nas repetições, etc.)"
+  "summary": "Resumo da semana contendo volume total estimado em horas e o foco principal simples e direto",
+  "observations": "O que o ciclista deve observar atentamente de forma direta e sem jargões (hidratação, dores ou descanso)",
+  "evaluation": "Como avaliar o treino através de sensações simples de cansaço ou fôlego"
 }
 
-Para dias de descanso, use type "Folga" ou "Descanso Ativo" e zere a duração se for folga total, ou coloque duração curta (ex: 30min de soltura de pernas Z1). Atribua RPE 1 ou 2.`;
+Para dias de descanso, use type "Folga" ou "Descanso Ativo" e zere a duração se for folga total, ou coloque duração curta (ex: 30min de soltura de pernas Z1). Atribua nota de esforço interno 1 ou 2.`;
 
     const userBrief = `Gere uma planilha semanal para o atleta com o seguinte perfil:
 Nome: ${profile.name}
@@ -274,6 +276,8 @@ Regras de Fisiologia para Progressão e Ajuste de Carga:
 
 Certifique-se de que a propriedade "completed" de todas as atividades na nova semana venha definida como FALSE para que o atleta possa marcá-las como feitas na nova semana.
 
+REGRA CRÍTICA DE COMUNICAÇÃO: Nunca utilize a palavra "RPE" ou "Percepção Subjetiva de Esforço" em suas explicações, resumos, descrições ou dicas. Esse termo técnico afasta o ciclista. Use termos muito simples e diretos para explicar o nível de esforço, tais como: "Muito Leve", "Leve", "Moderado", "Forte" ou "Máximo".
+
 Você DEVE responder rigorosamente no formato JSON com a seguinte estrutura:
 {
   "workouts": [
@@ -284,13 +288,13 @@ Você DEVE responder rigorosamente no formato JSON com a seguinte estrutura:
       "goal": "Foco fisiológico desse treino para a semana ${nextWeekNumber}",
       "structure": "Estrutura detalhada (aquecimento, parte principal com zonas, volta à calma)",
       "targetZone": "Zona principal de trabalho (ex: Z2 ou Z3)",
-      "rpe": 5, // 1-10
+      "rpe": 5, // Nota de esforço interno estrutural de 1 a 10 (1-2 Muito Leve, 3-4 Leve, 5-6 Moderado, 7-8 Forte, 9-10 Máximo)
       "tip": "Dica prática em português para auxiliar na execução"
     }
   ],
-  "summary": "Resumo da semana ${nextWeekNumber} comparando volume com a semana anterior e foco do bloco",
-  "observations": "Cuidados e observações específicas para este bloco de evolução",
-  "evaluation": "Como julgar o sucesso e as sensações físicas esperadas para esta semana",
+  "summary": "Resumo simples e amigável da semana ${nextWeekNumber} comparando volume com a semana anterior e foco do bloco",
+  "observations": "Cuidados e observações específicas em termos simples (hidratação, calor, cansaço ou dores)",
+  "evaluation": "Como julgar as sensações físicas esperadas de forma intuitiva",
   "weekNumber": ${nextWeekNumber},
   "coachMessage": "Mensagem motivacional e explicativa em português (atenciosa e amigável) detalhando o que mudou de uma semana para a outra, abordando especificamente a conclusão passada de ${completedPercent}% e as sensações do feedback."
 }`;
@@ -362,16 +366,18 @@ app.post("/api/chat", async (req, res) => {
     checkApiKey();
     const { message, profile, currentPlan, messageHistory } = req.body;
 
-    const systemInstruction = `Você é um treinador de ciclismo especialista de classe mundial com profundo entendimento em fisiologia esportiva, FTP, carga de treino (TSS) e planejamento macro/microcíclico.
-Você está em uma conversa contínua com seu atleta parceiro. Responda em português brasileiro de forma inspiradora, técnica de acordo com o nível do atleta, mas sempre extremamente clara.
+    const systemInstruction = `Você é um treinador de ciclismo especialista de classe mundial com profundo entendimento em fisiologia esportiva.
+Você está em uma conversa contínua com seu atleta parceiro. Responda em português brasileiro de forma inspiradora, mas sempre de forma amigável, clara e didática.
+
+REGRA CRÍTICA DE COMUNICAÇÃO: Nunca utilize a palavra "RPE" ou "Percepção Subjetiva de Esforço" em suas explicações, resumos, descrições ou dicas. Esse termo técnico afasta o ciclista. Use termos muito simples e diretos para explicar o nível de esforço, tais como: "Muito Leve", "Leve", "Moderado", "Forte" ou "Máximo".
 
 Dicas de comunicação:
-- Explique brevemente o porquê fisiológico das suas instruções quando achar oportuno (ex: adaptações capilares e mitocondriais de treinos Z2 de endurance; recrutamento de fibras rápidas tipo IIa e IIx de treinos VO2 max).
+- Explique brevemente o porquê fisiológico das suas instruções quando achar oportuno usando analogias fáceis e animadoras para o progresso do atleta.
 - Se eles perguntarem sobre cansaço extremo ou lesão, seja cauteloso e preze pelo descanso ativo ou repouso absoluto.
 - Se eles pedirem para alterar ou regenerar a planilha do treino, encoraje-os a atualizar os dados de treino ou sugira ajustes práticos.
 
 Envie um JSON com as seguintes chaves:
-- "reply": a resposta do coach formatada em Markdown (pode incluir listas, bullets ou termos técnicos explicados de maneira estimulante).
+- "reply": a resposta do coach formatada em Markdown (pode incluir listas, bullets ou termos explicados de maneira estimulante e simples).
 - "updatedPlan": opcional, caso o atleta tenha pedido explicitamente uma alteração no treino (como "mude terça para descanso" ou "adicione um treino extra no sábado"). Retorne a planilha atualizada na mesma estrutura, senão envie nulo.`;
 
     const userBrief = `Atleta Perfil: ${JSON.stringify(profile)}
