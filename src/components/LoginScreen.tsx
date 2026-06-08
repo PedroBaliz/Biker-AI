@@ -58,12 +58,24 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
           body: JSON.stringify({ email: emailKey, password })
         });
 
-        if (!response.ok) {
-          const errData = await response.json().catch(() => ({ error: "Erro ao autenticar." }));
-          throw new Error(errData.error || "Nenhum cadastro encontrado com este e-mail.");
+        const status = response.status;
+        const resText = await response.text().catch(() => "");
+        
+        let errData: any = null;
+        try {
+          if (resText) {
+            errData = JSON.parse(resText);
+          }
+        } catch (e) {
+          console.warn("Retorno do servidor não é um JSON válido no login:", resText);
         }
 
-        const data = await response.json();
+        if (!response.ok) {
+          const errMsg = errData?.error || `Erro de comunicação com o servidor central (Código: ${status})`;
+          throw new Error(errMsg);
+        }
+
+        const data = errData || {};
         const user = data.user;
 
         // Save session locally as cache
@@ -96,12 +108,24 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
           body: JSON.stringify({ email: emailKey, password, name })
         });
 
-        if (!response.ok) {
-          const errData = await response.json().catch(() => ({ error: "Erro ao cadastrar." }));
-          throw new Error(errData.error || "Erro de rede no cadastro.");
+        const status = response.status;
+        const resText = await response.text().catch(() => "");
+
+        let errData: any = null;
+        try {
+          if (resText) {
+            errData = JSON.parse(resText);
+          }
+        } catch (e) {
+          console.warn("Retorno do servidor não é um JSON válido no cadastro:", resText);
         }
 
-        const data = await response.json();
+        if (!response.ok) {
+          const errMsg = errData?.error || `Erro de rede no cadastro central (Código: ${status})`;
+          throw new Error(errMsg);
+        }
+
+        const data = errData || {};
         const user = data.user;
 
         // Save session locally as cache
