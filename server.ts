@@ -18,11 +18,40 @@ const CLOUD_DB_URL = "https://kvdb.io/b70e2926ag2_biker_ai_secure_store_pro/user
 let inMemoryDbCache: Record<string, any> | null = null;
 let lastCloudFetchTime = 0;
 
+// Triggers background cloud fetch & merge silently without blocking
+function triggerBackgroundCloudSync() {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 2000); // 2 seconds limit
+
+  fetch(CLOUD_DB_URL, { signal: controller.signal })
+    .then(async (res) => {
+      clearTimeout(timeoutId);
+      if (res.ok) {
+        const cloudDb = await res.json().catch(() => null);
+        if (cloudDb && typeof cloudDb === "object") {
+          // Merge with in-memory cache, keeping the latest / merging
+          const localDb = inMemoryDbCache || {};
+          inMemoryDbCache = { ...cloudDb, ...localDb };
+          
+          // Write merged cache back to local file
+          try {
+            fs.writeFileSync(USERS_DB_PATH, JSON.stringify(inMemoryDbCache, null, 2), "utf-8");
+          } catch (err) {
+            console.error("Erro ao persistir banco em segundo plano:", err);
+          }
+          console.log("[Nuvem] Banco de dados local e nuvem mesclados com sucesso.");
+        }
+      }
+    })
+    .catch((err) => {
+      clearTimeout(timeoutId);
+      console.log("[Nuvem] Ignorando sincronização de leitura (conexão remota restrita ou offline):", err.message);
+    });
+}
+
 // Dual-sync cloud-capable database retriever helper
 async function getDatabase(): Promise<Record<string, any>> {
-  const now = Date.now();
-  // Cache in memory for 30 seconds to keep performance instant and bypass limits
-  if (inMemoryDbCache && (now - lastCloudFetchTime < 30000)) {
+  if (inMemoryDbCache) {
     return inMemoryDbCache;
   }
 
@@ -34,52 +63,50 @@ async function getDatabase(): Promise<Record<string, any>> {
       localDb = JSON.parse(data);
     }
   } catch (err) {
-    console.warn("Nenhum cache de banco de dados local encontrado ou falha na leitura:", err);
-  }
-
-  // Sync / fetch from the cloud KV store
-  try {
-    const res = await fetch(CLOUD_DB_URL);
-    if (res.ok) {
-      const cloudDb = await res.json();
-      if (cloudDb && typeof cloudDb === "object") {
-        // Merge cloud-dominant registry with local registry
-        inMemoryDbCache = { ...localDb, ...cloudDb };
-        lastCloudFetchTime = now;
-        // Save local copy to update caches
-        fs.writeFileSync(USERS_DB_PATH, JSON.stringify(inMemoryDbCache, null, 2), "utf-8");
-        return inMemoryDbCache;
-      }
-    }
-  } catch (err) {
-    console.warn("Erro ao ler banco de dados na nuvem, utilizando cache local:", err);
+    console.warn("Nenhum cache de banco de dados local encontrado ou falha na leitura, iniciando novo:", err.message);
   }
 
   inMemoryDbCache = localDb;
+
+  // Sincroniza em segundo plano, sem bloquear a rota ativa
+  triggerBackgroundCloudSync();
+
   return localDb;
 }
 
 // Dual-sync cloud-capable database saving helper
 async function saveDatabase(db: Record<string, any>) {
   inMemoryDbCache = db;
-  // Write locally right away
+
+  // Write locally right away to guarantee instant local persistence
   try {
     fs.writeFileSync(USERS_DB_PATH, JSON.stringify(db, null, 2), "utf-8");
   } catch (err) {
     console.error("FALHA ao salvar cache de banco de dados local:", err);
   }
 
-  // Write asynchronously to cloud storage
-  try {
-    await fetch(CLOUD_DB_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(db)
-    });
-    console.log("Banco de dados sincronizado na nuvem com sucesso!");
-  } catch (err) {
-    console.error("FALHA ao sincronizar banco de dados na nuvem:", err);
-  }
+  // Write asynchronously to cloud storage with a tight timeout, avoiding blocking
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 2500); // 2.5 seconds limit
+
+  fetch(CLOUD_DB_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(db),
+    signal: controller.signal
+  })
+  .then((res) => {
+    clearTimeout(timeoutId);
+    if (res.ok) {
+      console.log("[Nuvem] Banco de dados sincronizado na nuvem com sucesso!");
+    } else {
+      console.warn("[Nuvem] Status retornado inválido na sincronização:", res.status);
+    }
+  })
+  .catch((err) => {
+    clearTimeout(timeoutId);
+    console.warn("[Nuvem] Sincronização em nuvem ignorada (conexão restrita):", err.message);
+  });
 }
 
 // -------------------------------------------------------------
