@@ -263,8 +263,14 @@ const ai = new GoogleGenAI({
 
 // Helper to handle Gemini API errors or key missing
 const checkApiKey = () => {
-  if (!process.env.GEMINI_API_KEY) {
-    throw new Error("GEMINI_API_KEY is not configured in the environment variables.");
+  const key = process.env.GEMINI_API_KEY;
+
+  console.log("Gemini configurado:", !!key);
+
+  if (!key || key.trim() === "") {
+    throw new Error(
+      "GEMINI_API_KEY não encontrada. Configure a variável de ambiente."
+    );
   }
 };
 
@@ -476,7 +482,9 @@ Atividade recente cadastrada: ${profile.recentActivity || "Nenhuma registrada"}`
     }
     res.json(JSON.parse(resultText));
   } catch (error: any) {
-    console.error("Error in generate-plan API:", error);
+    console.error("Error in generate-plan API:");
+console.error(error);
+console.error(error?.stack);
     res.status(500).json({ error: error.message });
   }
 });
