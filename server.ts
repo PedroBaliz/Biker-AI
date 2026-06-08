@@ -12,26 +12,73 @@ app.use(express.json());
 
 // JSON file database path for syncing accounts across devices
 const USERS_DB_PATH = path.join(process.cwd(), "users_db.json");
+const CLOUD_DB_URL = "https://kvdb.io/b70e2926ag2_biker_ai_secure_store_pro/users_database";
 
-// Safe getter for users database helper object
-function readUsersDb(): Record<string, any> {
+// In-memory cache to keep performance high and prevent rate-limiting
+let inMemoryDbCache: Record<string, any> | null = null;
+let lastCloudFetchTime = 0;
+
+// Dual-sync cloud-capable database retriever helper
+async function getDatabase(): Promise<Record<string, any>> {
+  const now = Date.now();
+  // Cache in memory for 30 seconds to keep performance instant and bypass limits
+  if (inMemoryDbCache && (now - lastCloudFetchTime < 30000)) {
+    return inMemoryDbCache;
+  }
+
+  // Load from the local JSON as standard fast backup
+  let localDb: Record<string, any> = {};
   try {
     if (fs.existsSync(USERS_DB_PATH)) {
       const data = fs.readFileSync(USERS_DB_PATH, "utf-8");
-      return JSON.parse(data);
+      localDb = JSON.parse(data);
     }
   } catch (err) {
-    console.error("Erro ao ler users_db.json:", err);
+    console.warn("Nenhum cache de banco de dados local encontrado ou falha na leitura:", err);
   }
-  return {};
+
+  // Sync / fetch from the cloud KV store
+  try {
+    const res = await fetch(CLOUD_DB_URL);
+    if (res.ok) {
+      const cloudDb = await res.json();
+      if (cloudDb && typeof cloudDb === "object") {
+        // Merge cloud-dominant registry with local registry
+        inMemoryDbCache = { ...localDb, ...cloudDb };
+        lastCloudFetchTime = now;
+        // Save local copy to update caches
+        fs.writeFileSync(USERS_DB_PATH, JSON.stringify(inMemoryDbCache, null, 2), "utf-8");
+        return inMemoryDbCache;
+      }
+    }
+  } catch (err) {
+    console.warn("Erro ao ler banco de dados na nuvem, utilizando cache local:", err);
+  }
+
+  inMemoryDbCache = localDb;
+  return localDb;
 }
 
-// Safe writer for users database helper object
-function writeUsersDb(db: Record<string, any>) {
+// Dual-sync cloud-capable database saving helper
+async function saveDatabase(db: Record<string, any>) {
+  inMemoryDbCache = db;
+  // Write locally right away
   try {
     fs.writeFileSync(USERS_DB_PATH, JSON.stringify(db, null, 2), "utf-8");
   } catch (err) {
-    console.error("Erro ao escrever em users_db.json:", err);
+    console.error("FALHA ao salvar cache de banco de dados local:", err);
+  }
+
+  // Write asynchronously to cloud storage
+  try {
+    await fetch(CLOUD_DB_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(db)
+    });
+    console.log("Banco de dados sincronizado na nuvem com sucesso!");
+  } catch (err) {
+    console.error("FALHA ao sincronizar banco de dados na nuvem:", err);
   }
 }
 
@@ -40,14 +87,14 @@ function writeUsersDb(db: Record<string, any>) {
 // -------------------------------------------------------------
 
 // Sign up and provision an athlete profile on the cloud (server)
-app.post("/api/auth/register", (req, res) => {
+app.post("/api/auth/register", async (req, res) => {
   try {
     const { email, password, name } = req.body;
     if (!email || !password || !name) {
       return res.status(400).json({ error: "Dados inválidos de cadastro." });
     }
 
-    const db = readUsersDb();
+    const db = await getDatabase();
     const emailKey = email.trim().toLowerCase();
 
     if (db[emailKey]) {
@@ -90,7 +137,7 @@ app.post("/api/auth/register", (req, res) => {
     };
 
     db[emailKey] = newUserEntry;
-    writeUsersDb(db);
+    await saveDatabase(db);
 
     res.json({ success: true, user: newUserEntry });
   } catch (error: any) {
@@ -100,14 +147,14 @@ app.post("/api/auth/register", (req, res) => {
 });
 
 // Authenticate and fetch full athlete history/state from the cloud (server)
-app.post("/api/auth/login", (req, res) => {
+app.post("/api/auth/login", async (req, res) => {
   try {
     const { email, password } = req.body;
     if (!email || !password) {
       return res.status(400).json({ error: "E-mail e senha são obrigatórios." });
     }
 
-    const db = readUsersDb();
+    const db = await getDatabase();
     const emailKey = email.trim().toLowerCase();
     const user = db[emailKey];
 
@@ -127,14 +174,14 @@ app.post("/api/auth/login", (req, res) => {
 });
 
 // Real-time synchronization of athlete profile, history & planning sheets to the cloud
-app.post("/api/auth/save-user", (req, res) => {
+app.post("/api/auth/save-user", async (req, res) => {
   try {
     const { email, userAccount, password } = req.body;
     if (!email || !userAccount) {
       return res.status(400).json({ error: "Dados para sincronização inválidos." });
     }
 
-    const db = readUsersDb();
+    const db = await getDatabase();
     const emailKey = email.trim().toLowerCase();
     
     // Maintain password
@@ -145,7 +192,7 @@ app.post("/api/auth/save-user", (req, res) => {
       password: preservedPassword
     };
 
-    writeUsersDb(db);
+    await saveDatabase(db);
     res.json({ success: true });
   } catch (error: any) {
     console.error("Error synchronizing athlete state:", error);
