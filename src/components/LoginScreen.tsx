@@ -22,7 +22,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setSuccessMsg("");
@@ -47,98 +47,183 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
       return;
     }
 
-    // Load existing users database
-    const savedUsers = localStorage.getItem("coach_users");
-    let usersMap: Record<string, any> = {};
-    if (savedUsers) {
-      try {
-        usersMap = JSON.parse(savedUsers);
-      } catch (err) {
-        usersMap = {};
-      }
-    }
-
     const emailKey = email.trim().toLowerCase();
 
-    if (isLogin) {
-      // Login flow
-      const user = usersMap[emailKey];
-      if (!user) {
-        setError("Nenhum cadastro encontrado com este e-mail. Crie uma conta ao lado!");
-        return;
-      }
-
-      if (user.password !== password) {
-        setError("Senha incorreta. Verifique os dados e tente novamente.");
-        return;
-      }
-
-      // Login success
-      setSuccessMsg(`Bem-vindo de volta, ${user.profile.name}!`);
-      setTimeout(() => {
-        onLoginSuccess({
-          email: user.email,
-          profile: user.profile,
-          chatHistory: user.chatHistory,
-          plan: user.plan
+    try {
+      if (isLogin) {
+        // Contact the cloud server for login
+        const response = await fetch("/api/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: emailKey, password })
         });
-      }, 800);
 
-    } else {
-      // Registration flow
-      if (usersMap[emailKey]) {
-        setError("Este endereço de e-mail já está cadastrado. Faça login para acessar.");
-        return;
-      }
-
-      // Welcome message customized to user's registered name
-      const customWelcomeText = `Olá, ${name.trim()}! Que excelente ver você aqui na Biker AI. Eu sou o seu Treinador de Ciclismo pessoal.\n\nMinhas planilhas e conselhos são focados em melhorar o seu fôlego e resistência de forma simples e segura, ajustando seus treinos por potência, batimentos do coração ou pelas suas percepções de cansaço.\n\nPara começarmos a planejar sua evolução de forma personalizada, preciso te conhecer melhor através de algumas perguntas rápidas no nosso chat.\n\nComo você já se cadastrou, podemos iniciar o questionário agora mesmo. **Qual é o seu tempo médio pedalando ou seu nível atual no ciclismo?**`;
-
-      const newProfile: UserProfile = {
-        name: name.trim(),
-        level: "",
-        goal: "",
-        daysPerWeek: null,
-        durationPerSession: null,
-        eventDate: "",
-        hasPowerMeter: null,
-        ftp: null,
-        hasHeartRate: null,
-        maxHeartRate: null,
-        limitations: "",
-        recentActivity: "",
-        onboardingStep: 1 // Start at step 1 since name is already collected upon registration!
-      };
-
-      const initialChat: ChatMessage[] = [
-        {
-          id: "welcome-registered",
-          sender: "treinador",
-          text: customWelcomeText,
-          timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({ error: "Erro ao autenticar." }));
+          throw new Error(errData.error || "Nenhum cadastro encontrado com este e-mail.");
         }
-      ];
 
-      const newUserEntry = {
-        email: emailKey,
-        password: password,
-        profile: newProfile,
-        chatHistory: initialChat,
-        plan: null
-      };
+        const data = await response.json();
+        const user = data.user;
 
-      usersMap[emailKey] = newUserEntry;
-      localStorage.setItem("coach_users", JSON.stringify(usersMap));
+        // Save session locally as cache
+        localStorage.setItem("current_coach_user", JSON.stringify(user));
 
-      setSuccessMsg("Conta criada com sucesso! Carregando questionário...");
-      setTimeout(() => {
-        onLoginSuccess({
-          email: newUserEntry.email,
-          profile: newUserEntry.profile,
-          chatHistory: newUserEntry.chatHistory,
-          plan: newUserEntry.plan
+        const savedUsers = localStorage.getItem("coach_users");
+        let usersMap: Record<string, any> = {};
+        if (savedUsers) {
+          try { usersMap = JSON.parse(savedUsers); } catch (ex) { }
+        }
+        usersMap[emailKey] = { ...user, password };
+        localStorage.setItem("coach_users", JSON.stringify(usersMap));
+
+        // Let user entry succeed
+        setSuccessMsg(`Bem-vindo de volta, ${user.profile.name}!`);
+        setTimeout(() => {
+          onLoginSuccess({
+            email: user.email,
+            profile: user.profile,
+            chatHistory: user.chatHistory,
+            plan: user.plan
+          });
+        }, 800);
+
+      } else {
+        // Contact the cloud server for registration
+        const response = await fetch("/api/auth/register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: emailKey, password, name })
         });
-      }, 1000);
+
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({ error: "Erro ao cadastrar." }));
+          throw new Error(errData.error || "Erro de rede no cadastro.");
+        }
+
+        const data = await response.json();
+        const user = data.user;
+
+        // Save session locally as cache
+        localStorage.setItem("current_coach_user", JSON.stringify(user));
+
+        const savedUsers = localStorage.getItem("coach_users");
+        let usersMap: Record<string, any> = {};
+        if (savedUsers) {
+          try { usersMap = JSON.parse(savedUsers); } catch (ex) { }
+        }
+        usersMap[emailKey] = { ...user, password };
+        localStorage.setItem("coach_users", JSON.stringify(usersMap));
+
+        setSuccessMsg("Conta criada com sucesso! Carregando questionário...");
+        setTimeout(() => {
+          onLoginSuccess({
+            email: user.email,
+            profile: user.profile,
+            chatHistory: user.chatHistory,
+            plan: user.plan
+          });
+        }, 1000);
+      }
+    } catch (err: any) {
+      console.warn("Server Authentication failed, utilizing local fallback:", err.message);
+
+      // Backwards compatible offline client-side fallback
+      const savedUsers = localStorage.getItem("coach_users");
+      let usersMap: Record<string, any> = {};
+      if (savedUsers) {
+        try {
+          usersMap = JSON.parse(savedUsers);
+        } catch (ex) {
+          usersMap = {};
+        }
+      }
+
+      if (isLogin) {
+        const user = usersMap[emailKey];
+        if (!user) {
+          setError(err.message || "Nenhum cadastro encontrado com este e-mail.");
+          return;
+        }
+
+        if (user.password !== password) {
+          setError("Senha incorreta. Verifique os dados e tente novamente.");
+          return;
+        }
+
+        // Offline Login Succeeded
+        setSuccessMsg(`Bem-vindo de volta [Local], ${user.profile.name}!`);
+        setTimeout(() => {
+          onLoginSuccess({
+            email: user.email,
+            profile: user.profile,
+            chatHistory: user.chatHistory,
+            plan: user.plan
+          });
+        }, 800);
+
+      } else {
+        if (usersMap[emailKey]) {
+          setError("Este endereço de e-mail já está cadastrado localmente.");
+          return;
+        }
+
+        // Offline Registration Succeeded
+        const customWelcomeText = `Olá, ${name.trim()}! Que excelente ver você aqui na Biker AI. Eu sou o seu Treinador de Ciclismo pessoal.\n\nMinhas planilhas e conselhos são focados em melhorar o seu fôlego e resistência de forma simples e segura, ajustando seus treinos por potência, batimentos do coração ou pelas suas percepções de cansaço.\n\nPara começarmos a planejar sua evolução de forma personalizada, preciso te conhecer melhor através de algumas perguntas rápidas no nosso chat.\n\nComo você já se cadastrou, podemos iniciar o questionário agora mesmo. **Qual é o seu tempo médio pedalando ou seu nível atual no ciclismo?**`;
+
+        const newProfile: UserProfile = {
+          name: name.trim(),
+          level: "",
+          goal: "",
+          daysPerWeek: null,
+          durationPerSession: null,
+          eventDate: "",
+          hasPowerMeter: null,
+          ftp: null,
+          hasHeartRate: null,
+          maxHeartRate: null,
+          limitations: "",
+          recentActivity: "",
+          onboardingStep: 1
+        };
+
+        const initialChat: ChatMessage[] = [
+          {
+            id: "welcome-registered",
+            sender: "treinador",
+            text: customWelcomeText,
+            timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+          }
+        ];
+
+        const newUserEntry = {
+          email: emailKey,
+          password: password,
+          profile: newProfile,
+          chatHistory: initialChat,
+          plan: null
+        };
+
+        usersMap[emailKey] = newUserEntry;
+        localStorage.setItem("coach_users", JSON.stringify(usersMap));
+
+        // Attempt background backup to server in case of partial connection
+        fetch("/api/auth/save-user", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: emailKey, userAccount: newUserEntry, password })
+        }).catch(() => {});
+
+        setSuccessMsg("Conta criada localmente! Carregando...");
+        setTimeout(() => {
+          onLoginSuccess({
+            email: newUserEntry.email,
+            profile: newUserEntry.profile,
+            chatHistory: newUserEntry.chatHistory,
+            plan: newUserEntry.plan
+          });
+        }, 1000);
+      }
     }
   };
 

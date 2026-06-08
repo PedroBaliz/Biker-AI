@@ -219,7 +219,48 @@ export default function App() {
   const chatEndRef = useRef<HTMLDivElement>(null);
   const [showAccountSettings, setShowAccountSettings] = useState(false);
 
-  // Real-time synchronization back to session registry & database map
+  // Background migration of legacy local-only accounts to the server on startup
+  useEffect(() => {
+    const savedUsers = localStorage.getItem("coach_users");
+    if (savedUsers) {
+      try {
+        const usersMap = JSON.parse(savedUsers);
+        Object.keys(usersMap).forEach((emailKey) => {
+          const userEntry = usersMap[emailKey];
+          if (userEntry && userEntry.email) {
+            fetch("/api/auth/save-user", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                email: userEntry.email,
+                userAccount: {
+                  email: userEntry.email,
+                  profile: userEntry.profile,
+                  chatHistory: userEntry.chatHistory,
+                  plan: userEntry.plan
+                },
+                password: userEntry.password
+              })
+            })
+            .then(res => {
+              if (res.ok) {
+                console.log(`Conta local migrante sincronizada no servidor: ${userEntry.email}`);
+              } else {
+                console.warn(`Sinal de erro ao migrar conta ${userEntry.email}`);
+              }
+            })
+            .catch((err) => {
+              console.warn(`Erro de rede ao conectar para migrar conta local:`, err);
+            });
+          }
+        });
+      } catch (err) {
+        console.error("Falha ao analisar banco de dados local para migração:", err);
+      }
+    }
+  }, []);
+
+  // Real-time synchronization back to session registry & database map & central server
   useEffect(() => {
     if (!currentUser) return;
 
@@ -244,6 +285,25 @@ export default function App() {
       password: existingEntry?.password || "123456" // fallbacks/preserves
     };
     localStorage.setItem("coach_users", JSON.stringify(usersMap));
+
+    // Async background sync with Node.js server database
+    fetch("/api/auth/save-user", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: currentUser.email,
+        userAccount: updatedUser,
+        password: existingEntry?.password || "123456"
+      })
+    })
+    .then(res => {
+      if (!res.ok) {
+        console.warn("Retorno de erro na sincronização em tempo real");
+      }
+    })
+    .catch((err) => {
+      console.warn("Erro de conexão ao sincronizar com servidor central:", err);
+    });
   }, [profile, chatHistory, plan, currentUser?.email]);
 
   useEffect(() => {

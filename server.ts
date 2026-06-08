@@ -1,6 +1,7 @@
 import express from "express";
 import path from "path";
 import dotenv from "dotenv";
+import fs from "fs";
 import { GoogleGenAI, Type } from "@google/genai";
 import { createServer as createViteServer } from "vite";
 
@@ -8,6 +9,149 @@ dotenv.config();
 
 const app = express();
 app.use(express.json());
+
+// JSON file database path for syncing accounts across devices
+const USERS_DB_PATH = path.join(process.cwd(), "users_db.json");
+
+// Safe getter for users database helper object
+function readUsersDb(): Record<string, any> {
+  try {
+    if (fs.existsSync(USERS_DB_PATH)) {
+      const data = fs.readFileSync(USERS_DB_PATH, "utf-8");
+      return JSON.parse(data);
+    }
+  } catch (err) {
+    console.error("Erro ao ler users_db.json:", err);
+  }
+  return {};
+}
+
+// Safe writer for users database helper object
+function writeUsersDb(db: Record<string, any>) {
+  try {
+    fs.writeFileSync(USERS_DB_PATH, JSON.stringify(db, null, 2), "utf-8");
+  } catch (err) {
+    console.error("Erro ao escrever em users_db.json:", err);
+  }
+}
+
+// -------------------------------------------------------------
+// USER SIGNUP, SIGNIN & CLOUD SYNCHRONIZATION ENDPOINTS
+// -------------------------------------------------------------
+
+// Sign up and provision an athlete profile on the cloud (server)
+app.post("/api/auth/register", (req, res) => {
+  try {
+    const { email, password, name } = req.body;
+    if (!email || !password || !name) {
+      return res.status(400).json({ error: "Dados inválidos de cadastro." });
+    }
+
+    const db = readUsersDb();
+    const emailKey = email.trim().toLowerCase();
+
+    if (db[emailKey]) {
+      return res.status(400).json({ error: "Este endereço de e-mail já está cadastrado. Faça login para acessar." });
+    }
+
+    const customWelcomeText = `Olá, ${name.trim()}! Que excelente ver você aqui na Biker AI. Eu sou o seu Treinador de Ciclismo pessoal.\n\nMinhas planilhas e conselhos são focados em melhorar o seu fôlego e resistência de forma simples e segura, ajustando seus treinos por potência, batimentos do coração ou pelas suas percepções de cansaço.\n\nPara começarmos a planejar sua evolução de forma personalizada, preciso te conhecer melhor através de algumas perguntas rápidas no nosso chat.\n\nComo você já se cadastrou, podemos iniciar o questionário agora mesmo. **Qual é o seu tempo médio pedalando ou seu nível atual no ciclismo?**`;
+
+    const newProfile = {
+      name: name.trim(),
+      level: "",
+      goal: "",
+      daysPerWeek: null,
+      durationPerSession: null,
+      eventDate: "",
+      hasPowerMeter: null,
+      ftp: null,
+      hasHeartRate: null,
+      maxHeartRate: null,
+      limitations: "",
+      recentActivity: "",
+      onboardingStep: 1
+    };
+
+    const initialChat = [
+      {
+        id: "welcome-registered",
+        sender: "treinador",
+        text: customWelcomeText,
+        timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+      }
+    ];
+
+    const newUserEntry = {
+      email: email.trim(),
+      password,
+      profile: newProfile,
+      chatHistory: initialChat,
+      plan: null
+    };
+
+    db[emailKey] = newUserEntry;
+    writeUsersDb(db);
+
+    res.json({ success: true, user: newUserEntry });
+  } catch (error: any) {
+    console.error("Error in server registration:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Authenticate and fetch full athlete history/state from the cloud (server)
+app.post("/api/auth/login", (req, res) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ error: "E-mail e senha são obrigatórios." });
+    }
+
+    const db = readUsersDb();
+    const emailKey = email.trim().toLowerCase();
+    const user = db[emailKey];
+
+    if (!user) {
+      return res.status(400).json({ error: "Nenhum cadastro encontrado com este e-mail. Crie uma conta ao lado!" });
+    }
+
+    if (user.password !== password) {
+      return res.status(400).json({ error: "Senha incorreta. Verifique os dados e tente novamente." });
+    }
+
+    res.json({ success: true, user });
+  } catch (error: any) {
+    console.error("Error in server login:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Real-time synchronization of athlete profile, history & planning sheets to the cloud
+app.post("/api/auth/save-user", (req, res) => {
+  try {
+    const { email, userAccount, password } = req.body;
+    if (!email || !userAccount) {
+      return res.status(400).json({ error: "Dados para sincronização inválidos." });
+    }
+
+    const db = readUsersDb();
+    const emailKey = email.trim().toLowerCase();
+    
+    // Maintain password
+    const preservedPassword = password || db[emailKey]?.password || "123456";
+
+    db[emailKey] = {
+      ...userAccount,
+      password: preservedPassword
+    };
+
+    writeUsersDb(db);
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error("Error synchronizing athlete state:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
 
 const PORT = 3000;
 
