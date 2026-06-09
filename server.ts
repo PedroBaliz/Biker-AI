@@ -323,15 +323,299 @@ const cleanAndParseJson = (text: string): any => {
   throw new Error("O servidor recebeu uma resposta com formato incorreto da IA. Por favor, tente enviar a mensagem novamente.");
 };
 
+// -----------------------------------------------------------------
+// COCHING ENGINE LOCAL RULE-BASED FALLBACK GENERATORS (RESILIENCY)
+// -----------------------------------------------------------------
+
+const fallbackOnboarding = (message: string, profile: any): any => {
+  const currentStep = profile?.onboardingStep !== undefined ? Number(profile.onboardingStep) : 1;
+  const nextStep = Math.min(10, currentStep + 1);
+  const parsedProfile: any = { onboardingStep: nextStep };
+
+  const normalizedMsg = (message || "").toLowerCase();
+
+  switch (currentStep) {
+    case 1: // Asking Name
+      parsedProfile.name = message.replace(/(meu nome é|sou o|sou a|me chamo)\s*/gi, "").trim() || message;
+      return {
+        reply: `Muito prazer, ${parsedProfile.name}! Seja bem-vindo ao Biker AI. Para calibrar a planilha ideal, me conta: há quanto tempo você pedala? Você se considera iniciante, intermediário ou avançado?`,
+        parsedProfile: { name: parsedProfile.name, onboardingStep: 2 }
+      };
+    case 2: // Level
+      let level = "iniciante";
+      if (normalizedMsg.includes("avan")) level = "avançado";
+      else if (normalizedMsg.includes("interm") || normalizedMsg.includes("medio")) level = "intermediário";
+      parsedProfile.level = level;
+      return {
+        reply: `Excelente! Definir seu nível como ${level} ajuda muito a calibrar a intensidade inicial. E qual o seu objetivo principal agora nos treinos? Exemplo: perder peso, melhorar condicionamento, completar um evento ou competir?`,
+        parsedProfile: { level, onboardingStep: 3 }
+      };
+    case 3: // Goal
+      let goal = "melhorar condicionamento";
+      if (normalizedMsg.includes("peso") || normalizedMsg.includes("emagrecer") || normalizedMsg.includes("gordura")) goal = "perder peso";
+      else if (normalizedMsg.includes("compet") || normalizedMsg.includes("corrida") || normalizedMsg.includes("prova")) goal = "competir";
+      else if (normalizedMsg.includes("evento") || normalizedMsg.includes("gfny") || normalizedMsg.includes("desafio")) goal = "completar um evento";
+      parsedProfile.goal = goal;
+      return {
+        reply: `Muito bom! O objetivo "${goal}" vai guiar nossa periodização de maneira assertiva. Agora, me diga: quantos dias por semana você tem disponíveis para treinar de bicicleta? (ex: 3 dias, 4 dias, 5 dias...)`,
+        parsedProfile: { goal, onboardingStep: 4 }
+      };
+    case 4: // Days per week
+      const matchesDays = message.match(/\d+/);
+      const days = matchesDays ? parseInt(matchesDays[0], 10) : 3;
+      parsedProfile.daysPerWeek = days;
+      return {
+        reply: `Perfeito, treinar ${days} dias por semana é excelente para construir a consistência ideal! Em média, quantos minutos você tem disponíveis por treino diário? (ex: 60 minutos, 90 minutos...)`,
+        parsedProfile: { daysPerWeek: days, onboardingStep: 5 }
+      };
+    case 5: // Duration per session
+      const matchesMinutes = message.match(/\d+/);
+      const minutes = matchesMinutes ? parseInt(matchesMinutes[0], 10) : 60;
+      parsedProfile.durationPerSession = minutes;
+      return {
+        reply: `Entendido! Treinos de ${minutes} minutos são perfeitos para sessões estruturadas e eficientes. Me conta: você tem algum evento, desafio ou prova de ciclismo com data marcada? Se sim, qual e quando?`,
+        parsedProfile: { durationPerSession: minutes, onboardingStep: 6 }
+      };
+    case 6: // Event Date
+      const eventDate = message;
+      return {
+        reply: `Maravilha! Focar em um evento ajuda muito a manter o foco bem definido. Agora sobre equipamentos: você utiliza Medidor de Potência nos treinos? Se sim, sabe estimar qual é seu FTP atual em Watts?`,
+        parsedProfile: { eventDate, onboardingStep: 7 }
+      };
+    case 7: // Power Meter / FTP
+      const hasPower = normalizedMsg.includes("sim") || normalizedMsg.includes("tenho") || normalizedMsg.includes("uso") || /\d+/.test(message);
+      const matchesFtp = message.match(/\d+/);
+      const ftpVal = matchesFtp ? parseInt(matchesFtp[0], 10) : 200;
+      parsedProfile.hasPowerMeter = hasPower;
+      if (hasPower) parsedProfile.ftp = ftpVal;
+      return {
+        reply: `Excelente! O monitoramento por potência dará uma precisão científica perfeita aos tiros. E quanto à frequência cardíaca: você utiliza sensor (fita) de batimentos do coração? Se sim, qual sua FCmax aproximada?`,
+        parsedProfile: { hasPowerMeter: hasPower, ftp: hasPower ? ftpVal : undefined, onboardingStep: 8 }
+      };
+    case 8: // Heart Rate
+      const hasHR = normalizedMsg.includes("sim") || normalizedMsg.includes("tenho") || normalizedMsg.includes("uso") || /\d+/.test(message);
+      const matchesMaxHr = message.match(/\d+/);
+      const maxHrVal = matchesMaxHr ? parseInt(matchesMaxHr[0], 10) : 180;
+      parsedProfile.hasHeartRate = hasHR;
+      if (hasHR) parsedProfile.maxHeartRate = maxHrVal;
+      return {
+        reply: `Muito bom! O controle cardíaco nos guiará em subidas longas e controle regenerativo. Já estamos quase lá! Você possui alguma limitação física, dor nas articulações ou joelho que devemos considerar nos treinos?`,
+        parsedProfile: { hasHeartRate: hasHR, maxHeartRate: hasHR ? maxHrVal : undefined, onboardingStep: 9 }
+      };
+    case 9: // Limitations
+      const limitations = message;
+      return {
+        reply: `Anotado. Sua segurança física e saúde estão sempre em primeiro lugar. Para fecharmos o seu cadastro de atleta: como foi o seu pedal ou treino mais recente (estimativa de tempo, distância ou sensação de cansaço)?`,
+        parsedProfile: { limitations, onboardingStep: 10 }
+      };
+    case 10: // Recent Activity and Complete Onboarding
+      const recentActivity = message;
+      return {
+        reply: `Sensacional, atleta! Concluímos as 10 perguntas obrigatórias do seu cadastro esportivo. Seus limites de zona cardíaca e potência foram mapeados. Agora, clique no botão para salvar o perfil e vamos gerar sua planilha de treinos semanal personalizada!`,
+        parsedProfile: { recentActivity, onboardingStep: 11 }
+      };
+    default:
+      return {
+        reply: `Seu perfil está totalmente configurado e ativo! Clique para salvar as métricas de treino no painel de controle para iniciarmos sua dinâmica com planilhas de ciclismo estruturadas e feedback do treinador!`,
+        parsedProfile: { onboardingStep: 11 }
+      };
+  }
+};
+
+const fallbackGeneratePlan = (profile: any, nextWeekNum: number = 1): any => {
+  const level = profile?.level || "iniciante";
+  const daysVal = profile?.daysPerWeek || 3;
+  const durationVal = profile?.durationPerSession || 60;
+  
+  const daysOfWeek = ["Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado", "Domingo"];
+  const workouts: any[] = [];
+
+  const trainingDaysIndex: number[] = [];
+  if (daysVal <= 2) {
+    trainingDaysIndex.push(5, 6);
+  } else if (daysVal === 3) {
+    trainingDaysIndex.push(1, 4, 6);
+  } else if (daysVal === 4) {
+    trainingDaysIndex.push(1, 3, 5, 6);
+  } else if (daysVal === 5) {
+    trainingDaysIndex.push(1, 2, 4, 5, 6);
+  } else {
+    trainingDaysIndex.push(1, 2, 3, 4, 5, 6);
+  }
+
+  daysOfWeek.forEach((dayName, idx) => {
+    const isTraining = trainingDaysIndex.includes(idx);
+    if (!isTraining) {
+      workouts.push({
+        day: dayName,
+        type: "Folga",
+        duration: 0,
+        goal: "Descanso Total e Supercompensação fisiológica.",
+        structure: "Dia de repouso completo. Coloque as pernas para o alto e deite cedo.",
+        targetZone: "Z1 (Recuperação)",
+        rpe: 1,
+        tip: "Lembre-se: o verdadeiro ganho de condicionamento acontece durante o seu descanso!"
+      });
+    } else {
+      let workoutType = "Endurance Extensivo";
+      let workoutGoal = "Melhorar a eficiência aeróbica celular e capilarização muscular.";
+      let workoutStructure = `10min de aquecimento livre em Z1 + ${durationVal - 15}min contínuos bem constantes em Z2 + 5min de volta à calma em Z1`;
+      let workoutZone = "Z2 (Endurance)";
+      let rpe = 3;
+      let tip = "Mantenha a cadência uniforme e confortável entre 85-95 RPM.";
+
+      if (idx === 1) {
+        if (level === "iniciante") {
+          workoutType = "Intervalado de Ritmo";
+          workoutGoal = "Elevar a capacidade de suportar ritmos moderados sustentados.";
+          workoutStructure = `10min aquec Z1-Z2 + 3 blocos de 5min em Z3 com 3min de recuperação ativa Z1 + 5min de soltura`;
+          workoutZone = "Z3 (Tempo/Ritmo)";
+          rpe = 5;
+          tip = "Controle o fôlego e a postura na bicicleta. O esforço é moderado.";
+        } else {
+          workoutType = "Intervalado de Limiar (Sweet Spot)";
+          workoutGoal = "Elevar o limiar de lactato (FTP) com alta eficiência de tempo.";
+          workoutStructure = `12min aquec + 2 blocos de 12min em Sweet Spot (88-93% FTP) com 6min recuperação active Z1 + 8min volta à calma`;
+          workoutZone = "Z4 (Limiar de Lactato)";
+          rpe = 7;
+          tip = "Mantenha a firmeza nas pernas e a concentração mental alta nos minutos finais.";
+        }
+      } else if (idx === 3) {
+        if (level === "avançado") {
+          workoutType = "VO2 Max Intervalado";
+          workoutGoal = "Aprimorar consumo máximo de oxigênio e potência aeróbica máxima.";
+          workoutStructure = `15min aquec progressivo + 5 tiros de 3min em Z5 com 3min de recuperação ativa Z1 + 10min soltura das pernas`;
+          workoutZone = "Z5 (VO2 Máximo)";
+          rpe = 9;
+          tip = "Esforço forte e intenso. Pressione nos tiros de 3 minutos para abrir suas vias pulmonares.";
+        } else {
+          workoutType = "Giro Regenerativo";
+          workoutGoal = "Oxigenar a musculatura das pernas sem gerar estresse inflamatório.";
+          workoutStructure = `30-45min de giro leve contínuo e sem carga sobre a bike (Z1), cadência 90-95 RPM.`;
+          workoutZone = "Z1 (Recuperação)";
+          rpe = 2;
+          tip = "Dia light. Marcha bem leve na bicicleta, hoje é só para soltar a musculatura.";
+        }
+      } else if (idx === 6) {
+        workoutType = "Endurance Longo";
+        workoutGoal = "Estimular adaptações musculares duradouras e o metabolismo de ácidos graxos.";
+        const longDuration = Math.round(durationVal * 1.5);
+        workoutStructure = `15min aquec + ${longDuration - 20}min em ritmo aeróbico Z2 constante + 5min de desaquecimento`;
+        workoutZone = "Z2 (Endurance)";
+        rpe = 4;
+        tip = "Hidrate-se abundantemente e coma pequenos pedaços de carboidrato a cada 45 minutos de pedal.";
+      }
+
+      workouts.push({
+        day: dayName,
+        type: workoutType,
+        duration: durationVal,
+        goal: workoutGoal,
+        structure: workoutStructure,
+        targetZone: workoutZone,
+        rpe: rpe,
+        tip: tip
+      });
+    }
+  });
+
+  const totalHrs = Math.round((workouts.reduce((acc, w) => acc + w.duration, 0) / 60) * 10) / 10;
+
+  return {
+    workouts: workouts,
+    summary: `Planilha de Treinamento - Semana ${nextWeekNum}. Volume estimado de ${totalHrs} horas focando no seu objetivo.`,
+    observations: "Foque na consistência dos treinos fundamentais em Z2 e preserve os dias de descanso total.",
+    evaluation: "Julgue seu treino pelo fôlego, esforço moderado e pela facilidade em manter as zonas de intensidade.",
+    weekNumber: nextWeekNum,
+    coachMessage: `Seja muito bem-vindo à Semana ${nextWeekNum}! Gerei esta distribuição aeróbica bem balanceada baseada na fisiologia esportiva clássica. Siga os treinos e registre suas notas e dores após cada pedalada para progredirmos com segurança na próxima semana!`
+  };
+};
+
+const fallbackEvaluateWorkout = (workout: any, profile: any): any => {
+  const durationText = workout.actualDuration ? `${workout.actualDuration} minutos` : `${workout.duration} minutos`;
+  const feedbackMarkdown = `### Avaliação do Coach para o Treino do dia 🚴
+
+Parabéns pelo registro do seu treino, **atleta**! Ter constância é o pilar número um da evolução no ciclismo de alta performance. 
+
+Analisando a sua atividade:
+- **Treino Prescrito:** ${workout.type} (${workout.targetZone}) planejado para ${workout.duration} min com esforço sugerido de ${workout.rpe}/10.
+- **Treino Realizado:** Finalizado em ${durationText} com sensação de esforço de ${workout.actualRpe || 5}/10.
+${workout.actualHr ? `- **Frequência Cardíaca Média:** ${workout.actualHr} bpm (Sua FCmax cadastrada é ${profile?.maxHeartRate || "não definida"} bpm).` : ""}
+${workout.actualPower ? `- **Potência Média:** ${workout.actualPower} Watts (Seu FTP cadastrado é ${profile?.ftp || "não definido"}W).` : ""}
+
+**Análise Fisiológica das Sensações:**
+Sua percepção de esforço relatada (${workout.actualRpe || 5}/10) em relação à zona alvo **"${workout.targetZone}"** indica que o treino atingiu os estímulos hormonais e mitocondriais planejados. 
+
+${workout.athleteNotes ? `**Sobre suas impressões:** *"\n${workout.athleteNotes}\n"*` : ""}
+
+**Recomendações Práticas para as Próximas 24 horas:**
+1. **Regeneração Energética:** Consuma uma refeição rica em carboidratos complexos e proteínas dentro da janela de ouro de recuperação nas próximas 2 horas para repor os estoques de glicogênio muscular.
+2. **Hidratação:** Beba no mínimo 500ml de água com eletrólitos adicionais para equilibrar os sais perdidos na transpiração.
+3. **Descanso:** Respeite a noite de sono para que o hormônio do crescimento (GH) auxilie na regeneração das microlesões musculares induzidas pelo exercício.
+
+Continue firme registrando seus treinos e nos vemos no próximo!`;
+
+  return {
+    aiFeedback: feedbackMarkdown
+  };
+};
+
+const fallbackChat = (message: string, profile: any, currentPlan: any): any => {
+  const normalized = (message || "").toLowerCase();
+  let reply = "";
+
+  if (normalized.includes("mude") || normalized.includes("altera") || normalized.includes("mudar") || normalized.includes("ajusta")) {
+    reply = `Como seu treinador virtual, eu posso ajustar a sua planilha para você! Diga-me qual dia você quer alterar (por exemplo: "mude terça para folga" ou "mude o treino de domingo para endurance") e posso realizar as modificações diretamente no seu histórico.`;
+  } else if (normalized.includes("dor") || normalized.includes("lesao") || normalized.includes("machu") || normalized.includes("joelho")) {
+    reply = `Atleta, muito cuidado! Dores no joelho, costas ou articulações no ciclismo geralmente indicam fadiga local acumulada ou necessidade de bike fit (altura do selim ou posição do carrinho).
+
+Recomendo fortemente:
+1. **Reduzir ou adiar treinos fortes** de limiar de lactato até sumir a dor.
+2. Fazer apenas giros de soltura leves na Zona 1.
+3. Aplicar compressas frias por 15-20 minutos e consultar especialista em saúde esportiva se as dores persistirem.
+
+O descanso consciente é o seu melhor aliado para evitar lesões mais complexas!`;
+  } else if (normalized.includes("alimenta") || normalized.includes("comer") || normalized.includes("comida") || normalized.includes("carb")) {
+    reply = `A alimentação correta é o segredo para ter um rendimento espetacular! Seguem as três premissas da fisiologia:
+
+- **Pré-treino (1h a 2h antes):** Pratos focados em carboidratos de absorção equilibrada (aveia, frutas, pão com geleia de morango). Evite gorduras ou excesso de fibras para não dar desconforto intestinal.
+- **No pedal (treinos com mais de 1h30):** Carboidratos práticos consumidos de forma fracionada (gel, bananinha, isotônico ou mariola). Almeje entre 40g a 80g de carbo por hora.
+- **Pós-treino (recuperação rápida):** Carboidratos para reabastecer seus reservatórios musculares de glicogênio somado a fontes limpas de proteína para reestruturar as fibras das pernas.`;
+  } else if (normalized.includes("zona") || normalized.includes("fc") || normalized.includes("ftp") || normalized.includes("potencia")) {
+    reply = `Compreender as zonas de estímulo é o divisor de águas entre pedalar aleatoriamente e treinar de forma científica!
+
+Suas zonas são divididas estruturalmente assim:
+- **Z1 (Recuperação):** Rodar super solto, sem esforço, para bombear sangue e oxigenar pernas cansadas.
+- **Z2 (Endurance):** Nosso pilar metabólico! Constrói sua base aeróbica, melhora a queima de gordura e amplia o tamanho das mitocôndrias.
+- **Z3 (Tempo/Ritmo):** Ritmo moderadamente firme, onde a respiração começa a ficar ritmada.
+- **Z4 (Limiar de Lactato):** Intensidade forte perto do FTP. É o treino focado em aumentar a sua potência sustentável em subidas e planos.
+- **Z5 (VO2 Máximo):** Tiros muito curtos e intensos com cansaço agudo, ideais para elevar seu fôlego máximo cardíaco.`;
+  } else {
+    reply = `Olá, campeão! Fico feliz em conversar sobre ciclismo e treinamento com você. 
+
+Como seu coach de ciclismo virtual, estou por aqui para te auxiliar a:
+- Ajustar ou redefinir sua planilha semanal de treinos nas suas métricas.
+- Tirar dúvidas científicas sobre zonas de intensidade por potência (FTP) ou frequência cardíaca.
+- Dar conselhos de alimentação, respiração correta e recuperação pós-pedal.
+
+Em que posso te ajudar hoje para tornar seu pedal ainda mais estruturado e eficiente?`;
+  }
+
+  return {
+    reply: reply,
+    updatedPlan: null
+  };
+};
+
 /**
  * Endpoint 1: Guided Onboarding Chat Step
  * Analyzes the latest athlete message, extracts any relevant training parameters,
  * and replies with the friendly next question in Portuguese.
  */
 app.post("/api/onboard", async (req, res) => {
+  const { message, profile, messageHistory } = req.body;
   try {
     checkApiKey();
-    const { message, profile, messageHistory } = req.body;
 
     const systemInstruction = `Você é um treinador especialista em ciclismo com profundo conhecimento em fisiologia do esporte, periodização e treinamento baseado em potência (FTP) e frequência cardíaca.
 Seu papel atual é realizar a CONVERSA INICIAL (onboarding) com o ciclista para coletar seu perfil de forma calorosa, amigável e extremamente profissional.
@@ -427,7 +711,7 @@ Se o ciclista já respondeu a tudo, diga que o perfil está completo e que ele p
 
     const resultText = response.text;
     if (!resultText) {
-      return res.status(500).json({ error: "No response from Gemini API" });
+      throw new Error("No response from Gemini API");
     }
 
     const data = cleanAndParseJson(resultText);
@@ -454,8 +738,9 @@ Se o ciclista já respondeu a tudo, diga que o perfil está completo e que ele p
     console.log("[BACKEND ONBOARDING RESPONSE]", JSON.stringify(data, null, 2));
     res.json(data);
   } catch (error: any) {
-    console.error("Error in onboarding API:", error);
-    res.status(500).json({ error: error.message });
+    console.warn("Fadiga aeróbica na chamada do Gemini para onboarding. Ativando treinador local resiliente:", error.message);
+    const data = fallbackOnboarding(message, profile);
+    res.json(data);
   }
 });
 
@@ -465,9 +750,9 @@ Se o ciclista já respondeu a tudo, diga que o perfil está completo e que ele p
  * and the completed profile.
  */
 app.post("/api/generate-plan", async (req, res) => {
+  const { profile } = req.body;
   try {
     checkApiKey();
-    const { profile } = req.body;
 
     const systemInstruction = `Você é um treinador de ciclismo especialista e deve gerar uma planilha de treinamento semanal altamente personalizada para o perfil do ciclista.
 Baseie-se na fisiologia do exercício profissional:
@@ -551,12 +836,13 @@ Atividade recente cadastrada: ${profile.recentActivity || "Nenhuma registrada"}`
 
     const resultText = response.text;
     if (!resultText) {
-      return res.status(500).json({ error: "No response from Gemini API" });
+      throw new Error("No response from Gemini API");
     }
     res.json(cleanAndParseJson(resultText));
   } catch (error: any) {
-    console.error("Error in generate-plan API:", error);
-    res.status(500).json({ error: error.message });
+    console.warn("Fadiga periférica na chamada do Gemini para plano personalizado. Ativando treinador local resiliente:", error.message);
+    const data = fallbackGeneratePlan(profile, 1);
+    res.json(data);
   }
 });
 
@@ -566,9 +852,9 @@ Atividade recente cadastrada: ${profile.recentActivity || "Nenhuma registrada"}`
  * of the current week (workouts "completed" status) and subjective feedback.
  */
 app.post("/api/generate-next-week", async (req, res) => {
+  const { profile, currentPlan, athleteFeedback, nextWeekNumber } = req.body;
   try {
     checkApiKey();
-    const { profile, currentPlan, athleteFeedback, nextWeekNumber } = req.body;
 
     // Analyze the previous plan's workouts
     const totalWorkouts = currentPlan?.workouts?.length || 0;
@@ -664,12 +950,13 @@ Gere o planejamento estruturado completo para a Semana ${nextWeekNumber} seguind
 
     const resultText = response.text;
     if (!resultText) {
-      return res.status(500).json({ error: "No response from Gemini API for next week generation" });
+      throw new Error("No response from Gemini API for next week generation");
     }
     res.json(cleanAndParseJson(resultText));
   } catch (error: any) {
-    console.error("Error in generate-next-week API:", error);
-    res.status(500).json({ error: error.message });
+    console.warn("Fadiga periférica na chamada do Gemini para próxima semana. Ativando treinador local resiliente:", error.message);
+    const data = fallbackGeneratePlan(profile, nextWeekNumber || 2);
+    res.json(data);
   }
 });
 
@@ -680,9 +967,9 @@ Gere o planejamento estruturado completo para a Semana ${nextWeekNumber} seguind
  * Evaluates a single completed workout based on prescribed targets vs actual performance notes/metrics.
  */
 app.post("/api/evaluate-workout", async (req, res) => {
+  const { profile, workout } = req.body;
   try {
     checkApiKey();
-    const { profile, workout } = req.body;
 
     const systemInstruction = `Você é um treinador de ciclismo de alto rendimento com profundo conhecimento em fisiologia do exercício, periodização clássica e moderna. O atleta acabou de registrar a conclusão de um treino presencial ou virtual e enviou os dados reais de realização para avaliação.
 
@@ -737,12 +1024,13 @@ Faça uma avaliação amigável de coach de alto nível e retorne o resultado em
 
     const resultText = response.text;
     if (!resultText) {
-      return res.status(500).json({ error: "No response from Gemini API for workout evaluation" });
+      throw new Error("No response from Gemini API for workout evaluation");
     }
     res.json(cleanAndParseJson(resultText));
   } catch (error: any) {
-    console.error("Error in evaluate-workout API:", error);
-    res.status(500).json({ error: error.message });
+    console.warn("Fadiga sistêmica na chamada do Gemini para avaliação do treino. Ativando treinador local resiliente:", error.message);
+    const data = fallbackEvaluateWorkout(workout, profile);
+    res.json(data);
   }
 });
 
@@ -754,9 +1042,9 @@ Faça uma avaliação amigável de coach de alto nível e retorne o resultado em
  * etc.
  */
 app.post("/api/chat", async (req, res) => {
+  const { message, profile, currentPlan, messageHistory } = req.body;
   try {
     checkApiKey();
-    const { message, profile, currentPlan, messageHistory } = req.body;
 
     const systemInstruction = `Você é um treinador de ciclismo especialista de classe mundial com profundo entendimento em fisiologia esportiva.
 Você está em uma conversa contínua com seu atleta parceiro. Responda em português brasileiro de forma inspiradora, mas sempre de forma amigável, clara e didática.
@@ -820,12 +1108,13 @@ Histórico Recente: ${JSON.stringify(messageHistory?.slice(-10) || [])}
 
     const resultText = response.text;
     if (!resultText) {
-      return res.status(500).json({ error: "No response from Gemini API" });
+      throw new Error("No response from Gemini API");
     }
     res.json(cleanAndParseJson(resultText));
   } catch (error: any) {
-    console.error("Error in custom chat API:", error);
-    res.status(500).json({ error: error.message });
+    console.warn("Fadiga central na chamada do Gemini para chat personalizado. Ativando treinador local resiliente:", error.message);
+    const data = fallbackChat(message, profile, currentPlan);
+    res.json(data);
   }
 });
 
