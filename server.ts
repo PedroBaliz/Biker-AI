@@ -32,103 +32,44 @@ app.use((req, res, next) => {
   next();
 });
 
-// JSON file database path for syncing accounts across devices
+// JSON file database path for local persistence
 const USERS_DB_PATH = path.join(process.cwd(), "users_db.json");
-const CLOUD_DB_URL = "https://kvdb.io/b70e2926ag2_biker_ai_secure_store_pro/users_database";
 
-// In-memory cache to keep performance high and prevent rate-limiting
+// In-memory cache to keep performance high and prevent disk read fatigue
 let inMemoryDbCache: Record<string, any> | null = null;
-let lastCloudFetchTime = 0;
 
-// Triggers background cloud fetch & merge silently without blocking
-function triggerBackgroundCloudSync() {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 2000); // 2 seconds limit
-
-  fetch(CLOUD_DB_URL, { signal: controller.signal })
-    .then(async (res) => {
-      clearTimeout(timeoutId);
-      if (res.ok) {
-        const cloudDb = await res.json().catch(() => null);
-        if (cloudDb && typeof cloudDb === "object") {
-          // Merge with in-memory cache, keeping the latest / merging
-          const localDb = inMemoryDbCache || {};
-          inMemoryDbCache = { ...cloudDb, ...localDb };
-          
-          // Write merged cache back to local file
-          try {
-            fs.writeFileSync(USERS_DB_PATH, JSON.stringify(inMemoryDbCache, null, 2), "utf-8");
-          } catch (err) {
-            console.error("Erro ao persistir banco em segundo plano:", err);
-          }
-          console.log("[Nuvem] Banco de dados local e nuvem mesclados com sucesso.");
-        }
-      }
-    })
-    .catch((err) => {
-      clearTimeout(timeoutId);
-      console.log("[Nuvem] Ignorando sincronização de leitura (conexão remota restrita ou offline):", err.message);
-    });
-}
-
-// Dual-sync cloud-capable database retriever helper
+// Local database retriever helper
 async function getDatabase(): Promise<Record<string, any>> {
   if (inMemoryDbCache) {
     return inMemoryDbCache;
   }
 
-  // Load from the local JSON as standard fast backup
+  // Load from the local JSON file
   let localDb: Record<string, any> = {};
   try {
     if (fs.existsSync(USERS_DB_PATH)) {
       const data = fs.readFileSync(USERS_DB_PATH, "utf-8");
       localDb = JSON.parse(data);
     }
-  } catch (err) {
+  } catch (err: any) {
     console.warn("Nenhum cache de banco de dados local encontrado ou falha na leitura, iniciando novo:", err.message);
   }
 
   inMemoryDbCache = localDb;
-
-  // Sincroniza em segundo plano, sem bloquear a rota ativa
-  triggerBackgroundCloudSync();
-
   return localDb;
 }
 
-// Dual-sync cloud-capable database saving helper
+// Local database saving helper
 async function saveDatabase(db: Record<string, any>) {
   inMemoryDbCache = db;
 
   // Write locally right away to guarantee instant local persistence
   try {
     fs.writeFileSync(USERS_DB_PATH, JSON.stringify(db, null, 2), "utf-8");
+    console.log("[Banco Local] Banco de dados persistido localmente com sucesso.");
   } catch (err) {
     console.error("FALHA ao salvar cache de banco de dados local:", err);
   }
-
-  // Write asynchronously to cloud storage with a tight timeout, avoiding blocking
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 2500); // 2.5 seconds limit
-
-  fetch(CLOUD_DB_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(db),
-    signal: controller.signal
-  })
-  .then((res) => {
-    clearTimeout(timeoutId);
-    if (res.ok) {
-      console.log("[Nuvem] Banco de dados sincronizado na nuvem com sucesso!");
-    } else {
-      console.warn("[Nuvem] Status retornado inválido na sincronização:", res.status);
-    }
-  })
-  .catch((err) => {
-    clearTimeout(timeoutId);
-    console.warn("[Nuvem] Sincronização em nuvem ignorada (conexão restrita):", err.message);
-  });
 }
 
 // -------------------------------------------------------------
