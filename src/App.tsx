@@ -360,11 +360,17 @@ export default function App() {
         })
       });
 
-      if (!response.ok) {
-        throw new Error("Falha ao comunicar com o servidor de treino.");
+      let data: any = null;
+      try {
+        data = await response.json();
+      } catch (e) {
+        // Not JSON or empty body
       }
 
-      const data = await response.json();
+      if (!response.ok) {
+        const errMsg = data?.error || data?.message || "Falha ao comunicar com o servidor de treino.";
+        throw new Error(errMsg);
+      }
 
       const coachMsg: ChatMessage = {
         id: `msg-${Date.now() + 1}`,

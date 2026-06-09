@@ -271,6 +271,20 @@ const checkApiKey = () => {
 // Safe JSON parser block that strips away any markdown fences
 const cleanAndParseJson = (text: string): any => {
   let cleanText = text.trim();
+  
+  const tryParse = (str: string) => {
+    try {
+      return JSON.parse(str);
+    } catch {
+      return null;
+    }
+  };
+
+  // 1. Try parsing directly
+  let parsed = tryParse(cleanText);
+  if (parsed) return parsed;
+
+  // 2. Clear Markdown fences
   if (cleanText.startsWith("```")) {
     const firstNewline = cleanText.indexOf("\n");
     if (firstNewline !== -1) {
@@ -283,7 +297,30 @@ const cleanAndParseJson = (text: string): any => {
     }
     cleanText = cleanText.trim();
   }
-  return JSON.parse(cleanText);
+  
+  parsed = tryParse(cleanText);
+  if (parsed) return parsed;
+
+  // 3. Search for the outermost JSON brace bounds
+  const firstBrace = cleanText.indexOf("{");
+  const lastBrace = cleanText.lastIndexOf("}");
+  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+    const candidate = cleanText.substring(firstBrace, lastBrace + 1);
+    parsed = tryParse(candidate);
+    if (parsed) return parsed;
+  }
+
+  // 4. Search for outermost array brackets
+  const firstBracket = cleanText.indexOf("[");
+  const lastBracket = cleanText.lastIndexOf("]");
+  if (firstBracket !== -1 && lastBracket !== -1 && lastBracket > firstBracket) {
+    const candidate = cleanText.substring(firstBracket, lastBracket + 1);
+    parsed = tryParse(candidate);
+    if (parsed) return parsed;
+  }
+
+  console.error("FALHA CRÍTICA DE RESOLUÇÃO JSON:", text);
+  throw new Error("O servidor recebeu uma resposta com formato incorreto da IA. Por favor, tente enviar a mensagem novamente.");
 };
 
 /**
