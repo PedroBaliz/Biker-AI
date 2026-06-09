@@ -39,6 +39,7 @@ export interface TrainingPlan {
   evaluation: string;
   weekNumber?: number;
   coachMessage?: string;
+  geminiError?: string;
 }
 
 export interface ChatMessage {
