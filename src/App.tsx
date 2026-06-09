@@ -179,7 +179,18 @@ export default function App() {
       });
 
       if (!response.ok) {
-        throw new Error("Erro de comunicação com o servidor ao evoluir a planilha.");
+        let errorDetails = "";
+        try {
+          const errorJson = await response.json();
+          errorDetails = errorJson.error || errorJson.message || JSON.stringify(errorJson);
+        } catch (e) {
+          try {
+            errorDetails = await response.text();
+          } catch (t) {
+            errorDetails = `Código de Status HTTP: ${response.status} (${response.statusText})`;
+          }
+        }
+        throw new Error(errorDetails || `Erro do servidor (Status ${response.status})`);
       }
 
       // Guardar a semana atual no histórico para visualização de volume antes de carregar a nova
@@ -221,7 +232,7 @@ export default function App() {
       });
 
     } catch (err: any) {
-      alert("Houve um erro técnico para gerar a próxima semana: " + err.message);
+      alert("⚠️ Erro detalhado ao evoluir a planilha:\n\n" + err.message + "\n\nPor favor, tente novamente ou verifique se as credenciais do servidor estão corretas.");
     } finally {
       setIsGeneratingNextWeek(false);
     }
@@ -452,7 +463,18 @@ export default function App() {
       });
 
       if (!response.ok) {
-        throw new Error("Erro na geração da planilha pelo treinador.");
+        let errorDetails = "";
+        try {
+          const errorJson = await response.json();
+          errorDetails = errorJson.error || errorJson.message || JSON.stringify(errorJson);
+        } catch (e) {
+          try {
+            errorDetails = await response.text();
+          } catch (t) {
+            errorDetails = `Código de Status HTTP: ${response.status} (${response.statusText})`;
+          }
+        }
+        throw new Error(errorDetails || `Erro do servidor (Status ${response.status})`);
       }
 
       const data: TrainingPlan = await response.json();
@@ -469,7 +491,7 @@ export default function App() {
         const history = [...prev, {
           id: `gen-${Date.now()}`,
           sender: "treinador",
-          text: `✨ **Planilha Semanal Gerada com Sucesso!**\n\n${profile.name || "Atleta"}, montei uma planilha de treinos sob medida baseada no seu nível (**${profile.level}**) e seu objetivo de **${profile.goal}**. Confira a aba de planilha para ver os passos e dicas de cada dia! Let's ride! 🚴‍♂️💨`,
+          text: `✨ **Planilha Semanal Gerada com Sucesso!**\n\n${profile.name || "Atleta"}, montei uma planilha de treinos sob medida baseada no seu nível (**${profile.level}**) e seu objetivo de **${profile.goal}**. Confira a aba de planilha para ver os passos e dicas de cada dia! Let's ride! 🚴‍♂️‍♂️💨`,
           timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
         }];
         if (data.geminiError) {
@@ -484,7 +506,7 @@ export default function App() {
       });
 
     } catch (err: any) {
-      alert("Houve um erro: " + err.message);
+      alert("⚠️ Erro detalhado ao gerar a planilha:\n\n" + err.message + "\n\nPor favor, tente novamente ou verifique se as credenciais do servidor estão corretas.");
     } finally {
       setIsGeneratingPlan(false);
     }
