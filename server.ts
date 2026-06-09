@@ -192,21 +192,39 @@ app.post("/api/auth/save-user", async (req, res) => {
 
 const PORT = 3000;
 
-// Initialize Gemini client on the server
-const ai = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY || "",
-  httpOptions: {
-    headers: {
-      'User-Agent': 'aistudio-build',
-    }
+// Initialize Gemini client lazily on the server
+let aiClient: GoogleGenAI | null = null;
+
+const getAiClient = (): GoogleGenAI => {
+  let key = process.env.GEMINI_API_KEY || "";
+  // Strip quotes if they were added in the environment
+  if (key.startsWith('"') && key.endsWith('"')) {
+    key = key.slice(1, -1);
+  } else if (key.startsWith("'") && key.endsWith("'")) {
+    key = key.slice(1, -1);
   }
-});
+  key = key.trim();
+
+  if (!key) {
+    throw new Error("GEMINI_API_KEY is not configured in the environment variables.");
+  }
+
+  if (!aiClient) {
+    aiClient = new GoogleGenAI({
+      apiKey: key,
+      httpOptions: {
+        headers: {
+          'User-Agent': 'aistudio-build',
+        }
+      }
+    });
+  }
+  return aiClient;
+};
 
 // Helper to handle Gemini API errors or key missing
 const checkApiKey = () => {
-  if (!process.env.GEMINI_API_KEY) {
-    throw new Error("GEMINI_API_KEY is not configured in the environment variables.");
-  }
+  getAiClient();
 };
 
 // Safe JSON parser block that strips away any markdown fences
@@ -611,7 +629,7 @@ Histórico de Mensagens anteriores: ${JSON.stringify(messageHistory?.slice(-10) 
 Analise a resposta, atualize o "parsedProfile" de acordo (pode preencher múltiplos campos caso o atleta tenha respondido mais de uma coisa ou antecipado dados), aumente o onboardingStep se ele respondeu a pergunta atual, e gere a "reply" contendo a próxima pergunta ou um encerramento amigável se todas as 10 perguntas foram respondidas.
 Se o ciclista já respondeu a tudo, diga que o perfil está completo e que ele pode confirmar os dados na tela para gerar sua planilha semanal personalizada.`;
 
-    const response = await ai.models.generateContent({
+    const response = await getAiClient().models.generateContent({
       model: "gemini-3.5-flash",
       contents: updatedPrompt,
       config: {
@@ -730,17 +748,17 @@ Você DEVE responder rigorosamente no formato JSON com a seguinte estrutura:
 Para dias de descanso, use type "Folga" ou "Descanso Ativo" e zere a duração se for folga total, ou coloque duração curta (ex: 30min de soltura de pernas Z1). Atribua nota de esforço interno 1 ou 2.`;
 
     const userBrief = `Gere uma planilha semanal para o atleta com o seguinte perfil:
-Nome: ${profile.name}
-Nível: ${profile.level}
-Objetivo: ${profile.goal}
-Dias por semana disponíveis: ${profile.daysPerWeek}
-Minutos por treino disponíveis: ${profile.durationPerSession} min
-Evento alvo: ${profile.eventDate || "Nenhum evento marcado"}
-Equipamentos: ${profile.hasPowerMeter ? `Medidor de Potência (FTP: ${profile.ftp}W)` : "Sem medidor de potência"} | ${profile.hasHeartRate ? `Monitor Cardíaco (FCmax: ${profile.maxHeartRate} bpm)` : "Sem monitor cardíaco"}
-Limitações físicas: ${profile.limitations || "Nenhuma"}
-Atividade recente cadastrada: ${profile.recentActivity || "Nenhuma registrada"}`;
+Nome: ${profile?.name || "Atleta"}
+Nível: ${profile?.level || "iniciante"}
+Objetivo: ${profile?.goal || "melhorar condicionamento"}
+Dias por semana disponíveis: ${profile?.daysPerWeek || 3}
+Minutos por treino disponíveis: ${profile?.durationPerSession || 60} min
+Evento alvo: ${profile?.eventDate || "Nenhum evento marcado"}
+Equipamentos: ${profile?.hasPowerMeter ? `Medidor de Potência (FTP: ${profile?.ftp}W)` : "Sem medidor de potência"} | ${profile?.hasHeartRate ? `Monitor Cardíaco (FCmax: ${profile?.maxHeartRate} bpm)` : "Sem monitor cardíaco"}
+Limitações físicas: ${profile?.limitations || "Nenhuma"}
+Atividade recente cadastrada: ${profile?.recentActivity || "Nenhuma registrada"}`;
 
-    const response = await ai.models.generateContent({
+    const response = await getAiClient().models.generateContent({
       model: "gemini-3.5-flash",
       contents: userBrief,
       config: {
@@ -845,14 +863,14 @@ Você DEVE responder rigorosamente no formato JSON com a seguinte estrutura:
   "coachMessage": "Mensagem motivacional e explicativa em português (atenciosa e amigável) detalhando o que mudou de uma semana para a outra, abordando especificamente a conclusão passada de ${completedPercent}% e as sensações do feedback."
 }`;
 
-    const userBrief = `Perfil do Atleta: ${JSON.stringify(profile)}
-Foco Principal de Treino Atual: ${profile.goal}
-FTP: ${profile.ftp}W, FCmax: ${profile.maxHeartRate} bpm
+    const userBrief = `Perfil do Atleta: ${JSON.stringify(profile || {})}
+Foco Principal de Treino Atual: ${profile?.goal || "Evolução"}
+FTP: ${profile?.ftp || 200}W, FCmax: ${profile?.maxHeartRate || 180} bpm
 Planilha da Semana que passou: ${JSON.stringify(currentPlan?.workouts || [])}
 
 Gere o planejamento estruturado completo para a Semana ${nextWeekNumber} seguindo rigorosamente a estrutura JSON solicitada.`;
 
-    const response = await ai.models.generateContent({
+    const response = await getAiClient().models.generateContent({
       model: "gemini-3.5-flash",
       contents: userBrief,
       config: {
@@ -921,7 +939,7 @@ Seu papel é analisar detalhadamente:
 Diretrizes da sua Análise Científica e Conselhos de Ouro:
 - Se foi um treino "Regenerativo/Folga" (Z1/Z2) e o atleta rodou com esforço maior do que o planejado ou com frequência cardíaca muito alta, explique amigavelmente sobre o erro de "treinar forte no dia fácil", o que gera estresse crônico desnecessário sem adaptação benéfica.
 - Se foi um treino "Forte/Limiar/Intervalos" (Z4/Z5) e o atleta manteve o foco, comemore muito! Diga o que acontece fisiologicamente no corpo dele (melhora do VO2Max, recrutamento de fibras do tipo II, aumento da complacência cardíaca).
-- Relacione os dados reais (Potência em relação ao FTP, e Frequência Cardíaca em relação à FCmax do usuário) caso esses dados tenham sido informados (FTP: ${profile.ftp}W, FCmax: ${profile.maxHeartRate} bpm).
+- Relacione os dados reais (Potência em relação ao FTP, e Frequência Cardíaca em relação à FCmax do usuário) caso esses dados tenham sido informados (FTP: ${profile?.ftp || 200}W, FCmax: ${profile?.maxHeartRate || 180} bpm).
 - Forneça recomendações práticas para as próximas 24-48 horas baseadas no cansaço relatado nas notas pessoais do atleta (ex: alongamentos, hidratação adicional, alimentação regenerativa rica em carboidratos complexos/proteínas, ou um bom sono).
 
 REGRA CRÍTICA DE COMUNICAÇÃO: Nunca utilize a palavra "RPE" ou "Percepção Subjetiva de Esforço" em suas explicações, resumos, descrições ou dicas. Esse termo técnico afasta o ciclista. Use termos muito simples e diretos para explicar o nível de esforço, tais como: "Muito Leve", "Leve", "Moderado", "Forte" ou "Máximo".
@@ -932,22 +950,22 @@ Sua resposta deve ser estruturada sob o formato JSON contendo uma única chave:
 }`;
 
     const prompt = `TREINO PRESCRITO:
-- Dia: ${workout.day}
-- Tipo: ${workout.type}
-- Duração Planejada: ${workout.duration} minutos
-- Zona Alvo: ${workout.targetZone}
-- Esforço Sugerido: ${workout.rpe}/10
+- Dia: ${workout?.day || "Treino"}
+- Tipo: ${workout?.type || "Endurance"}
+- Duração Planejada: ${workout?.duration || 60} minutos
+- Zona Alvo: ${workout?.targetZone || "Z2"}
+- Esforço Sugerido: ${workout?.rpe || 5}/10
 
 TREINO REALIZADO PELO ATLETA:
-- Duração Real: ${workout.actualDuration || workout.duration} minutos
-- Esforço Real Sentido: ${workout.actualRpe || 5}/10
-- Frequência Cardíaca Média Registrada: ${workout.actualHr ? `${workout.actualHr} bpm` : "Não informada"} (FCmax do perfil é ${profile.maxHeartRate || "não cadastrada"} bpm)
-- Potência Média Registrada: ${workout.actualPower ? `${workout.actualPower} Watts` : "Não informada"} (FTP do perfil é ${profile.ftp || "não cadastrado"}W)
-- Notas / Observações do Atleta: "${workout.athleteNotes || "Nenhum comentário preenchido pelo atleta."}"
+- Duração Real: ${workout?.actualDuration || workout?.duration || 60} minutos
+- Esforço Real Sentido: ${workout?.actualRpe || 5}/10
+- Frequência Cardíaca Média Registrada: ${workout?.actualHr ? `${workout.actualHr} bpm` : "Não informada"} (FCmax do perfil é ${profile?.maxHeartRate || "não cadastrada"} bpm)
+- Potência Média Registrada: ${workout?.actualPower ? `${workout.actualPower} Watts` : "Não informada"} (FTP do perfil é ${profile?.ftp || "não cadastrado"}W)
+- Notas / Observações do Atleta: "${workout?.athleteNotes || "Nenhum comentário preenchido pelo atleta."}"
 
 Faça uma avaliação amigável de coach de alto nível e retorne o resultado em JSON.`;
 
-    const response = await ai.models.generateContent({
+    const response = await getAiClient().models.generateContent({
       model: "gemini-3.5-flash",
       contents: prompt,
       config: {
@@ -1001,12 +1019,12 @@ Envie um JSON com as seguintes chaves:
 - "reply": a resposta do coach formatada em Markdown (pode incluir listas, bullets ou termos explicados de maneira estimulante e simples).
 - "updatedPlan": opcional, caso o atleta tenha pedido explicitamente uma alteração no treino (como "mude terça para descanso" ou "adicione um treino extra no sábado"). Retorne a planilha atualizada na mesma estrutura, senão envie nulo.`;
 
-    const userBrief = `Atleta Perfil: ${JSON.stringify(profile)}
-Planilha Semanal Atual: ${JSON.stringify(currentPlan)}
+    const userBrief = `Atleta Perfil: ${JSON.stringify(profile || {})}
+Planilha Semanal Atual: ${JSON.stringify(currentPlan || {})}
 Histórico Recente: ${JSON.stringify(messageHistory?.slice(-10) || [])}
-Última Mensagem do Atleta: "${message}"`;
+Última Mensagem do Atleta: "${message || ""}"`;
 
-    const response = await ai.models.generateContent({
+    const response = await getAiClient().models.generateContent({
       model: "gemini-3.5-flash",
       contents: userBrief,
       config: {
