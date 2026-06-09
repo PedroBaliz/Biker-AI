@@ -331,6 +331,24 @@ export default function App() {
       const isOnboarding = profile.onboardingStep < 10 && !plan;
       const endpoint = isOnboarding ? "/api/onboard" : "/api/chat";
 
+      const getRegisteredAnswersCount = (p: typeof profile) => {
+        const fields = [
+          p.name, p.level, p.goal, p.daysPerWeek, p.durationPerSession,
+          p.eventDate, p.hasPowerMeter, p.ftp, p.hasHeartRate, p.maxHeartRate,
+          p.limitations, p.recentActivity
+        ];
+        return fields.filter(val => val !== null && val !== "" && val !== undefined).length;
+      };
+
+      console.log("[ONBOARDING LOG - ANTES DO ENVIO]", {
+        perguntaAtual: profile.onboardingStep,
+        totalRespostasRegistradas: getRegisteredAnswersCount(profile),
+        estadoCompleto: profile,
+        mensagemEnviada: messageToSend,
+        isOnboarding,
+        endpoint
+      });
+
       const response = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -365,6 +383,14 @@ export default function App() {
           if (data.parsedProfile.onboardingStep >= 10) {
             updated.onboardingStep = 10;
           }
+          
+          console.log("[ONBOARDING LOG - DEPOIS DA RESPOSTA (NOVO ESTADO)]", {
+            perguntaAtual: updated.onboardingStep,
+            totalRespostasRegistradas: getRegisteredAnswersCount(updated),
+            estadoCompleto: updated,
+            dadosRecebidosDoServidor: data.parsedProfile
+          });
+
           return updated;
         });
       }
@@ -414,7 +440,7 @@ export default function App() {
       setChatHistory(prev => [...prev, {
         id: `gen-${Date.now()}`,
         sender: "treinador",
-        text: `✨ **Planilha Semanal Gerada com Sucesso!**\n\nCarlos, montei uma planilha de treinos sob medida baseada no seu nível (**${profile.level}**) e seu objetivo de **${profile.goal}**. Confira a aba de planilha para ver os passos e dicas de cada dia! Let's ride! 🚴‍♂️💨`,
+        text: `✨ **Planilha Semanal Gerada com Sucesso!**\n\n${profile.name || "Atleta"}, montei uma planilha de treinos sob medida baseada no seu nível (**${profile.level}**) e seu objetivo de **${profile.goal}**. Confira a aba de planilha para ver os passos e dicas de cada dia! Let's ride! 🚴‍♂️💨`,
         timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
       }]);
 

@@ -263,15 +263,27 @@ const ai = new GoogleGenAI({
 
 // Helper to handle Gemini API errors or key missing
 const checkApiKey = () => {
-  const key = process.env.GEMINI_API_KEY;
-
-  console.log("Gemini configurado:", !!key);
-
-  if (!key || key.trim() === "") {
-    throw new Error(
-      "GEMINI_API_KEY não encontrada. Configure a variável de ambiente."
-    );
+  if (!process.env.GEMINI_API_KEY) {
+    throw new Error("GEMINI_API_KEY is not configured in the environment variables.");
   }
+};
+
+// Safe JSON parser block that strips away any markdown fences
+const cleanAndParseJson = (text: string): any => {
+  let cleanText = text.trim();
+  if (cleanText.startsWith("```")) {
+    const firstNewline = cleanText.indexOf("\n");
+    if (firstNewline !== -1) {
+      cleanText = cleanText.substring(firstNewline + 1);
+    } else {
+      cleanText = cleanText.substring(3);
+    }
+    if (cleanText.endsWith("```")) {
+      cleanText = cleanText.substring(0, cleanText.length - 3);
+    }
+    cleanText = cleanText.trim();
+  }
+  return JSON.parse(cleanText);
 };
 
 /**
@@ -353,6 +365,7 @@ Se o ciclista já respondeu a tudo, diga que o perfil está completo e que ele p
             },
             parsedProfile: {
               type: Type.OBJECT,
+              required: ["onboardingStep"],
               description: "Campos atualizados do perfil obtidos a partir da resposta",
               properties: {
                 name: { type: Type.STRING },
@@ -379,7 +392,30 @@ Se o ciclista já respondeu a tudo, diga que o perfil está completo e que ele p
     if (!resultText) {
       return res.status(500).json({ error: "No response from Gemini API" });
     }
-    res.json(JSON.parse(resultText));
+
+    const data = cleanAndParseJson(resultText);
+
+    console.log("[BACKEND ONBOARDING REQUEST]", {
+      receivedMessage: message,
+      currentStep: profile?.onboardingStep,
+      parsedProfileResult: data.parsedProfile
+    });
+
+    // Enforce that onboardingStep advances correctly.
+    if (data.parsedProfile) {
+      const prevStep = profile?.onboardingStep !== undefined ? Number(profile.onboardingStep) : 0;
+      let modelStep = data.parsedProfile.onboardingStep !== undefined ? Number(data.parsedProfile.onboardingStep) : undefined;
+
+      // Safe increment fallback: if modelStep is missing or hasn't advanced (and is less than 10)
+      if (modelStep === undefined || modelStep <= prevStep) {
+        modelStep = Math.min(10, prevStep + 1);
+        data.parsedProfile.onboardingStep = modelStep;
+        console.log(`[BACKEND ONBOARDING ADJUST] onboardingStep was fallback-incremented from ${prevStep} to ${modelStep}`);
+      }
+    }
+
+    console.log("[BACKEND ONBOARDING RESPONSE]", JSON.stringify(data, null, 2));
+    res.json(data);
   } catch (error: any) {
     console.error("Error in onboarding API:", error);
     res.status(500).json({ error: error.message });
@@ -480,11 +516,9 @@ Atividade recente cadastrada: ${profile.recentActivity || "Nenhuma registrada"}`
     if (!resultText) {
       return res.status(500).json({ error: "No response from Gemini API" });
     }
-    res.json(JSON.parse(resultText));
+    res.json(cleanAndParseJson(resultText));
   } catch (error: any) {
-    console.error("Error in generate-plan API:");
-console.error(error);
-console.error(error?.stack);
+    console.error("Error in generate-plan API:", error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -595,7 +629,7 @@ Gere o planejamento estruturado completo para a Semana ${nextWeekNumber} seguind
     if (!resultText) {
       return res.status(500).json({ error: "No response from Gemini API for next week generation" });
     }
-    res.json(JSON.parse(resultText));
+    res.json(cleanAndParseJson(resultText));
   } catch (error: any) {
     console.error("Error in generate-next-week API:", error);
     res.status(500).json({ error: error.message });
@@ -668,7 +702,7 @@ Faça uma avaliação amigável de coach de alto nível e retorne o resultado em
     if (!resultText) {
       return res.status(500).json({ error: "No response from Gemini API for workout evaluation" });
     }
-    res.json(JSON.parse(resultText));
+    res.json(cleanAndParseJson(resultText));
   } catch (error: any) {
     console.error("Error in evaluate-workout API:", error);
     res.status(500).json({ error: error.message });
@@ -719,7 +753,6 @@ Histórico Recente: ${JSON.stringify(messageHistory?.slice(-10) || [])}
             reply: { type: Type.STRING },
             updatedPlan: {
               type: Type.OBJECT,
-              nullable: true,
               properties: {
                 workouts: {
                   type: Type.ARRAY,
@@ -752,7 +785,7 @@ Histórico Recente: ${JSON.stringify(messageHistory?.slice(-10) || [])}
     if (!resultText) {
       return res.status(500).json({ error: "No response from Gemini API" });
     }
-    res.json(JSON.parse(resultText));
+    res.json(cleanAndParseJson(resultText));
   } catch (error: any) {
     console.error("Error in custom chat API:", error);
     res.status(500).json({ error: error.message });
