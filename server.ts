@@ -699,6 +699,7 @@ Se o ciclista já respondeu a tudo, diga que o perfil está completo e que ele p
   } catch (error: any) {
     console.warn("Fadiga aeróbica na chamada do Gemini para onboarding. Ativando treinador local resiliente:", error.message);
     const data = fallbackOnboarding(message, profile);
+    data.geminiError = error.message;
     res.json(data);
   }
 });
@@ -801,6 +802,7 @@ Atividade recente cadastrada: ${profile?.recentActivity || "Nenhuma registrada"}
   } catch (error: any) {
     console.warn("Fadiga periférica na chamada do Gemini para plano personalizado. Ativando treinador local resiliente:", error.message);
     const data = fallbackGeneratePlan(profile, 1);
+    data.geminiError = error.message;
     res.json(data);
   }
 });
@@ -915,6 +917,7 @@ Gere o planejamento estruturado completo para a Semana ${nextWeekNumber} seguind
   } catch (error: any) {
     console.warn("Fadiga periférica na chamada do Gemini para próxima semana. Ativando treinador local resiliente:", error.message);
     const data = fallbackGeneratePlan(profile, nextWeekNumber || 2);
+    data.geminiError = error.message;
     res.json(data);
   }
 });
@@ -1073,6 +1076,7 @@ Histórico Recente: ${JSON.stringify(messageHistory?.slice(-10) || [])}
   } catch (error: any) {
     console.warn("Fadiga central na chamada do Gemini para chat personalizado. Ativando treinador local resiliente:", error.message);
     const data = fallbackChat(message, profile, currentPlan);
+    data.geminiError = error.message;
     res.json(data);
   }
 });

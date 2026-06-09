@@ -202,12 +202,23 @@ export default function App() {
       setSubjFeedback("otimo");
 
       // Adcciona mensagem ao histórico do chat do treinador
-      setChatHistory(prev => [...prev, {
-        id: `gen-week-${Date.now()}`,
-        sender: "treinador",
-        text: `🚀 **Sua Semana ${nextWeek} de Treinos Iniciou!**\n\n${data.coachMessage || "Preparei estímulos novos na planilha baseando-me nas suas sensações, cargas anteriores e nas conclusões!"}`,
-        timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-      }]);
+      setChatHistory(prev => {
+        const history = [...prev, {
+          id: `gen-week-${Date.now()}`,
+          sender: "treinador",
+          text: `🚀 **Sua Semana ${nextWeek} de Treinos Iniciou!**\n\n${data.coachMessage || "Preparei estímulos novos na planilha baseando-me nas suas sensações, cargas anteriores e nas conclusões!"}`,
+          timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+        }];
+        if (data.geminiError) {
+          history.push({
+            id: `system-warn-${Date.now()}`,
+            sender: "treinador",
+            text: `⚠️ **Modo de Segurança Ativado (Treinador Local)**\n\nSua nova semana foi evoluída utilizando as regras de periodização embarcada para progressão de carga (supercompensação clássica) por conta de um erro técnico na IA.\n\n**Causa do erro:** \`${data.geminiError}\`\n\n*Para obter comentários analíticos profundos de IA integrada, configure uma chave de acesso GEMINI_API_KEY válida em seu painel.*`,
+            timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+          });
+        }
+        return history;
+      });
 
     } catch (err: any) {
       alert("Houve um erro técnico para gerar a próxima semana: " + err.message);
@@ -379,7 +390,18 @@ export default function App() {
         timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
       };
 
-      setChatHistory(prev => [...prev, coachMsg]);
+      setChatHistory(prev => {
+        const history = [...prev, coachMsg];
+        if (data && data.geminiError) {
+          history.push({
+            id: `system-warn-${Date.now()}`,
+            sender: "treinador",
+            text: `⚠️ **Aviso de Chamada Off-line**\n\nO coach respondeu usando respostas dinâmicas embarcadas de salvaguarda, pois a busca avançada por IA personalizada falhou.\n\n**Causa do erro:** \`${data.geminiError}\``,
+            timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+          });
+        }
+        return history;
+      });
 
       // If in onboarding, update parsed fields
       if (isOnboarding && data.parsedProfile) {
@@ -443,12 +465,23 @@ export default function App() {
       setActiveTab("planilha");
 
       // Add coach announcement to chat
-      setChatHistory(prev => [...prev, {
-        id: `gen-${Date.now()}`,
-        sender: "treinador",
-        text: `✨ **Planilha Semanal Gerada com Sucesso!**\n\n${profile.name || "Atleta"}, montei uma planilha de treinos sob medida baseada no seu nível (**${profile.level}**) e seu objetivo de **${profile.goal}**. Confira a aba de planilha para ver os passos e dicas de cada dia! Let's ride! 🚴‍♂️💨`,
-        timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-      }]);
+      setChatHistory(prev => {
+        const history = [...prev, {
+          id: `gen-${Date.now()}`,
+          sender: "treinador",
+          text: `✨ **Planilha Semanal Gerada com Sucesso!**\n\n${profile.name || "Atleta"}, montei uma planilha de treinos sob medida baseada no seu nível (**${profile.level}**) e seu objetivo de **${profile.goal}**. Confira a aba de planilha para ver os passos e dicas de cada dia! Let's ride! 🚴‍♂️💨`,
+          timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+        }];
+        if (data.geminiError) {
+          history.push({
+            id: `system-warn-${Date.now()}`,
+            sender: "treinador",
+            text: `⚠️ **Modo de Segurança Ativado (Treinador Local)**\n\nSeus treinos foram calculados utilizando nosso motor fisiológico embarcado com base profissional na grade dos 80/20, pois a chamada para a inteligência de IA personalizada retornou um erro.\n\n**Causa do erro:** \`${data.geminiError}\`\n\n*Geralmente isso ocorre por uma chave do Gemini que expirou ou foi bloqueada pelo Google como vazada (como a chave de demonstração padrão do projeto). Para utilizar a inteligência de IA personalizada completa, atualize a chave **GEMINI_API_KEY** no seu painel de Segredos/Configurações.*`,
+            timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+          });
+        }
+        return history;
+      });
 
     } catch (err: any) {
       alert("Houve um erro: " + err.message);
