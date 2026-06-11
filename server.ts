@@ -1098,11 +1098,15 @@ async function bootstrap() {
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on port ${PORT}`);
-  });
+  if (!process.env.VERCEL) {
+    app.listen(PORT, "0.0.0.0", () => {
+      console.log(`Server running on port ${PORT}`);
+    });
+  }
 }
 
 bootstrap().catch((err) => {
   console.error("Failed to start server:", err);
 });
+
+export default app;
