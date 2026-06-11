@@ -2,15 +2,24 @@ import express from "express";
 import path from "path";
 import dotenv from "dotenv";
 import fs from "fs";
+import os from "os";
 import { GoogleGenAI, Type } from "@google/genai";
 
 dotenv.config();
 
+// JSON file database path for local persistence (declared early to avoid temporal dead zone)
+const USERS_DB_PATH = process.env.VERCEL
+  ? path.join(os.tmpdir(), "users_db.json")
+  : path.join(process.cwd(), "users_db.json");
+
 // Write startup log to verify server is executing
 try {
+  const bootLogPath = process.env.VERCEL
+    ? path.join(os.tmpdir(), "server_boot.log")
+    : path.join(process.cwd(), "server_boot.log");
   fs.writeFileSync(
-    path.join(process.cwd(), "server_boot.log"),
-    `Server boot started at: ${new Date().toISOString()}\nLocal DB Path: ${path.join(process.cwd(), "users_db.json")}\n`,
+    bootLogPath,
+    `Server boot started at: ${new Date().toISOString()}\nLocal DB Path: ${USERS_DB_PATH}\n`,
     "utf-8"
   );
 } catch (e: any) {
@@ -32,7 +41,10 @@ app.use((req, res, next) => {
 app.use((req, res, next) => {
   const logMsg = `[${new Date().toISOString()}] ${req.method} ${req.url} - Headers: ${JSON.stringify(req.headers)}\n`;
   try {
-    fs.appendFileSync(path.join(process.cwd(), "server_requests.log"), logMsg, "utf-8");
+    const requestsLogPath = process.env.VERCEL
+      ? path.join(os.tmpdir(), "server_requests.log")
+      : path.join(process.cwd(), "server_requests.log");
+    fs.appendFileSync(requestsLogPath, logMsg, "utf-8");
   } catch (e) {
     // ignore logging failure
   }
@@ -40,7 +52,6 @@ app.use((req, res, next) => {
 });
 
 // JSON file database path for local persistence
-const USERS_DB_PATH = path.join(process.cwd(), "users_db.json");
 
 // In-memory cache to keep performance high and prevent disk read fatigue
 let inMemoryDbCache: Record<string, any> | null = null;
@@ -197,7 +208,7 @@ app.post("/api/auth/save-user", async (req, res) => {
   }
 });
 
-const PORT = process.env.PORT ? Number(process.env.PORT) : 3000;
+const PORT = 3000;
 
 // Initialize Gemini client lazily on the server
 let aiClient: GoogleGenAI | null = null;
@@ -294,7 +305,15 @@ const cleanAndParseJson = (text: string): any => {
 // -----------------------------------------------------------------
 
 const fallbackOnboarding = (message: string, profile: any): any => {
-  const currentStep = profile?.onboardingStep !== undefined ? Number(profile.onboardingStep) : 1;
+  const onboardingStepVal = profile?.onboardingStep !== undefined ? Number(profile.onboardingStep) : 1;
+  let currentStep = onboardingStepVal === 0 ? 1 : onboardingStepVal;
+
+  // If the athlete registered, they already have a name under profile.
+  // In this case, if currentStep is 1, they are actually replying to Level (Question 2).
+  if (currentStep === 1 && profile?.name) {
+    currentStep = 2;
+  }
+
   const nextStep = Math.min(10, currentStep + 1);
   const parsedProfile: any = { onboardingStep: nextStep };
 
@@ -695,7 +714,7 @@ Se o ciclista já respondeu a tudo, diga que o perfil está completo e que ele p
 
       // Safe increment fallback: if modelStep is missing or hasn't advanced (and is less than 10)
       if (modelStep === undefined || modelStep <= prevStep) {
-        modelStep = Math.min(10, prevStep + 1);
+        modelStep = Math.min(10, (prevStep === 0 ? 1 : prevStep) + 1);
         data.parsedProfile.onboardingStep = modelStep;
         console.log(`[BACKEND ONBOARDING ADJUST] onboardingStep was fallback-incremented from ${prevStep} to ${modelStep}`);
       }
@@ -1021,6 +1040,7 @@ Você está em uma conversa contínua com seu atleta parceiro. Responda em portu
 REGRA CRÍTICA DE COMUNICAÇÃO: Nunca utilize a palavra "RPE" ou "Percepção Subjetiva de Esforço" em suas explicações, resumos, descrições ou dicas. Esse termo técnico afasta o ciclista. Use termos muito simples e diretos para explicar o nível de esforço, tais como: "Muito Leve", "Leve", "Moderado", "Forte" ou "Máximo".
 
 Dicas de comunicação:
+- Use e abuse de forma personalizada de todos os dados do Atleta Perfil recebidos (por exemplo: trate o atleta pelo seu Nome, leve em consideração se possui alguma limitação ou lesão física ao responder, adeque a linguagem ao nível dele (iniciante/intermediário/avançado), relacione as dicas com o objetivo principal dele e com os equipamentos que ele usa como FTP em Watts ou FCmax se informados).
 - Explique brevemente o porquê fisiológico das suas instruções quando achar oportuno usando analogias fáceis e animadoras para o progresso do atleta.
 - Se eles perguntarem sobre cansaço extremo ou lesão, seja cauteloso e preze pelo descanso ativo ou repouso absoluto.
 - Se eles pedirem para alterar ou regenerar a planilha do treino, encoraje-os a atualizar os dados de treino ou sugira ajustes práticos.

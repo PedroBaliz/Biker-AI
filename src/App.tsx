@@ -284,7 +284,11 @@ export default function App() {
 
   // Real-time synchronization back to session registry & database map & central server
   useEffect(() => {
-    if (!currentUser) return;
+    if (!currentUser) {
+      localStorage.setItem("athlete_profile", JSON.stringify(profile));
+      localStorage.setItem("coach_chat_history", JSON.stringify(chatHistory));
+      return;
+    }
 
     const updatedUser: UserAccount = {
       email: currentUser.email,
@@ -304,9 +308,21 @@ export default function App() {
     const existingEntry = usersMap[emailKey];
     usersMap[emailKey] = {
       ...updatedUser,
-      password: existingEntry?.password || "123456" // fallbacks/preserves
+      password: existingEntry?.password || currentUser.password || "123456" // fallbacks/preserves
     };
     localStorage.setItem("coach_users", JSON.stringify(usersMap));
+
+    // Update React state safely if they are deeply different to keep other views unified
+    if (
+      JSON.stringify(currentUser.profile) !== JSON.stringify(profile) ||
+      JSON.stringify(currentUser.chatHistory) !== JSON.stringify(chatHistory) ||
+      JSON.stringify(currentUser.plan) !== JSON.stringify(plan)
+    ) {
+      setCurrentUser({
+        ...updatedUser,
+        password: existingEntry?.password || currentUser.password || "123456"
+      });
+    }
 
     // Async background sync with Node.js server database
     fetch("/api/auth/save-user", {
@@ -315,7 +331,7 @@ export default function App() {
       body: JSON.stringify({
         email: currentUser.email,
         userAccount: updatedUser,
-        password: existingEntry?.password || "123456"
+        password: existingEntry?.password || currentUser.password || "123456"
       })
     })
     .then(res => {
@@ -662,8 +678,23 @@ export default function App() {
   };
 
   // Helpers to check progress
+  const getAnswersCompletedCount = (p: UserProfile) => {
+    let count = 0;
+    if (p.name) count++;
+    if (p.level) count++;
+    if (p.goal) count++;
+    if (p.daysPerWeek !== null && p.daysPerWeek !== undefined && p.daysPerWeek !== 0) count++;
+    if (p.durationPerSession !== null && p.durationPerSession !== undefined && p.durationPerSession !== 0) count++;
+    if (p.eventDate) count++;
+    if (p.hasPowerMeter !== null && p.hasPowerMeter !== undefined) count++;
+    if (p.hasHeartRate !== null && p.hasHeartRate !== undefined) count++;
+    if (p.limitations !== undefined && p.limitations !== "" && p.limitations !== null) count++;
+    if (p.recentActivity !== undefined && p.recentActivity !== "" && p.recentActivity !== null) count++;
+    return Math.min(10, count);
+  };
+
   const getProgressPercentage = () => {
-    return Math.min(100, Math.round((profile.onboardingStep / 10) * 100));
+    return Math.round((getAnswersCompletedCount(profile) / 10) * 100);
   };
 
   return (
@@ -772,7 +803,7 @@ export default function App() {
                 <div className="flex items-center gap-3 shrink-0">
                   <div className="text-right">
                     <div className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Respostas Coletadas</div>
-                    <div className="text-sm font-mono font-bold text-lime-400">{profile.onboardingStep}/10 Preenchidas</div>
+                    <div className="text-sm font-mono font-bold text-lime-400">{getAnswersCompletedCount(profile)}/10 Preenchidas</div>
                   </div>
                   <div className="w-24 h-2 rounded-full bg-slate-800 border border-slate-750 overflow-hidden">
                     <div className="bg-lime-500 h-full transition-all duration-500" style={{ width: `${getProgressPercentage()}%` }}></div>
