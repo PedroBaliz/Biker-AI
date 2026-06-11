@@ -197,7 +197,7 @@ app.post("/api/auth/save-user", async (req, res) => {
   }
 });
 
-const PORT = 3000;
+const PORT = process.env.PORT ? Number(process.env.PORT) : 3000;
 
 // Initialize Gemini client lazily on the server
 let aiClient: GoogleGenAI | null = null;
