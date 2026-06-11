@@ -3,7 +3,6 @@ import path from "path";
 import dotenv from "dotenv";
 import fs from "fs";
 import { GoogleGenAI, Type } from "@google/genai";
-import { createServer as createViteServer } from "vite";
 
 dotenv.config();
 
@@ -20,6 +19,14 @@ try {
 
 const app = express();
 app.use(express.json());
+
+// Normalização de URLs de API no ambiente Vercel para compatibilidade de rotas
+app.use((req, res, next) => {
+  if (process.env.VERCEL && !req.url.startsWith("/api")) {
+    req.url = "/api" + req.url;
+  }
+  next();
+});
 
 // Log all requests to a physical file for request tracing
 app.use((req, res, next) => {
@@ -1084,12 +1091,13 @@ Histórico Recente: ${JSON.stringify(messageHistory?.slice(-10) || [])}
 // Serve frontend assets and start listening
 async function bootstrap() {
   if (process.env.NODE_ENV !== "production") {
+    const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
     });
     app.use(vite.middlewares);
-  } else {
+  } else if (!process.env.VERCEL) {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
     // In Express v4, we use * to match all routes
