@@ -29,7 +29,7 @@ try {
 const app = express();
 app.use(express.json());
 
-// Normalização de URLs de API no ambiente Vercel para compatibilidade de rotas
+// Normalização de URLs de API no ambiente Vercel para compatibilidade de rotas (evitar 404)
 app.use((req, res, next) => {
   if (process.env.VERCEL && !req.url.startsWith("/api")) {
     req.url = "/api" + req.url;
@@ -305,6 +305,7 @@ const cleanAndParseJson = (text: string): any => {
 // -----------------------------------------------------------------
 
 const fallbackOnboarding = (message: string, profile: any): any => {
+  const safeMsg = typeof message === "string" ? message : "";
   const onboardingStepVal = profile?.onboardingStep !== undefined ? Number(profile.onboardingStep) : 1;
   let currentStep = onboardingStepVal === 0 ? 1 : onboardingStepVal;
 
@@ -317,11 +318,11 @@ const fallbackOnboarding = (message: string, profile: any): any => {
   const nextStep = Math.min(10, currentStep + 1);
   const parsedProfile: any = { onboardingStep: nextStep };
 
-  const normalizedMsg = (message || "").toLowerCase();
+  const normalizedMsg = safeMsg.toLowerCase();
 
   switch (currentStep) {
     case 1: // Asking Name
-      parsedProfile.name = message.replace(/(meu nome é|sou o|sou a|me chamo)\s*/gi, "").trim() || message;
+      parsedProfile.name = safeMsg.replace(/(meu nome é|sou o|sou a|me chamo)\s*/gi, "").trim() || safeMsg || "Atleta";
       return {
         reply: `Muito prazer, ${parsedProfile.name}! Seja bem-vindo ao Biker AI. Para calibrar a planilha ideal, me conta: há quanto tempo você pedala? Você se considera iniciante, intermediário ou avançado?`,
         parsedProfile: { name: parsedProfile.name, onboardingStep: 2 }
@@ -346,7 +347,7 @@ const fallbackOnboarding = (message: string, profile: any): any => {
         parsedProfile: { goal, onboardingStep: 4 }
       };
     case 4: // Days per week
-      const matchesDays = message.match(/\d+/);
+      const matchesDays = safeMsg.match(/\d+/);
       const days = matchesDays ? parseInt(matchesDays[0], 10) : 3;
       parsedProfile.daysPerWeek = days;
       return {
@@ -354,7 +355,7 @@ const fallbackOnboarding = (message: string, profile: any): any => {
         parsedProfile: { daysPerWeek: days, onboardingStep: 5 }
       };
     case 5: // Duration per session
-      const matchesMinutes = message.match(/\d+/);
+      const matchesMinutes = safeMsg.match(/\d+/);
       const minutes = matchesMinutes ? parseInt(matchesMinutes[0], 10) : 60;
       parsedProfile.durationPerSession = minutes;
       return {
@@ -362,14 +363,14 @@ const fallbackOnboarding = (message: string, profile: any): any => {
         parsedProfile: { durationPerSession: minutes, onboardingStep: 6 }
       };
     case 6: // Event Date
-      const eventDate = message;
+      const eventDate = safeMsg;
       return {
         reply: `Maravilha! Focar em um evento ajuda muito a manter o foco bem definido. Agora sobre equipamentos: você utiliza Medidor de Potência nos treinos? Se sim, sabe estimar qual é seu FTP atual em Watts?`,
         parsedProfile: { eventDate, onboardingStep: 7 }
       };
     case 7: // Power Meter / FTP
-      const hasPower = normalizedMsg.includes("sim") || normalizedMsg.includes("tenho") || normalizedMsg.includes("uso") || /\d+/.test(message);
-      const matchesFtp = message.match(/\d+/);
+      const hasPower = normalizedMsg.includes("sim") || normalizedMsg.includes("tenho") || normalizedMsg.includes("uso") || /\d+/.test(safeMsg);
+      const matchesFtp = safeMsg.match(/\d+/);
       const ftpVal = matchesFtp ? parseInt(matchesFtp[0], 10) : 200;
       parsedProfile.hasPowerMeter = hasPower;
       if (hasPower) parsedProfile.ftp = ftpVal;
@@ -378,8 +379,8 @@ const fallbackOnboarding = (message: string, profile: any): any => {
         parsedProfile: { hasPowerMeter: hasPower, ftp: hasPower ? ftpVal : undefined, onboardingStep: 8 }
       };
     case 8: // Heart Rate
-      const hasHR = normalizedMsg.includes("sim") || normalizedMsg.includes("tenho") || normalizedMsg.includes("uso") || /\d+/.test(message);
-      const matchesMaxHr = message.match(/\d+/);
+      const hasHR = normalizedMsg.includes("sim") || normalizedMsg.includes("tenho") || normalizedMsg.includes("uso") || /\d+/.test(safeMsg);
+      const matchesMaxHr = safeMsg.match(/\d+/);
       const maxHrVal = matchesMaxHr ? parseInt(matchesMaxHr[0], 10) : 180;
       parsedProfile.hasHeartRate = hasHR;
       if (hasHR) parsedProfile.maxHeartRate = maxHrVal;
@@ -388,13 +389,13 @@ const fallbackOnboarding = (message: string, profile: any): any => {
         parsedProfile: { hasHeartRate: hasHR, maxHeartRate: hasHR ? maxHrVal : undefined, onboardingStep: 9 }
       };
     case 9: // Limitations
-      const limitations = message;
+      const limitations = safeMsg;
       return {
         reply: `Anotado. Sua segurança física e saúde estão sempre em primeiro lugar. Para fecharmos o seu cadastro de atleta: como foi o seu pedal ou treino mais recente (estimativa de tempo, distância ou sensação de cansaço)?`,
         parsedProfile: { limitations, onboardingStep: 10 }
       };
     case 10: // Recent Activity and Complete Onboarding
-      const recentActivity = message;
+      const recentActivity = safeMsg;
       return {
         reply: `Sensacional, atleta! Concluímos as 10 perguntas obrigatórias do seu cadastro esportivo. Seus limites de zona cardíaca e potência foram mapeados. Agora, clique no botão para salvar o perfil e vamos gerar sua planilha de treinos semanal personalizada!`,
         parsedProfile: { recentActivity, onboardingStep: 11 }
