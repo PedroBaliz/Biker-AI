@@ -240,6 +240,37 @@ const getAiClient = (): GoogleGenAI => {
   return aiClient;
 };
 
+// Diagnostics Endpoint to trace API variables, connections, and exact Stack Traces for any errors
+app.get("/api/diagnostics", async (req, res) => {
+  const responses: any = {
+    apiKeyConfigured: !!process.env.GEMINI_API_KEY,
+    apiKeyLength: process.env.GEMINI_API_KEY ? process.env.GEMINI_API_KEY.length : 0,
+    apiKeySnippet: process.env.GEMINI_API_KEY ? `${process.env.GEMINI_API_KEY.substring(0, 6)}...${process.env.GEMINI_API_KEY.substring(process.env.GEMINI_API_KEY.length - 4)}` : null,
+    nodeEnv: process.env.NODE_ENV,
+    modelName: "gemini-3.5-flash"
+  };
+
+  try {
+    const key = (process.env.GEMINI_API_KEY || "").trim();
+    if (!key) {
+      throw new Error("GEMINI_API_KEY is completely empty or missing from environment variables.");
+    }
+    const client = getAiClient();
+    const testCall = await client.models.generateContent({
+      model: "gemini-3.5-flash",
+      contents: "Hi, please answer with exactly 'OK'."
+    });
+    responses.geminiConnection = "SUCCESS";
+    responses.geminiResponse = testCall.text;
+  } catch (err: any) {
+    responses.geminiConnection = "FAILED";
+    responses.errorName = err.name || "Error";
+    responses.errorMessage = err.message;
+    responses.errorStack = err.stack;
+  }
+  res.json(responses);
+});
+
 // Helper to handle Gemini API errors or key missing
 const checkApiKey = () => {
   getAiClient();

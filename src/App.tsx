@@ -45,52 +45,44 @@ export default function App() {
     message: string;
   } | null>(null);
 
-  useEffect(() => {
-    const originalFetch = window.fetch;
-    window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
-      const urlStr = typeof input === "string" ? input : (input as Request).url;
-      const method = init?.method || "GET";
-      try {
-        const response = await originalFetch(input, init);
-        if (response.status === 404 || response.status === 500) {
-          let errorText = "";
+  const customFetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+    const urlStr = typeof input === "string" ? input : (input as Request).url;
+    const method = init?.method || "GET";
+    try {
+      const response = await fetch(input, init);
+      if (response.status === 404 || response.status === 500) {
+        let errorText = "";
+        try {
+          const clone = response.clone();
+          const data = await clone.json();
+          errorText = data?.error || data?.message || JSON.stringify(data);
+        } catch (e) {
           try {
             const clone = response.clone();
-            const data = await clone.json();
-            errorText = data?.error || data?.message || JSON.stringify(data);
-          } catch (e) {
-            try {
-              const clone = response.clone();
-              errorText = await clone.text();
-            } catch (t) {}
-          }
-          
-          setGlobalError({
-            url: urlStr,
-            method,
-            status: response.status,
-            statusText: response.statusText,
-            message: errorText || "Sem resposta detalhada do servidor."
-          });
+            errorText = await clone.text();
+          } catch (t) {}
         }
-        return response;
-      } catch (err: any) {
-        // Network errors or blocked requests
+        
         setGlobalError({
           url: urlStr,
           method,
-          status: 0,
-          statusText: "Falha de Conexão",
-          message: err.message || "Erro de rede. Verifique sua conexão ou se o backend está online."
+          status: response.status,
+          statusText: response.statusText,
+          message: errorText || "Sem resposta detalhada do servidor."
         });
-        throw err;
       }
-    };
-
-    return () => {
-      window.fetch = originalFetch;
-    };
-  }, []);
+      return response;
+    } catch (err: any) {
+      setGlobalError({
+        url: urlStr,
+        method,
+        status: 0,
+        statusText: "Falha de Conexão",
+        message: err.message || "Erro de rede. Verifique sua conexão ou se o backend está online."
+      });
+      throw err;
+    }
+  };
 
   const [currentUser, setCurrentUser] = useState<UserAccount | null>(() => {
     const saved = localStorage.getItem("current_coach_user");
@@ -222,7 +214,7 @@ export default function App() {
     const nextWeek = (plan.weekNumber || 1) + 1;
 
     try {
-      const response = await fetch("/api/generate-next-week", {
+      const response = await customFetch("/api/generate-next-week", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -442,7 +434,7 @@ export default function App() {
         endpoint
       });
 
-      const response = await fetch(endpoint, {
+      const response = await customFetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -527,7 +519,7 @@ export default function App() {
   const generateTrainingPlan = async () => {
     setIsGeneratingPlan(true);
     try {
-      const response = await fetch("/api/generate-plan", {
+      const response = await customFetch("/api/generate-plan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ profile })
