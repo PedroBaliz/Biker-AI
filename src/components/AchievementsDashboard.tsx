@@ -1,4 +1,5 @@
 import React, { useMemo } from "react";
+import { motion } from "motion/react";
 import { UserProfile, TrainingPlan, Workout, isRestDay } from "../types";
 import {
   ResponsiveContainer,
@@ -316,7 +317,14 @@ export default function AchievementsDashboard({ profile, plan }: AchievementsDas
       {/* 1. Quick Stats Header Panels (Grid representation of complete metrics) */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         
-        <div id="stat-completed-total" className="bg-white border border-slate-100 rounded-3xl p-5 shadow-xs flex items-center gap-4 hover:shadow-sm transition-shadow">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.4, delay: 0.05 }}
+          id="stat-completed-total" 
+          className="bg-white border border-slate-100 rounded-3xl p-5 shadow-xs flex items-center gap-4 hover:shadow-sm transition-shadow"
+        >
           <div className="p-3 bg-lime-50 rounded-2xl text-lime-650 shrink-0">
             <CheckCircle2 className="w-6 h-6" />
           </div>
@@ -325,9 +333,16 @@ export default function AchievementsDashboard({ profile, plan }: AchievementsDas
             <span className="text-xl sm:text-2xl font-mono font-black text-slate-800">{totalCompletedCount}</span>
             <span className="text-[10px] text-slate-400 block font-sans">sabor de evolução</span>
           </div>
-        </div>
+        </motion.div>
 
-        <div id="stat-total-hours" className="bg-white border border-slate-100 rounded-3xl p-5 shadow-xs flex items-center gap-4 hover:shadow-sm transition-shadow">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.4, delay: 0.1 }}
+          id="stat-total-hours" 
+          className="bg-white border border-slate-100 rounded-3xl p-5 shadow-xs flex items-center gap-4 hover:shadow-sm transition-shadow"
+        >
           <div className="p-3 bg-sky-50 rounded-2xl text-sky-600 shrink-0">
             <Clock className="w-6 h-6" />
           </div>
@@ -336,9 +351,16 @@ export default function AchievementsDashboard({ profile, plan }: AchievementsDas
             <span className="text-xl sm:text-2xl font-mono font-black text-slate-800">{totalDurationHoursStr}h</span>
             <span className="text-[10px] text-slate-400 block font-sans">acumulado de fôlego</span>
           </div>
-        </div>
+        </motion.div>
 
-        <div id="stat-total-calories" className="bg-white border border-slate-100 rounded-3xl p-5 shadow-xs flex items-center gap-4 hover:shadow-sm transition-shadow">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.4, delay: 0.15 }}
+          id="stat-total-calories" 
+          className="bg-white border border-slate-100 rounded-3xl p-5 shadow-xs flex items-center gap-4 hover:shadow-sm transition-shadow"
+        >
           <div className="p-3 bg-amber-50 rounded-2xl text-amber-600 shrink-0">
             <Flame className="w-6 h-6" />
           </div>
@@ -347,9 +369,16 @@ export default function AchievementsDashboard({ profile, plan }: AchievementsDas
             <span className="text-xl sm:text-2xl font-mono font-black text-slate-800">{totalCaloriesBurned.toLocaleString()} kcal</span>
             <span className="text-[10px] text-slate-400 block font-sans">estimativa fisiológica</span>
           </div>
-        </div>
+        </motion.div>
 
-        <div id="stat-achievements-unlocked" className="bg-white border border-slate-100 rounded-3xl p-5 shadow-xs flex items-center gap-4 hover:shadow-sm transition-shadow">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.4, delay: 0.2 }}
+          id="stat-achievements-unlocked" 
+          className="bg-white border border-slate-100 rounded-3xl p-5 shadow-xs flex items-center gap-4 hover:shadow-sm transition-shadow"
+        >
           <div className="p-3 bg-amber-500/10 rounded-2xl text-amber-500 shrink-0">
             <Trophy className="w-6 h-6 fill-amber-500/10" />
           </div>
@@ -358,7 +387,7 @@ export default function AchievementsDashboard({ profile, plan }: AchievementsDas
             <span className="text-xl sm:text-2xl font-mono font-black text-slate-800">{unlockedCount} / {achievementsList.length}</span>
             <span className="text-[10px] text-slate-400 block font-sans">{progressPercentage}% desbloqueado</span>
           </div>
-        </div>
+        </motion.div>
 
       </div>
 
@@ -366,7 +395,14 @@ export default function AchievementsDashboard({ profile, plan }: AchievementsDas
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* Weekly Trend (Bar & line representing minutes planned vs loaded) */}
-        <div id="trend-metric-card" className="bg-white border border-slate-100 rounded-3xl p-5 sm:p-6 shadow-xs lg:col-span-2 space-y-4">
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.98, y: 30 }}
+          whileInView={{ opacity: 1, scale: 1, y: 0 }}
+          viewport={{ once: true, margin: "-50px" }}
+          transition={{ duration: 0.5, delay: 0.1 }}
+          id="trend-metric-card" 
+          className="bg-white border border-slate-100 rounded-3xl p-5 sm:p-6 shadow-xs lg:col-span-2 space-y-4"
+        >
           <div className="space-y-1">
             <h3 className="font-heading font-black text-slate-800 text-sm sm:text-base flex items-center gap-2">
               <TrendingUp className="w-5 h-5 text-lime-650" />
@@ -414,10 +450,17 @@ export default function AchievementsDashboard({ profile, plan }: AchievementsDas
               </div>
             )}
           </div>
-        </div>
+        </motion.div>
 
         {/* Zones Distribution Breakdown (Pie Chart) */}
-        <div id="zones-distribution-card" className="bg-white border border-slate-100 rounded-3xl p-5 sm:p-6 shadow-xs flex flex-col justify-between space-y-4">
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.98, y: 30 }}
+          whileInView={{ opacity: 1, scale: 1, y: 0 }}
+          viewport={{ once: true, margin: "-50px" }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+          id="zones-distribution-card" 
+          className="bg-white border border-slate-100 rounded-3xl p-5 sm:p-6 shadow-xs flex flex-col justify-between space-y-4"
+        >
           <div className="space-y-1">
             <h3 className="font-heading font-black text-slate-800 text-sm sm:text-base flex items-center gap-2">
               <Activity className="w-5 h-5 text-indigo-500" />
@@ -484,7 +527,7 @@ export default function AchievementsDashboard({ profile, plan }: AchievementsDas
               ))}
             </div>
           )}
-        </div>
+        </motion.div>
 
       </div>
 
@@ -522,9 +565,13 @@ export default function AchievementsDashboard({ profile, plan }: AchievementsDas
 
         {/* Grid layout */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pt-2">
-          {achievementsList.map((ach) => (
-            <div 
+          {achievementsList.map((ach, index) => (
+            <motion.div 
               key={ach.id} 
+              initial={{ opacity: 0, scale: 0.95 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true, margin: "-30px" }}
+              transition={{ duration: 0.35, delay: (index % 3) * 0.05 }}
               id={`achievement-${ach.id}`}
               className={`rounded-2xl p-4 border transition-all duration-300 relative overflow-hidden flex items-start gap-4 ${
                 ach.unlocked 
@@ -569,14 +616,21 @@ export default function AchievementsDashboard({ profile, plan }: AchievementsDas
                 )}
               </div>
 
-            </div>
+            </motion.div>
           ))}
         </div>
 
       </div>
 
       {/* 4. Complete workout ledger (Treinos Feitos com status e detalhes) */}
-      <div id="workout-historical-ledger" className="bg-white border border-slate-100 rounded-3xl p-5 sm:p-6 shadow-xs space-y-4">
+      <motion.div 
+        id="workout-historical-ledger" 
+        initial={{ opacity: 0, y: 30 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-50px" }}
+        transition={{ duration: 0.5 }}
+        className="bg-white border border-slate-100 rounded-3xl p-5 sm:p-6 shadow-xs space-y-4"
+      >
         
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
           <div className="space-y-0.5">

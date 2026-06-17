@@ -35,7 +35,11 @@ import {
   Trash2,
   Trophy,
   Eye,
-  EyeOff
+  EyeOff,
+  Download,
+  Smartphone,
+  Share,
+  X
 } from "lucide-react";
 
 export default function App() {
@@ -139,6 +143,58 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<"planilha" | "desempenho" | "zonas" | "chat">("planilha");
   const [showMyWorkouts, setShowMyWorkouts] = useState(false);
   const [showPseExplanation, setShowPseExplanation] = useState(false);
+
+  // PWA installation states
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [isPortable, setIsPortable] = useState(false);
+  const [showInstallGuide, setShowInstallGuide] = useState(false);
+
+  useEffect(() => {
+    const checkStandalone = () => {
+      const isStandaloneMode = 
+        window.matchMedia("(display-mode: standalone)").matches || 
+        (window.navigator as any).standalone === true;
+      setIsPortable(isStandaloneMode);
+    };
+
+    checkStandalone();
+
+    const handleBeforeInstallPrompt = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+
+    const handleAppInstalled = () => {
+      setIsPortable(true);
+      setDeferredPrompt(null);
+    };
+
+    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+    window.addEventListener("appinstalled", handleAppInstalled);
+
+    return () => {
+      window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+      window.removeEventListener("appinstalled", handleAppInstalled);
+    };
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (deferredPrompt) {
+      try {
+        await deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        if (outcome === "accepted") {
+          setDeferredPrompt(null);
+          setIsPortable(true);
+        }
+      } catch (err) {
+        console.error("Erro ao instalar PWA automaticamente:", err);
+        setShowInstallGuide(true);
+      }
+    } else {
+      setShowInstallGuide(true);
+    }
+  };
   
   // Training Plan State
   const [plan, setPlan] = useState<TrainingPlan | null>(() => {
@@ -774,6 +830,18 @@ export default function App() {
           </div>
 
           <div className="flex items-center justify-end gap-1.5 sm:gap-2 animate-fadeInUp shrink-0">
+            {currentUser && !isPortable && (
+              <button
+                id="header-install-pwa-button"
+                type="button"
+                onClick={handleInstallClick}
+                className="flex items-center gap-1.5 px-2.5 py-2 rounded-xl border border-slate-800 bg-slate-950 text-white hover:text-lime-400 hover:border-lime-500/30 text-xs font-bold font-heading uppercase tracking-wider transition-all cursor-pointer focus:outline-hidden shrink-0"
+                title="Instalar Aplicativo Biker AI"
+              >
+                <Download className="w-3.5 h-3.5 text-lime-400 shrink-0" />
+                <span className="leading-none">{deferredPrompt ? "Instalar Direto" : "Instalar App"}</span>
+              </button>
+            )}
             {currentUser && (
               <button 
                 onClick={() => setShowAccountSettings(!showAccountSettings)}
@@ -1333,7 +1401,14 @@ export default function App() {
                     className="space-y-8"
                   >
                     {plan?.coachMessage && (
-                      <div id="coach-weekly-feedback-banner" className="bg-gradient-to-r from-lime-500/10 to-emerald-500/10 border border-lime-500/20 rounded-2xl p-5 flex items-start gap-4 shadow-2xs">
+                      <motion.div 
+                        initial={{ opacity: 0, y: 20 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.4 }}
+                        id="coach-weekly-feedback-banner" 
+                        className="bg-gradient-to-r from-lime-500/10 to-emerald-500/10 border border-lime-500/20 rounded-2xl p-5 flex items-start gap-4 shadow-2xs"
+                      >
                         <span className="text-2xl mt-0.5 shrink-0">🗣️</span>
                         <div>
                           <h4 className="font-heading font-extrabold text-slate-800 text-sm">Feedback do Treinador AI — Semana {plan.weekNumber || 1}</h4>
@@ -1341,14 +1416,20 @@ export default function App() {
                             "{plan.coachMessage}"
                           </p>
                         </div>
-                      </div>
+                      </motion.div>
                     )}
 
                     {/* Weekly Plan summary card */}
                     <div id="plan-block-summary" className="grid grid-cols-1 md:grid-cols-3 gap-6">
                       
                       {/* Summary text */}
-                      <div className="bg-slate-900 text-white p-6 rounded-2xl md:col-span-2 shadow-xs border border-slate-800 flex flex-col justify-between gap-4">
+                      <motion.div 
+                        initial={{ opacity: 0, y: 25 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.5 }}
+                        className="bg-slate-900 text-white p-6 rounded-2xl md:col-span-2 shadow-xs border border-slate-800 flex flex-col justify-between gap-4"
+                      >
                         <div className="space-y-3">
                           <h3 className="font-heading font-extrabold text-sm uppercase tracking-widest text-lime-400 flex items-center gap-1.5">
                             <TrendingUp className="w-4 h-4 text-lime-400" /> Macrociclo & Foco Principal
@@ -1372,7 +1453,7 @@ export default function App() {
                             }}
                             className={`px-5 py-2.5 rounded-xl font-black font-heading text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all duration-300 shadow-md cursor-pointer active:scale-97 shrink-0 ${
                               showMyWorkouts 
-                                ? "bg-slate-800 hover:bg-slate-755 text-white border border-slate-700" 
+                                ? "bg-slate-800 hover:bg-slate-755 text-white border border-slate-705 shadow-sm" 
                                 : "bg-lime-500 hover:bg-lime-400 text-slate-950 hover:shadow-[0_0_15px_rgba(132,204,22,0.3)]"
                             }`}
                           >
@@ -1389,12 +1470,18 @@ export default function App() {
                             )}
                           </button>
                         </div>
-                      </div>
+                      </motion.div>
 
                       {/* Observations metrics boxes */}
-                      <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-xs space-y-3 flex flex-col justify-between">
+                      <motion.div 
+                        initial={{ opacity: 0, y: 25 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.5, delay: 0.1 }}
+                        className="bg-white rounded-2xl border border-slate-100 p-5 shadow-xs space-y-3 flex flex-col justify-between"
+                      >
                         <div>
-                          <span className="text-[9px] font-bold font-heading text-slate-400 uppercase tracking-widest">Ciclo de Evolução</span>
+                          <span className="text-[9px] font-bold font-heading text-slate-400 uppercase tracking-widest font-sans">Ciclo de Evolução</span>
                           <h4 className="font-heading font-extrabold text-emerald-600 text-base mt-0.5">Semana {plan?.weekNumber || 1}</h4>
                         </div>
                         <div className="grid grid-cols-2 gap-3 py-2 border-y border-slate-50 my-1 font-mono text-xs">
@@ -1412,7 +1499,7 @@ export default function App() {
                         <div className="text-[10.5px] text-slate-550 leading-normal font-sans">
                           Siga a estrutura e os tempos propostos de cada treino para melhorar sua resistência continuamente.
                         </div>
-                      </div>
+                      </motion.div>
 
                     </div>
 
@@ -1423,7 +1510,13 @@ export default function App() {
                         const completedW = plan.workouts.filter(w => w.completed && !isRestDay(w)).length;
                         const pctW = totalW > 0 ? Math.round((completedW / totalW) * 100) : 0;
                         return (
-                          <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-xs space-y-6">
+                          <motion.div 
+                            initial={{ opacity: 0, y: 30 }}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            viewport={{ once: true, margin: "-50px" }}
+                            transition={{ duration: 0.5 }}
+                            className="bg-white border border-slate-100 rounded-3xl p-6 shadow-xs space-y-6"
+                          >
                             <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
                               <div className="space-y-1">
                                 <h3 className="font-heading font-black text-slate-800 text-lg flex items-center gap-2">
@@ -1802,14 +1895,22 @@ export default function App() {
                           {/* Bento Grid of workouts (standard vertical stacking grid, no mobile lateral displacement) */}
                           <div id="weekly-workouts-grid" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6 pt-2">
                             {plan?.workouts.map((wk, index) => (
-                              <WorkoutCard 
-                                key={`${wk.day}-${index}`} 
-                                workout={wk} 
-                                profile={profile}
-                                allWorkouts={plan?.workouts || []}
-                                onUpdate={(updatedWorkout) => handleUpdateWorkout(index, updatedWorkout)}
-                                onDelete={() => handleDeleteWorkout(index)}
-                              />
+                              <motion.div
+                                key={`${wk.day}-${index}`}
+                                initial={{ opacity: 0, y: 30 }}
+                                whileInView={{ opacity: 1, y: 0 }}
+                                viewport={{ once: true, margin: "-30px" }}
+                                transition={{ duration: 0.45, delay: (index % 4) * 0.08 }}
+                                className="w-full flex"
+                              >
+                                <WorkoutCard 
+                                  workout={wk} 
+                                  profile={profile}
+                                  allWorkouts={plan?.workouts || []}
+                                  onUpdate={(updatedWorkout) => handleUpdateWorkout(index, updatedWorkout)}
+                                  onDelete={() => handleDeleteWorkout(index)}
+                                />
+                              </motion.div>
                             ))}
                             {(!plan?.workouts || plan.workouts.length === 0) && (
                               <div className="col-span-full bg-slate-50 border border-dashed border-slate-200 rounded-3xl p-12 text-center flex flex-col items-center justify-center gap-3">
@@ -1828,24 +1929,43 @@ export default function App() {
                     {/* Additional Coach advice */}
                     <div id="additional-coach-advice" className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       {/* Technical observations card */}
-                      <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-xs space-y-3">
+                      <motion.div 
+                        initial={{ opacity: 0, x: -20 }}
+                        whileInView={{ opacity: 1, x: 0 }}
+                        viewport={{ once: true, margin: "-50px" }}
+                        transition={{ duration: 0.5 }}
+                        className="bg-white rounded-2xl border border-slate-100 p-6 shadow-xs space-y-3"
+                      >
                         <h4 className="font-heading font-bold text-slate-800 text-sm flex items-center gap-1.5 border-b border-slate-50 pb-2">
                           <ShieldAlert className="w-4.5 h-4.5 text-amber-600" /> Marcadores para monitoramento diário
                         </h4>
                         <p className="text-xs text-slate-600 leading-relaxed font-sans whitespace-pre-line">{plan?.observations}</p>
-                      </div>
+                      </motion.div>
 
                       {/* Execution feedback card */}
-                      <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-xs space-y-3">
+                      <motion.div 
+                        initial={{ opacity: 0, x: 20 }}
+                        whileInView={{ opacity: 1, x: 0 }}
+                        viewport={{ once: true, margin: "-50px" }}
+                        transition={{ duration: 0.5 }}
+                        className="bg-white rounded-2xl border border-slate-100 p-6 shadow-xs space-y-3"
+                      >
                         <h4 className="font-heading font-bold text-slate-800 text-sm flex items-center gap-1.5 border-b border-slate-50 pb-2">
                           <CheckCircle2 className="w-4.5 h-4.5 text-emerald-600" /> Critérios de Sucesso (Dicas e Resultados)
                         </h4>
                         <p className="text-xs text-slate-600 leading-relaxed font-sans whitespace-pre-line">{plan?.evaluation}</p>
-                      </div>
+                      </motion.div>
                     </div>
 
                     {/* Scientific Efficacy & Cardiovascular Safety Shield Panel */}
-                    <div id="physiological-safety-shield" className="bg-gradient-to-br from-slate-900 to-slate-950 border border-slate-800 text-white rounded-3xl p-6 sm:p-8 space-y-6">
+                    <motion.div 
+                      id="physiological-safety-shield" 
+                      initial={{ opacity: 0, scale: 0.95, y: 30 }}
+                      whileInView={{ opacity: 1, scale: 1, y: 0 }}
+                      viewport={{ once: true, margin: "-50px" }}
+                      transition={{ duration: 0.6 }}
+                      className="bg-gradient-to-br from-slate-900 to-slate-950 border border-slate-800 text-white rounded-3xl p-6 sm:p-8 space-y-6"
+                    >
                       
                       {/* Header Row */}
                       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-800 pb-5">
@@ -1924,7 +2044,7 @@ export default function App() {
                         </div>
 
                       </div>
-                    </div>
+                    </motion.div>
 
                   </motion.div>
                 )}
@@ -2073,6 +2193,96 @@ export default function App() {
           </div>
         </div>
       </footer>
+
+      {/* Install Instruction Guide Overlay Modal for main screen */}
+      <AnimatePresence>
+        {showInstallGuide && (
+          <div id="main-install-guide-modal-backdrop" className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md text-white font-sans">
+            <motion.div
+              id="main-install-guide-modal-content"
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl p-6 relative text-left"
+            >
+              <button
+                type="button"
+                onClick={() => setShowInstallGuide(false)}
+                className="absolute right-4 top-4 text-slate-400 hover:text-white p-1 rounded-lg bg-slate-950/40 hover:bg-slate-850 transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+
+              <div className="flex items-center gap-3 pb-3 border-b border-slate-800">
+                <div className="p-2.5 bg-lime-500/15 border border-lime-500/30 rounded-2xl text-lime-400">
+                  <Smartphone className="w-5 h-5 animate-bounce" />
+                </div>
+                <div>
+                  <h3 className="font-heading font-black text-sm uppercase tracking-wide">
+                    Como Instalar o Biker AI 📲
+                  </h3>
+                  <p className="text-[10px] text-slate-400 mt-0.5 font-mono">
+                    Adicione à tela inicial como um aplicativo nativo
+                  </p>
+                </div>
+              </div>
+
+              <div className="py-4 space-y-4">
+                
+                {/* iOS Instructions */}
+                <div className="bg-slate-950/50 p-3.5 rounded-2xl border border-slate-850/80 space-y-2">
+                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-sky-500/10 text-sky-400 rounded-md text-[9px] font-bold tracking-wider uppercase font-heading">
+                    No iPhone (Safari / iOS)
+                  </span>
+                  <ol className="list-decimal list-inside text-xs text-slate-300 space-y-1.5 leading-relaxed pl-1 font-medium">
+                    <li>
+                      Toque no botão de <span className="inline-flex items-center gap-1 px-1 py-0.5 bg-slate-850 rounded text-slate-300 text-[10px]"><Share className="w-3 h-3 text-slate-300 inline" /> Compartilhar</span> na barra inferior do Safari.
+                    </li>
+                    <li>
+                      Role a lista de opções para baixo e toque em <strong className="text-white">"Adicionar à Tela de Início"</strong>.
+                    </li>
+                    <li>
+                      Confirme clicando em <strong className="text-lime-400">"Adicionar"</strong> no canto superior direito. Pronto!
+                    </li>
+                  </ol>
+                </div>
+
+                {/* Android / Desktop Instructions */}
+                <div className="bg-slate-950/50 p-3.5 rounded-2xl border border-slate-850/80 space-y-2">
+                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-amber-500/10 text-amber-400 rounded-md text-[9px] font-bold tracking-wider uppercase font-heading">
+                    No Android (Chrome) ou Computador
+                  </span>
+                  <ol className="list-decimal list-inside text-xs text-slate-300 space-y-1.5 leading-relaxed pl-1 font-medium">
+                    <li>
+                      Toque nos <strong className="text-white">três pontinhos (⋮)</strong> no canto superior direito do navegador.
+                    </li>
+                    <li>
+                      Selecione a opção <strong className="text-white">"Adicionar à tela inicial"</strong> ou <strong className="text-white">"Instalar aplicativo"</strong>.
+                    </li>
+                    <li>
+                      Confirme a instalação e o ícone do Biker AI aparecerá na sua tela de aplicativos.
+                    </li>
+                  </ol>
+                </div>
+
+                <div className="bg-lime-500/5 p-3 rounded-xl border border-lime-500/10 text-[11px] text-lime-400 flex items-start gap-2">
+                  <span className="font-extrabold select-none">💡 VANTAGENS:</span>
+                  <span className="leading-relaxed font-curate">Instalar o aplicativo garante carregamento instantâneo, menos consumo de internet, suporte offline e navegação livre de barras do navegador!</span>
+                </div>
+
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowInstallGuide(false)}
+                className="w-full bg-slate-800 hover:bg-slate-750 text-white font-bold font-heading py-2.5 rounded-xl text-xs uppercase tracking-wider transition-colors cursor-pointer"
+              >
+                Entendi, fechar instrução
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
     </div>
   );

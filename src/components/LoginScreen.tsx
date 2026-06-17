@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { UserAccount, UserProfile, ChatMessage } from "../types";
 import { motion, AnimatePresence } from "motion/react";
-import { Dumbbell, ShieldAlert, Sparkles, Mail, Lock, User, Eye, EyeOff, Bike, ChevronRight, CheckCircle } from "lucide-react";
+import { Dumbbell, ShieldAlert, Sparkles, Mail, Lock, User, Eye, EyeOff, Bike, ChevronRight, CheckCircle, Download, Smartphone, Share, X, ExternalLink } from "lucide-react";
 const bikerHero = "/src/assets/images/biker_hero_1780860230528.png";
 
 interface LoginScreenProps {
@@ -17,6 +17,59 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
   const [error, setError] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+
+  // PWA installation states
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [isPortable, setIsPortable] = useState(false);
+  const [showInstallGuide, setShowInstallGuide] = useState(false);
+
+  React.useEffect(() => {
+    // Check if the app is already in standalone mode
+    const checkStandalone = () => {
+      const isStandaloneMode = 
+        window.matchMedia("(display-mode: standalone)").matches || 
+        (window.navigator as any).standalone === true;
+      setIsPortable(isStandaloneMode);
+    };
+
+    checkStandalone();
+
+    const handleBeforeInstallPrompt = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+
+    const handleAppInstalled = () => {
+      setIsPortable(true);
+      setDeferredPrompt(null);
+    };
+
+    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+    window.addEventListener("appinstalled", handleAppInstalled);
+
+    return () => {
+      window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+      window.removeEventListener("appinstalled", handleAppInstalled);
+    };
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (deferredPrompt) {
+      try {
+        await deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        if (outcome === "accepted") {
+          setDeferredPrompt(null);
+          setIsPortable(true);
+        }
+      } catch (err) {
+        console.error("Erro ao instalar PWA automaticamente:", err);
+        setShowInstallGuide(true);
+      }
+    } else {
+      setShowInstallGuide(true);
+    }
+  };
 
   const validateEmail = (input: string) => {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input);
@@ -454,6 +507,29 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
                 <ChevronRight className="w-4 h-4" />
               </button>
             </form>
+
+            {/* PWA Installation Option */}
+            <div className="mt-5 pt-4 border-t border-slate-800/50">
+              {isPortable ? (
+                <div id="install-pwa-standalone-badge" className="flex items-center justify-center gap-1.5 py-2 px-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-400 text-[11px] font-semibold">
+                  <CheckCircle className="w-3.5 h-3.5" />
+                  <span>Você está usando a versão instalada do Biker AI!</span>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  <button
+                    id="install-pwa-button"
+                    type="button"
+                    onClick={handleInstallClick}
+                    className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-slate-950 hover:bg-slate-850/80 text-white rounded-xl text-xs font-bold font-heading border border-slate-800 hover:border-lime-500/30 hover:text-lime-400 transition-all cursor-pointer focus:outline-hidden"
+                  >
+                    <Download className="w-3.5 h-3.5 shrink-0" />
+                    <span>{deferredPrompt ? "Instalar Automaticamente" : "Instalar Aplicativo Biker AI"}</span>
+                  </button>
+                </div>
+              )}
+            </div>
+
           </div>
 
           {/* Bottom Branding info */}
@@ -468,6 +544,96 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
         </div>
 
       </motion.div>
+
+      {/* Install Instruction Guide Overlay Modal */}
+      <AnimatePresence>
+        {showInstallGuide && (
+          <div id="install-guide-modal-backdrop" className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md">
+            <motion.div
+              id="install-guide-modal-content"
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl p-6 relative font-sans text-white text-left"
+            >
+              <button
+                type="button"
+                onClick={() => setShowInstallGuide(false)}
+                className="absolute right-4 top-4 text-slate-400 hover:text-white p-1 rounded-lg bg-slate-950/40 hover:bg-slate-850 transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+
+              <div className="flex items-center gap-3 pb-3 border-b border-slate-800">
+                <div className="p-2.5 bg-lime-500/15 border border-lime-500/30 rounded-2xl text-lime-400">
+                  <Smartphone className="w-5 h-5 animate-bounce" />
+                </div>
+                <div>
+                  <h3 className="font-heading font-black text-sm uppercase tracking-wide">
+                    Como Instalar o Biker AI 📲
+                  </h3>
+                  <p className="text-[10px] text-slate-400 mt-0.5 font-mono">
+                    Adicione à tela inicial como um aplicativo nativo
+                  </p>
+                </div>
+              </div>
+
+              <div className="py-4 space-y-4">
+                
+                {/* iOS Instructions */}
+                <div className="bg-slate-950/50 p-3.5 rounded-2xl border border-slate-850/80 space-y-2">
+                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-sky-500/10 text-sky-400 rounded-md text-[9px] font-bold tracking-wider uppercase font-heading">
+                    No iPhone (Safari / iOS)
+                  </span>
+                  <ol className="list-decimal list-inside text-xs text-slate-300 space-y-1.5 leading-relaxed pl-1 font-medium">
+                    <li>
+                      Toque no botão de <span className="inline-flex items-center gap-1 px-1 py-0.5 bg-slate-805 rounded text-slate-300 text-[10px]"><Share className="w-3 h-3 text-slate-300 inline" /> Compartilhar</span> na barra inferior do Safari.
+                    </li>
+                    <li>
+                      Role a lista de opções para baixo e toque em <strong className="text-white">"Adicionar à Tela de Início"</strong>.
+                    </li>
+                    <li>
+                      Confirme clicando em <strong className="text-lime-400">"Adicionar"</strong> no canto superior direito. Pronto!
+                    </li>
+                  </ol>
+                </div>
+
+                {/* Android / Desktop Instructions */}
+                <div className="bg-slate-950/50 p-3.5 rounded-2xl border border-slate-850/80 space-y-2">
+                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-amber-500/10 text-amber-400 rounded-md text-[9px] font-bold tracking-wider uppercase font-heading">
+                    No Android (Chrome) ou Computador
+                  </span>
+                  <ol className="list-decimal list-inside text-xs text-slate-300 space-y-1.5 leading-relaxed pl-1 font-medium">
+                    <li>
+                      Toque nos <strong className="text-white">três pontinhos (⋮)</strong> no canto superior direito do navegador.
+                    </li>
+                    <li>
+                      Selecione a opção <strong className="text-white">"Adicionar à tela inicial"</strong> ou <strong className="text-white">"Instalar aplicativo"</strong>.
+                    </li>
+                    <li>
+                      Confirme a instalação e o ícone do Biker AI aparecerá na sua tela de aplicativos.
+                    </li>
+                  </ol>
+                </div>
+
+                <div className="bg-lime-500/5 p-3 rounded-xl border border-lime-500/10 text-[11px] text-lime-400 flex items-start gap-2">
+                  <span className="font-extrabold select-none">💡 VANTAGENS:</span>
+                  <span className="leading-relaxed font-curate">Instalar o aplicativo garante carregamento instantâneo, menos consumo de internet, suporte offline e navegação livre de barras do navegador!</span>
+                </div>
+
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowInstallGuide(false)}
+                className="w-full bg-slate-800 hover:bg-slate-750 text-white font-bold font-heading py-2.5 rounded-xl text-xs uppercase tracking-wider transition-colors cursor-pointer"
+              >
+                Entendi, fechar instrução
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
