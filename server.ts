@@ -284,6 +284,12 @@ const withTimeout = <T>(promise: Promise<T>, ms: number, errorMessage = "Timeout
       reject(new Error(errorMessage));
     }, ms);
   });
+  
+  // Guard against unhandled promise rejections crashing Node.js serverless functions on Vercel
+  promise.catch((err) => {
+    console.warn("Plano de fundo - Exceção do Gemini capturada silenciosamente para evitar crash do servidor:", err.message || err);
+  });
+
   return Promise.race([promise, timeoutPromise]).finally(() => {
     clearTimeout(timeoutId);
   });
@@ -454,8 +460,8 @@ const fallbackOnboarding = (message: string, profile: any): any => {
 
 const fallbackGeneratePlan = (profile: any, nextWeekNum: number = 1): any => {
   const level = profile?.level || "iniciante";
-  const daysVal = profile?.daysPerWeek || 3;
-  const durationVal = profile?.durationPerSession || 60;
+  const daysVal = typeof profile?.daysPerWeek === "number" ? profile.daysPerWeek : parseInt(profile?.daysPerWeek || "3", 10) || 3;
+  const durationVal = typeof profile?.durationPerSession === "number" ? profile.durationPerSession : parseInt(profile?.durationPerSession || "60", 10) || 60;
   
   const daysOfWeek = ["Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado", "Domingo"];
   const workouts: any[] = [];
