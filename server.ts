@@ -1142,8 +1142,9 @@ Histórico Recente: ${JSON.stringify(messageHistory?.slice(-10) || [])}
 
 // Serve frontend assets and start listening
 async function bootstrap() {
-  if (process.env.NODE_ENV !== "production") {
-    const { createServer: createViteServer } = await import("vite");
+  if (process.env.NODE_ENV !== "production" && !process.env.VERCEL) {
+    const viteModName = "vite";
+    const { createServer: createViteServer } = await import(viteModName);
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
