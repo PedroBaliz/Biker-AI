@@ -6,27 +6,15 @@
   "categories": ["sports", "health"],
   "icons": [
     {
-      "src": "biker_ai_icon_192.png",
-      "sizes": "192x192",
-      "type": "image/png",
+      "src": "biker_ai_icon.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
       "purpose": "any"
     },
     {
-      "src": "biker_ai_icon_512.png",
+      "src": "biker_ai_icon.jpg",
       "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "biker_ai_icon_192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "maskable"
-    },
-    {
-      "src": "biker_ai_icon_512.png",
-      "sizes": "512x512",
-      "type": "image/png",
+      "type": "image/jpeg",
       "purpose": "maskable"
     }
   ],
