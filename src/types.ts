@@ -30,6 +30,7 @@ export interface Workout {
   actualPower?: number;
   athleteNotes?: string;
   aiFeedback?: string;
+  completedDate?: string;
 }
 
 export interface TrainingPlan {
@@ -62,4 +63,23 @@ export interface ZoneInfo {
   range: string;
   description: string;
   purpose: string;
+}
+
+export function isRestDay(workout: Workout): boolean {
+  if (!workout) return false;
+  const typeLower = (workout.type || "").toLowerCase();
+  const targetLower = (workout.targetZone || "").toLowerCase();
+  const goalLower = (workout.goal || "").toLowerCase();
+
+  return (
+    typeLower.includes("descanso") ||
+    typeLower.includes("off") ||
+    typeLower.includes("rest") ||
+    targetLower.includes("descanso") ||
+    targetLower.includes("off") ||
+    targetLower.includes("rest") ||
+    goalLower.includes("descanso") ||
+    goalLower.includes("dia off") ||
+    goalLower.includes("recuperação passiva")
+  );
 }

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { UserProfile, ChatMessage, TrainingPlan, UserAccount, Workout } from "./types";
+import { UserProfile, ChatMessage, TrainingPlan, UserAccount, Workout, isRestDay } from "./types";
 import WorkoutCard from "./components/WorkoutCard";
 import ZoneCalculator from "./components/ZoneCalculator";
 import LoginScreen from "./components/LoginScreen";
@@ -33,7 +33,9 @@ import {
   Plus,
   PlusCircle,
   Trash2,
-  Trophy
+  Trophy,
+  Eye,
+  EyeOff
 } from "lucide-react";
 
 export default function App() {
@@ -135,6 +137,8 @@ export default function App() {
   
   // Dashboard Tabs
   const [activeTab, setActiveTab] = useState<"planilha" | "desempenho" | "zonas" | "chat">("planilha");
+  const [showMyWorkouts, setShowMyWorkouts] = useState(false);
+  const [showPseExplanation, setShowPseExplanation] = useState(false);
   
   // Training Plan State
   const [plan, setPlan] = useState<TrainingPlan | null>(() => {
@@ -147,6 +151,11 @@ export default function App() {
   });
 
   const [isGeneratingPlan, setIsGeneratingPlan] = useState(false);
+
+  // Derived training metrics (excluding rest/off sessions from training counts)
+  const totalW = plan?.workouts?.filter(ws => !isRestDay(ws)).length || 0;
+  const completedW = plan?.workouts?.filter(ws => ws.completed && !isRestDay(ws)).length || 0;
+  const pctW = totalW > 0 ? Math.round((completedW / totalW) * 100) : 0;
 
   const handleUpdateWorkout = (index: number, updatedWorkout: Workout) => {
     if (!plan) return;
@@ -286,6 +295,7 @@ export default function App() {
   };
 
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const workoutsSectionRef = useRef<HTMLDivElement>(null);
   const [showAccountSettings, setShowAccountSettings] = useState(false);
 
   // Background migration of legacy local-only accounts to the server on startup
@@ -749,21 +759,21 @@ export default function App() {
       
       {/* Upper Navigation Bar */}
       <header id="main-header" className="bg-slate-900/95 backdrop-blur-md text-white shadow-xl border-b border-slate-800/80 sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 min-h-16 py-3.5 sm:py-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-3 animate-fadeInUp">
-            <div className="p-2.5 bg-lime-500 text-slate-950 rounded-xl shadow-[0_0_15px_rgba(132,204,22,0.3)] hover:scale-105 transition-transform duration-300">
-              <Bike className="w-5 h-5 sm:w-6 sm:h-6 text-slate-950 fill-slate-950/20" />
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-3.5 flex flex-row items-center justify-between gap-2">
+          <div className="flex items-center gap-2 sm:gap-3 animate-fadeInUp">
+            <div className="p-2 sm:p-2.5 bg-lime-500 text-slate-950 rounded-xl shadow-[0_0_15px_rgba(132,204,22,0.3)] hover:scale-105 transition-transform duration-300 shrink-0">
+              <Bike className="w-4 h-4 sm:w-6 sm:h-6 text-slate-950 fill-slate-950/20" />
             </div>
             <div>
-              <h1 className="font-heading font-black text-base sm:text-lg tracking-wider flex items-center gap-2 uppercase">
+              <h1 className="font-heading font-black text-xs sm:text-lg tracking-wider flex items-center gap-1 sm:gap-2 uppercase">
                 BIKER <span className="text-lime-400">AI</span>
-                <span className="text-[9px] font-mono tracking-widest uppercase bg-slate-800 text-lime-400 px-2 py-0.5 rounded-md border border-slate-700 font-bold">TREINADOR</span>
+                <span className="text-[8px] sm:text-[9px] font-mono tracking-widest uppercase bg-slate-800 text-lime-400 px-1.5 py-0.5 rounded-md border border-slate-700 font-bold shrink-0">TREINADOR</span>
               </h1>
-              <p className="text-[9px] sm:text-[10px] text-slate-400 font-sans tracking-widest uppercase mt-0.5 font-semibold">Plataforma de Treino Inteligente de Ciclismo</p>
+              <p className="hidden md:block text-[9px] sm:text-[10px] text-slate-400 font-sans tracking-widest uppercase mt-0.5 font-semibold">Plataforma de Treino Inteligente de Ciclismo</p>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center justify-center gap-2 animate-fadeInUp">
+          <div className="flex items-center justify-end gap-1.5 sm:gap-2 animate-fadeInUp shrink-0">
             {currentUser && (
               <button 
                 onClick={() => setShowAccountSettings(!showAccountSettings)}
@@ -801,9 +811,6 @@ export default function App() {
                 <span className="hidden xs:inline">Sair</span>
               </button>
             )}
-            <span className="hidden sm:inline-block text-xs text-slate-400 bg-slate-800 px-3 py-1.5 rounded-full font-mono font-medium border border-slate-700">
-              🔴 Live Preview
-            </span>
           </div>
         </div>
       </header>
@@ -1017,7 +1024,7 @@ export default function App() {
                     💡 <strong>Controle de Autonomia:</strong> O treinador atualiza esses campos de forma inteligente com base no chat. Se encontrar algum erro, você também pode digitar ou corrigir no painel abaixo!
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4">
                     {/* Nome */}
                     <div className="flex flex-col gap-1">
                       <label className="text-[10px] uppercase font-extrabold tracking-wider flex items-center justify-between text-slate-500">
@@ -1060,7 +1067,7 @@ export default function App() {
                     </div>
 
                     {/* Objetivo */}
-                    <div className="flex flex-col gap-1 col-span-2">
+                    <div className="flex flex-col gap-1 sm:col-span-2">
                       <label className="text-[10px] uppercase font-extrabold tracking-wider flex items-center justify-between text-slate-500">
                         <span>Objetivo Principal do Treino</span>
                         {!profile.goal && <span className="text-[9px] text-rose-500 font-extrabold lowercase">obrigatório</span>}
@@ -1121,7 +1128,7 @@ export default function App() {
                     </div>
 
                     {/* Prova com data marcada */}
-                    <div className="flex flex-col gap-1 col-span-2">
+                    <div className="flex flex-col gap-1 sm:col-span-2">
                       <label className="text-[10px] uppercase font-extrabold tracking-wider text-slate-400">Evento / Prova Alvo</label>
                       <input 
                         type="text" 
@@ -1132,54 +1139,54 @@ export default function App() {
                       />
                     </div>
 
-                    {/* Potenciometro & FTP */}
+                    {/* Potenciômetro & FTP com explicação simples */}
                     <div className="flex flex-col gap-1">
-                      <label className="text-[10px] uppercase font-bold tracking-wider text-slate-400">Usa Medidor (FTP em Watts)</label>
+                      <label className="text-[10px] uppercase font-bold tracking-wider text-slate-400">Medidor de Força (Seu FTP em Watts)</label>
                       <div className="flex gap-2">
                         <select 
                           value={profile.hasPowerMeter === null ? "" : profile.hasPowerMeter ? "yes" : "no"}
                           onChange={(e) => setProfile(prev => ({ ...prev, hasPowerMeter: e.target.value === "yes" ? true : e.target.value === "no" ? false : null }))}
                           className="bg-slate-50 border border-slate-100 px-2 py-2 rounded-lg text-xs font-semibold text-slate-700 select-none shrink-0"
                         >
-                          <option value="">Não</option>
-                          <option value="yes">Sim</option>
+                          <option value="">Não tenho</option>
+                          <option value="yes">Sim tenho</option>
                         </select>
                         <input 
                           type="number" 
                           value={profile.ftp || ""}
                           disabled={!profile.hasPowerMeter}
                           onChange={(e) => setProfile(prev => ({ ...prev, ftp: e.target.value ? parseInt(e.target.value) : null }))}
-                          placeholder="FTP Watts"
+                          placeholder="Ex: 200 Watts (sua força base por 1h)"
                           className="w-full bg-slate-50 border border-slate-100 hover:border-slate-200 focus:bg-white px-3 py-2 rounded-lg text-xs font-semibold text-slate-700 outline-hidden disabled:opacity-50"
                         />
                       </div>
                     </div>
 
-                    {/* Cardiofreguencia & MaxHR */}
+                    {/* Frequência Cardíaca & FCmax bpm */}
                     <div className="flex flex-col gap-1">
-                      <label className="text-[10px] uppercase font-bold tracking-wider text-slate-400">Usa Monitor (FCmax bpm)</label>
+                      <label className="text-[10px] uppercase font-bold tracking-wider text-slate-400">Monitor Cardíaco (FCmáx do peito/relógio)</label>
                       <div className="flex gap-2">
                         <select 
                           value={profile.hasHeartRate === null ? "" : profile.hasHeartRate ? "yes" : "no"}
                           onChange={(e) => setProfile(prev => ({ ...prev, hasHeartRate: e.target.value === "yes" ? true : e.target.value === "no" ? false : null }))}
                           className="bg-slate-50 border border-slate-100 px-2 py-2 rounded-lg text-xs font-semibold text-slate-700 select-none shrink-0"
                         >
-                          <option value="">Não</option>
-                          <option value="yes">Sim</option>
+                          <option value="">Não tenho</option>
+                          <option value="yes">Sim tenho</option>
                         </select>
                         <input 
                           type="number" 
                           value={profile.maxHeartRate || ""}
                           disabled={!profile.hasHeartRate}
                           onChange={(e) => setProfile(prev => ({ ...prev, maxHeartRate: e.target.value ? parseInt(e.target.value) : null }))}
-                          placeholder="Fmax bpm"
+                          placeholder="Ex: 185 bpm (batimentos máximos por minuto)"
                           className="w-full bg-slate-50 border border-slate-100 hover:border-slate-200 focus:bg-white px-3 py-2 rounded-lg text-xs font-semibold text-slate-700 outline-hidden disabled:opacity-50"
                         />
                       </div>
                     </div>
 
                     {/* Limitacoes fisicas */}
-                    <div className="flex flex-col gap-1 col-span-2">
+                    <div className="flex flex-col gap-1 sm:col-span-2">
                       <label className="text-[10px] uppercase font-bold tracking-wider text-slate-400">Dores, Lesões ou Limitações Físicas</label>
                       <textarea 
                         rows={1}
@@ -1268,12 +1275,7 @@ export default function App() {
                       <span className="bg-slate-100 text-slate-700 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider">{profile.level}</span>
                       <span className="text-slate-300">•</span>
                       <span>Foco: <strong className="text-slate-850">{profile.goal}</strong></span>
-                      <span className="text-slate-300">•</span>
-                      {profile.hasPowerMeter ? (
-                        <span className="text-amber-600 font-extrabold font-mono">FTP: {profile.ftp}W</span>
-                      ) : (
-                        <span className="text-rose-600 font-extrabold font-mono">FCmax: {profile.maxHeartRate} bpm</span>
-                      )}
+
                     </p>
                   </div>
                 </div>
@@ -1282,7 +1284,7 @@ export default function App() {
                 <div className="flex flex-wrap gap-1 bg-slate-100/80 p-1.5 rounded-2xl w-full md:w-auto border border-slate-200/40 shadow-inner">
                   <button 
                     onClick={() => setActiveTab("planilha")}
-                    className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-black leading-none font-heading uppercase rounded-xl transition-all cursor-pointer ${
+                    className={`flex items-center gap-1.5 px-3 py-2 sm:px-4 sm:py-2.5 text-[11px] sm:text-xs font-black leading-none font-heading uppercase rounded-xl transition-all cursor-pointer ${
                       activeTab === "planilha" ? "bg-slate-900 text-lime-400 shadow-sm" : "text-slate-600 hover:bg-slate-200 hover:text-slate-900"
                     }`}
                   >
@@ -1291,7 +1293,7 @@ export default function App() {
                   </button>
                   <button 
                     onClick={() => setActiveTab("desempenho")}
-                    className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-black leading-none font-heading uppercase rounded-xl transition-all cursor-pointer ${
+                    className={`flex items-center gap-1.5 px-3 py-2 sm:px-4 sm:py-2.5 text-[11px] sm:text-xs font-black leading-none font-heading uppercase rounded-xl transition-all cursor-pointer ${
                       activeTab === "desempenho" ? "bg-slate-900 text-lime-400 shadow-sm" : "text-slate-600 hover:bg-slate-200 hover:text-slate-900"
                     }`}
                   >
@@ -1300,7 +1302,7 @@ export default function App() {
                   </button>
                   <button 
                     onClick={() => setActiveTab("zonas")}
-                    className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-black leading-none font-heading uppercase rounded-xl transition-all cursor-pointer ${
+                    className={`flex items-center gap-1.5 px-3 py-2 sm:px-4 sm:py-2.5 text-[11px] sm:text-xs font-black leading-none font-heading uppercase rounded-xl transition-all cursor-pointer ${
                       activeTab === "zonas" ? "bg-slate-900 text-lime-400 shadow-sm" : "text-slate-600 hover:bg-slate-200 hover:text-slate-900"
                     }`}
                   >
@@ -1309,7 +1311,7 @@ export default function App() {
                   </button>
                   <button 
                     onClick={() => setActiveTab("chat")}
-                    className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-black leading-none font-heading uppercase rounded-xl transition-all cursor-pointer ${
+                    className={`flex items-center gap-1.5 px-3 py-2 sm:px-4 sm:py-2.5 text-[11px] sm:text-xs font-black leading-none font-heading uppercase rounded-xl transition-all cursor-pointer ${
                       activeTab === "chat" ? "bg-slate-900 text-lime-400 shadow-sm" : "text-slate-600 hover:bg-slate-205 hover:text-slate-900"
                     }`}
                   >
@@ -1346,11 +1348,47 @@ export default function App() {
                     <div id="plan-block-summary" className="grid grid-cols-1 md:grid-cols-3 gap-6">
                       
                       {/* Summary text */}
-                      <div className="bg-slate-900 text-white p-6 rounded-2xl md:col-span-2 shadow-xs border border-slate-800 space-y-3">
-                        <h3 className="font-heading font-extrabold text-sm uppercase tracking-widest text-lime-400 flex items-center gap-1.5">
-                          <TrendingUp className="w-4 h-4 text-lime-400" /> Macrociclo & Foco Principal
-                        </h3>
-                        <p className="text-xs text-slate-350 leading-relaxed font-sans">{plan?.summary}</p>
+                      <div className="bg-slate-900 text-white p-6 rounded-2xl md:col-span-2 shadow-xs border border-slate-800 flex flex-col justify-between gap-4">
+                        <div className="space-y-3">
+                          <h3 className="font-heading font-extrabold text-sm uppercase tracking-widest text-lime-400 flex items-center gap-1.5">
+                            <TrendingUp className="w-4 h-4 text-lime-400" /> Macrociclo & Foco Principal
+                          </h3>
+                          <p className="text-xs text-slate-350 leading-relaxed font-sans">{plan?.summary}</p>
+                        </div>
+
+                        {/* Direct Access Action Link styled sportily */}
+                        <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between sm:justify-start gap-3">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (showMyWorkouts) {
+                                setShowMyWorkouts(false);
+                              } else {
+                                setShowMyWorkouts(true);
+                                setTimeout(() => {
+                                  workoutsSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+                                }, 150);
+                              }
+                            }}
+                            className={`px-5 py-2.5 rounded-xl font-black font-heading text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all duration-300 shadow-md cursor-pointer active:scale-97 shrink-0 ${
+                              showMyWorkouts 
+                                ? "bg-slate-800 hover:bg-slate-755 text-white border border-slate-700" 
+                                : "bg-lime-500 hover:bg-lime-400 text-slate-950 hover:shadow-[0_0_15px_rgba(132,204,22,0.3)]"
+                            }`}
+                          >
+                            {showMyWorkouts ? (
+                              <>
+                                <EyeOff className="w-4 h-4" />
+                                <span>Ocultar Meus Treinos ({completedW}/{totalW})</span>
+                              </>
+                            ) : (
+                              <>
+                                <Eye className="w-4 h-4" />
+                                <span>Acessar Meus Treinos ({completedW}/{totalW} Feitos)</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
                       </div>
 
                       {/* Observations metrics boxes */}
@@ -1381,8 +1419,8 @@ export default function App() {
                     {/* Progress Tracker Panel & Worksheet Actions */}
                     {plan && plan.workouts && (
                       (() => {
-                        const totalW = plan.workouts.length;
-                        const completedW = plan.workouts.filter(w => w.completed).length;
+                        const totalW = plan.workouts.filter(w => !isRestDay(w)).length;
+                        const completedW = plan.workouts.filter(w => w.completed && !isRestDay(w)).length;
                         const pctW = totalW > 0 ? Math.round((completedW / totalW) * 100) : 0;
                         return (
                           <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-xs space-y-6">
@@ -1412,7 +1450,7 @@ export default function App() {
                                 <button
                                   type="button"
                                   onClick={handleAddWorkout}
-                                  className="px-3.5 py-2 bg-slate-900 hover:bg-slate-850 text-white hover:text-lime-400 rounded-xl text-xs font-bold font-heading flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
+                                  className="px-3.5 py-2 bg-slate-900 hover:bg-slate-850 text-white hover:text-lime-400 rounded-xl text-xs font-bold font-heading flex items-center gap-1.5 transition-all shadow-xs cursor-pointer focus:outline-hidden"
                                 >
                                   <PlusCircle className="w-3.5 h-3.5" />
                                   <span>Adicionar Treino</span>
@@ -1606,27 +1644,186 @@ export default function App() {
                       </div>
                     )}
 
-                    {/* Bento Grid of workouts */}
-                    <div id="weekly-workouts-grid" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                      {plan?.workouts.map((wk, index) => (
-                        <WorkoutCard 
-                          key={`${wk.day}-${index}`} 
-                          workout={wk} 
-                          profile={profile}
-                          onUpdate={(updatedWorkout) => handleUpdateWorkout(index, updatedWorkout)}
-                          onDelete={() => handleDeleteWorkout(index)}
-                        />
-                      ))}
-                      {(!plan?.workouts || plan.workouts.length === 0) && (
-                        <div className="col-span-full bg-slate-50 border border-dashed border-slate-200 rounded-3xl p-12 text-center flex flex-col items-center justify-center gap-3">
-                          <ClipboardList className="w-10 h-10 text-slate-300" />
-                          <div>
-                            <h4 className="font-heading font-bold text-slate-600 text-sm">Sem treinos para exibir</h4>
-                            <p className="text-xs text-slate-400 font-sans mt-1">Clique em "Adicionar Treino" acima para criar sessões personalizadas.</p>
+                    <div ref={workoutsSectionRef} className="scroll-mt-28 block" />
+                    <AnimatePresence>
+                      {showMyWorkouts && (
+                        <motion.div
+                          key="workouts-reveal-wrapper"
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: "auto" }}
+                          exit={{ opacity: 0, height: 0 }}
+                          transition={{ duration: 0.25 }}
+                          className="overflow-hidden"
+                        >
+                          {/* Workouts section header with the PSE Explanation button */}
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-5 pb-3 border-b border-slate-100 mb-2">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xl">📅</span>
+                              <h3 className="font-heading font-black text-slate-800 text-sm uppercase tracking-wider">
+                                Sessões de Treino Semanais
+                              </h3>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setShowPseExplanation(prev => !prev)}
+                              className={`px-3.5 py-1.5 rounded-xl text-xs font-black font-heading flex items-center gap-1.5 transition-all border shadow-2xs cursor-pointer focus:outline-hidden ${
+                                showPseExplanation
+                                  ? "bg-slate-900 text-lime-400 border-slate-950 font-extrabold"
+                                  : "bg-lime-50 text-lime-700 hover:bg-lime-100 hover:text-lime-800 border-lime-100/80"
+                              }`}
+                            >
+                              <HelpCircle className="w-3.5 h-3.5" />
+                              <span>O que é PSE? 💡</span>
+                            </button>
                           </div>
-                        </div>
+
+                          {/* Collapsible guide explaining PSE and its scales */}
+                          <AnimatePresence>
+                            {showPseExplanation && (
+                              <motion.div
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: "auto" }}
+                                exit={{ opacity: 0, height: 0 }}
+                                transition={{ duration: 0.25 }}
+                                className="overflow-hidden pb-4 pt-1 w-full"
+                              >
+                                <div className="bg-gradient-to-br from-slate-50 to-slate-100/50 rounded-2xl p-5 border border-slate-200/80 shadow-2xs space-y-4">
+                                  <div className="flex items-start md:items-center gap-3 pb-3 border-b border-slate-200">
+                                    <div className="bg-lime-500 text-slate-900 p-2 rounded-xl shrink-0">
+                                      <HelpCircle className="w-5 h-5 animate-pulse" />
+                                    </div>
+                                    <div>
+                                      <h4 className="font-heading font-black text-slate-800 text-sm uppercase tracking-wide">
+                                        Guia de PSE — Percepção Subjetiva de Esforço
+                                      </h4>
+                                      <p className="text-xs text-slate-600 font-sans mt-0.5 leading-relaxed">
+                                        A <strong>PSE (Percepção Subjetiva de Esforço)</strong> ou RPE é uma escala de <strong>1 a 10</strong> que serve para avaliar o quão extenuante, cansativo e pesado foi um treino com base no que você sentiu. Ela permite que ciclistas monitorem a fadiga real, regulem a intensidade e previnam o esgotamento (overtraining).
+                                      </p>
+                                    </div>
+                                  </div>
+
+                                  {/* Color-graded Scale Table/Grid */}
+                                  <div className="space-y-3">
+                                    <h5 className="text-[10px] font-bold text-slate-400 font-heading uppercase tracking-widest">
+                                      O que significa cada nota da escala:
+                                    </h5>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                      
+                                      {/* PSE 1-2 */}
+                                      <div className="bg-white border border-emerald-100/80 hover:border-emerald-250 rounded-xl p-3 shadow-3xs flex gap-3 transition-colors">
+                                        <div className="w-9 h-9 rounded-lg bg-emerald-500/10 text-emerald-600 font-mono font-black shrink-0 flex items-center justify-center text-sm border border-emerald-500/20">
+                                          1-2
+                                        </div>
+                                        <div className="flex flex-col min-w-0">
+                                          <span className="font-heading font-extrabold text-emerald-700 text-[11px] uppercase tracking-wider">Muito Leve / Soltura</span>
+                                          <span className="text-[10.5px] text-slate-500 font-sans mt-0.5 leading-tight">
+                                            Regenerativo total. Giro solto nas pernas com quase nenhuma força. Conversa flui perfeitamente, sem cansar nadinha.
+                                          </span>
+                                        </div>
+                                      </div>
+
+                                      {/* PSE 3-4 */}
+                                      <div className="bg-white border border-sky-100/80 hover:border-sky-250 rounded-xl p-3 shadow-3xs flex gap-3 transition-colors">
+                                        <div className="w-9 h-9 rounded-lg bg-sky-500/10 text-sky-650 font-mono font-black shrink-0 flex items-center justify-center text-sm border border-sky-500/20">
+                                          3-4
+                                        </div>
+                                        <div className="flex flex-col min-w-0">
+                                          <span className="font-heading font-extrabold text-sky-700 text-[11px] uppercase tracking-wider">Leve / Moderado</span>
+                                          <span className="text-[10.5px] text-slate-500 font-sans mt-0.5 leading-tight">
+                                            Ritmo de Endurance (Z2). Confortável o suficiente para passar o dia pedalando. Respiração profunda, mas sem ofegar.
+                                          </span>
+                                        </div>
+                                      </div>
+
+                                      {/* PSE 5-6 */}
+                                      <div className="bg-white border border-amber-100/80 hover:border-amber-250 rounded-xl p-3 shadow-3xs flex gap-3 transition-colors">
+                                        <div className="w-9 h-9 rounded-lg bg-amber-500/10 text-amber-600 font-mono font-black shrink-0 flex items-center justify-center text-sm border border-amber-500/20">
+                                          5-6
+                                        </div>
+                                        <div className="flex flex-col min-w-0">
+                                          <span className="font-heading font-extrabold text-amber-700 text-[11px] uppercase tracking-wider">Firme / Ritmo</span>
+                                          <span className="text-[10.5px] text-slate-500 font-sans mt-0.5 leading-tight">
+                                            Tempo (Z3). Calor corporal aumenta e a respiração acelera bastante. Requer foco para manter, mas você ainda fala frases completas.
+                                          </span>
+                                        </div>
+                                      </div>
+
+                                      {/* PSE 7-8 */}
+                                      <div className="bg-white border border-orange-100/80 hover:border-orange-250 rounded-xl p-3 shadow-3xs flex gap-3 transition-colors">
+                                        <div className="w-9 h-9 rounded-lg bg-orange-500/10 text-orange-600 font-mono font-black shrink-0 flex items-center justify-center text-sm border border-orange-500/20">
+                                          7-8
+                                        </div>
+                                        <div className="flex flex-col min-w-0">
+                                          <span className="font-heading font-extrabold text-orange-700 text-[11px] uppercase tracking-wider">Muito Forte</span>
+                                          <span className="text-[10.5px] text-slate-500 font-sans mt-0.5 leading-tight">
+                                            Limiar de Lactato (Z4). Respiração pesada e pernas queimando pelo ácido lático. Conversa interrompida (só palavras isoladas).
+                                          </span>
+                                        </div>
+                                      </div>
+
+                                      {/* PSE 9 */}
+                                      <div className="bg-white border border-red-100/80 hover:border-red-250 rounded-xl p-3 shadow-3xs flex gap-3 transition-colors">
+                                        <div className="w-9 h-9 rounded-lg bg-red-500/10 text-red-600 font-mono font-black shrink-0 flex items-center justify-center text-sm border border-red-500/20">
+                                          9
+                                        </div>
+                                        <div className="flex flex-col min-w-0">
+                                          <span className="font-heading font-extrabold text-red-700 text-[11px] uppercase tracking-wider">Extremo / VO2max</span>
+                                          <span className="text-[10.5px] text-slate-500 font-sans mt-0.5 leading-tight">
+                                            Capacidade máxima aeróbica (Z5). Músculos em forte dor ácida de queimação. Ofegante absoluto, impossível falar qualquer palavra.
+                                          </span>
+                                        </div>
+                                      </div>
+
+                                      {/* PSE 10 */}
+                                      <div className="bg-white border border-purple-100/80 hover:border-purple-250 rounded-xl p-3 shadow-3xs flex gap-3 transition-colors">
+                                        <div className="w-9 h-9 rounded-lg bg-purple-500/10 text-purple-600 font-mono font-black shrink-0 flex items-center justify-center text-sm border border-purple-500/20">
+                                          10
+                                        </div>
+                                        <div className="flex flex-col min-w-0">
+                                          <span className="font-heading font-extrabold text-purple-700 text-[11px] uppercase tracking-wider">Esforço Máximo</span>
+                                          <span className="text-[10.5px] text-slate-500 font-sans mt-0.5 leading-tight">
+                                            Sprints brutais ou picos anaeróbicos de explosão total (Z6/Z7). Sustentável por poucos segundos. Sensação de fadiga total.
+                                          </span>
+                                        </div>
+                                      </div>
+
+                                    </div>
+                                  </div>
+                                  
+                                  <div className="bg-amber-100/30 p-3.5 rounded-xl border border-amber-200/50 text-xs text-amber-850 flex items-start gap-2.5">
+                                    <span className="font-bold text-amber-800 shrink-0 select-none">💡 DICA DE OURO:</span>
+                                    <span className="leading-relaxed">Não encare a PSE apenas como dor nas pernas física. Pense no seu <strong>fôlego respiratório</strong> (quão ofegante você ficou) e no <strong>foco mental</strong> exigido para completar aquela sessão inteira.</span>
+                                  </div>
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+
+                          {/* Bento Grid of workouts (standard vertical stacking grid, no mobile lateral displacement) */}
+                          <div id="weekly-workouts-grid" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6 pt-2">
+                            {plan?.workouts.map((wk, index) => (
+                              <WorkoutCard 
+                                key={`${wk.day}-${index}`} 
+                                workout={wk} 
+                                profile={profile}
+                                allWorkouts={plan?.workouts || []}
+                                onUpdate={(updatedWorkout) => handleUpdateWorkout(index, updatedWorkout)}
+                                onDelete={() => handleDeleteWorkout(index)}
+                              />
+                            ))}
+                            {(!plan?.workouts || plan.workouts.length === 0) && (
+                              <div className="col-span-full bg-slate-50 border border-dashed border-slate-200 rounded-3xl p-12 text-center flex flex-col items-center justify-center gap-3">
+                                <ClipboardList className="w-10 h-10 text-slate-300" />
+                                <div>
+                                  <h4 className="font-heading font-bold text-slate-600 text-sm">Sem treinos para exibir</h4>
+                                  <p className="text-xs text-slate-400 font-sans mt-1">Clique em "Adicionar Treino" acima para criar sessões personalizadas.</p>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </motion.div>
                       )}
-                    </div>
+                    </AnimatePresence>
 
                     {/* Additional Coach advice */}
                     <div id="additional-coach-advice" className="grid grid-cols-1 md:grid-cols-2 gap-6">

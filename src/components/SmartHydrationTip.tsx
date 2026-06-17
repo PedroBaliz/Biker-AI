@@ -73,8 +73,8 @@ export function calculateHydration(durationMinutes: number, targetZone: string, 
     hourlyPotassium = 200;
     hourlyCarbs = 70;
     sipInterval = 8;
-    intensityLevel = "Limiar de Lactato";
-    advice = "Treino forte no limite. Sudorese acentuada. Alterne água pura com isotônico estruturado (6% a 8% CHO) para otimizar o esvaziamento gástrico sob estresse.";
+    intensityLevel = "Limiar de Lactato (Ponto de fadiga rápida)";
+    advice = "Treino forte no limite de fôlego. Sudorese acentuada. Alterne água pura com isotônico contendo carbo (6% a 8% de CHO - Carboidratos simples) para reabastecer as pernas rapidamente.";
   } else {
     // Z5/Z6/Z7 or RPE 9-10
     hourlyWater = 1050;
@@ -82,7 +82,7 @@ export function calculateHydration(durationMinutes: number, targetZone: string, 
     hourlyPotassium = 250;
     hourlyCarbs = 85;
     sipInterval = 7;
-    intensityLevel = "Máximo (VO2Max / Tiros)";
+    intensityLevel = "Máximo (VO2Max de fôlego / Tiros)";
     advice = "Estresse metabólico severo. Hidrate bem nas 2h anteriores. Durante o pedal forte, bebe goles pequenos e precisos a cada tiro ou período de respiro.";
   }
 
@@ -186,7 +186,7 @@ export default function SmartHydrationTip({ workout }: SmartHydrationTipProps) {
                 <span className="text-[10px] text-slate-500 font-bold font-mono">ml</span>
               </div>
               <span className="text-[10px] text-slate-400 font-medium">
-                ≈ {recommendation.bottlesCount} caramanhola(s) de 750ml
+                ≈ {recommendation.bottlesCount} caramanhola(s) (garrafinha de água de bike de 750ml)
               </span>
             </div>
 
@@ -248,7 +248,7 @@ export default function SmartHydrationTip({ workout }: SmartHydrationTipProps) {
           <div className="flex items-start gap-1.5 text-[9.5px] text-slate-400/90 leading-tight">
             <Info className="w-3.5 h-3.5 text-slate-350 shrink-0 mt-0.5" />
             <p className="font-sans">
-              As taxas são baseadas em diretrizes internacionais do ACSM para ciclismo em temperaturas moderadas (~21°C). Ajuste para mais em dias quentes (+30%) ou alta transpiração individual (suor salgado).
+              As taxas são baseadas nas diretrizes internacionais do ACSM (American College of Sports Medicine - Colégio Americano de Medicina do Esporte) para ciclismo em temperaturas normais (~21°C). Ajuste para mais se estiver quente ou se você suar bastante.
             </p>
           </div>
 

@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { UserProfile, TrainingPlan, Workout } from "../types";
+import { UserProfile, TrainingPlan, Workout, isRestDay } from "../types";
 import {
   ResponsiveContainer,
   BarChart,
@@ -196,8 +196,8 @@ export default function AchievementsDashboard({ profile, plan }: AchievementsDas
     // Check for "Perfect Week" (completed all workouts in a week, min 3 workouts schedule)
     let hasPerfectWeek = false;
     historyList.forEach(p => {
-      const totalW = p.workouts ? p.workouts.length : 0;
-      const completedW = p.workouts ? p.workouts.filter(w => w.completed).length : 0;
+      const totalW = p.workouts ? p.workouts.filter(w => !isRestDay(w)).length : 0;
+      const completedW = p.workouts ? p.workouts.filter(w => w.completed && !isRestDay(w)).length : 0;
       if (totalW >= 3 && completedW === totalW) {
         hasPerfectWeek = true;
       }
@@ -206,7 +206,7 @@ export default function AchievementsDashboard({ profile, plan }: AchievementsDas
     // Consistency check: completed at least 3 workouts in a single week
     let hasConsistency = false;
     historyList.forEach(p => {
-      const completedCount = p.workouts ? p.workouts.filter(w => w.completed).length : 0;
+      const completedCount = p.workouts ? p.workouts.filter(w => w.completed && !isRestDay(w)).length : 0;
       if (completedCount >= 3) {
         hasConsistency = true;
       }
@@ -379,7 +379,7 @@ export default function AchievementsDashboard({ profile, plan }: AchievementsDas
 
           <div className="w-full h-60" id="weekly-completion-trend-chart">
             {weeklyTrendData.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height={240}>
                 <BarChart 
                   data={weeklyTrendData} 
                   margin={{ top: 10, right: 10, left: -25, bottom: 0 }}
@@ -430,7 +430,7 @@ export default function AchievementsDashboard({ profile, plan }: AchievementsDas
 
           <div className="w-full h-44 flex items-center justify-center relative" id="intensity-pie-chart">
             {zoneDistributionData.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height={170}>
                 <PieChart>
                   <Pie
                     data={zoneDistributionData}

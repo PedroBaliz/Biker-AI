@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Workout, UserProfile } from "../types";
+import { Workout, UserProfile, isRestDay } from "../types";
 import { 
   Clock, 
   Bike, 
@@ -16,7 +16,8 @@ import {
   Heart, 
   Zap, 
   BookOpen, 
-  Smile 
+  Smile,
+  ShieldAlert
 } from "lucide-react";
 import SmartHydrationTip from "./SmartHydrationTip";
 
@@ -26,6 +27,7 @@ interface WorkoutCardProps {
   onDelete?: () => void;
   profile?: UserProfile;
   key?: string;
+  allWorkouts?: Workout[];
 }
 
 // Custom simple markdown helper to render coaching feedback elegantly
@@ -79,9 +81,10 @@ function parseBold(text: string) {
   });
 }
 
-export default function WorkoutCard({ workout, onUpdate, onDelete, profile }: WorkoutCardProps) {
+export default function WorkoutCard({ workout, onUpdate, onDelete, profile, allWorkouts }: WorkoutCardProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [isCompleting, setIsCompleting] = useState(false);
+  const [showLimitError, setShowLimitError] = useState(false);
   
   // Temporary local state for editing prescription (Coach / Admin)
   const [editType, setEditType] = useState(workout.type);
@@ -149,9 +152,21 @@ export default function WorkoutCard({ workout, onUpdate, onDelete, profile }: Wo
       // Toggle back to not completed, keeping logs in state in case they want to re-complete
       onUpdate({
         ...workout,
-        completed: false
+        completed: false,
+        completedDate: undefined
       });
     } else {
+      // Rule: Only 1 completed workout is allowed per calendar day.
+      const todayStr = new Date().toISOString().slice(0, 10);
+      const hasCompletedToday = allWorkouts?.some(
+        (w) => w.completed && w.completedDate === todayStr && w.day !== workout.day
+      );
+
+      if (hasCompletedToday) {
+        setShowLimitError(true);
+        return;
+      }
+
       // Open the completion dialog
       setActualDuration(workout.actualDuration || workout.duration);
       setActualRpe(workout.actualRpe || workout.rpe || 5);
@@ -166,6 +181,7 @@ export default function WorkoutCard({ workout, onUpdate, onDelete, profile }: Wo
     onUpdate({
       ...workout,
       completed: true,
+      completedDate: new Date().toISOString().slice(0, 10),
       actualDuration: Number(actualDuration) || workout.duration,
       actualRpe: Number(actualRpe) || workout.rpe || 5,
       actualHr: actualHr ? Number(actualHr) : undefined,
@@ -180,6 +196,7 @@ export default function WorkoutCard({ workout, onUpdate, onDelete, profile }: Wo
     const updatedWorkout: Workout = {
       ...workout,
       completed: true,
+      completedDate: new Date().toISOString().slice(0, 10),
       actualDuration: Number(actualDuration) || workout.duration,
       actualRpe: Number(actualRpe) || workout.rpe || 5,
       actualHr: actualHr ? Number(actualHr) : undefined,
@@ -204,6 +221,7 @@ export default function WorkoutCard({ workout, onUpdate, onDelete, profile }: Wo
       const data = await response.json();
       onUpdate({
         ...updatedWorkout,
+        completedDate: new Date().toISOString().slice(0, 10),
         aiFeedback: data.aiFeedback || "Ótimo treino! continue focado no plano estruturado."
       });
       setIsCompleting(false);
@@ -222,7 +240,7 @@ export default function WorkoutCard({ workout, onUpdate, onDelete, profile }: Wo
     return (
       <div 
         id={`workout-edit-${workout.day}`}
-        className="bg-slate-50 rounded-2xl p-5 shadow-sm border-2 border-lime-500/55 flex flex-col justify-between gap-4 transition-all duration-200"
+        className="bg-slate-50 rounded-2xl p-5 shadow-sm border-2 border-lime-500/55 flex flex-col justify-between gap-4 transition-all duration-200 w-full"
       >
         <div className="space-y-3.5">
           <div className="flex justify-between items-center pb-2 border-b border-slate-200">
@@ -263,7 +281,7 @@ export default function WorkoutCard({ workout, onUpdate, onDelete, profile }: Wo
               />
             </div>
             <div className="space-y-1">
-              <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wide">Esforço / Intensidade</label>
+              <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wide">Esforço Sugerido (PSE ou Sensação de Esforço de 1 a 10)</label>
               <select 
                 value={editRpe} 
                 onChange={(e) => setEditRpe(Number(e.target.value))}
@@ -337,12 +355,55 @@ export default function WorkoutCard({ workout, onUpdate, onDelete, profile }: Wo
     );
   }
 
+  // 1.5. Limit reach warning view mode
+  if (showLimitError) {
+    return (
+      <div 
+        id={`workout-limit-error-${workout.day}`}
+        className="bg-rose-50/40 rounded-3xl p-5 sm:p-6 shadow-[0_8px_30px_rgb(0,0,0,0.03)] border-2 border-rose-300 flex flex-col justify-between gap-5 transition-all duration-300 animate-fadeIn w-full"
+      >
+        <div className="space-y-3.5">
+          <div className="flex justify-between items-center pb-2.5 border-b border-rose-100">
+            <div className="flex items-center gap-1.5 text-rose-800 font-heading font-black text-xs uppercase tracking-wider">
+              <ShieldAlert className="w-4.5 h-4.5 text-rose-500 shrink-0" />
+              <span>Regra de Limite Diário</span>
+            </div>
+          </div>
+
+          <div className="bg-white border border-rose-100 p-4 rounded-2xl space-y-3.5">
+            <p className="text-xs text-rose-950 font-sans leading-relaxed font-semibold">
+              Você já concluiu um treino hoje! Pela regra do método, <strong className="text-rose-600 font-extrabold uppercase">só é permitido concluir 1 treino por dia</strong> para preservar sua saúde.
+            </p>
+            <div className="space-y-3 text-[11px] text-slate-600 leading-relaxed font-sans border-t border-rose-100/50 pt-3">
+              <div>
+                <strong className="text-slate-800 uppercase tracking-wide text-[9px] text-rose-700 block mb-0.5">1. Evita o Overtraining (Excesso de Treino):</strong>
+                Pedalar cansado ou treinar duas vezes no mesmo dia desgasta demais as articulações, baixa sua imunidade e gera fadiga crônica.
+              </div>
+              <div>
+                <strong className="text-slate-800 uppercase tracking-wide text-[9px] text-rose-700 block mb-0.5">2. Supercompensação (Ganho Real de Força):</strong>
+                O seu corpo só ganha resistência e potência muscular durante o **descanso/repouso de 24 horas**. Pedalar sem parar na verdade te deixa mais fraco e esgotado.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setShowLimitError(false)}
+          className="w-full bg-rose-500 hover:bg-rose-600 text-white py-2.5 px-3 rounded-xl text-[10px] font-extrabold uppercase font-heading tracking-wider transition-all shadow-2xs active:scale-95 cursor-pointer text-center"
+        >
+          Entendi, vou descansar hoje! 👍
+        </button>
+      </div>
+    );
+  }
+
   // 2. Athlete Logging completion form
   if (isCompleting) {
     return (
       <div 
         id={`workout-complete-wizard-${workout.day}`}
-        className="bg-sky-50/50 rounded-3xl p-5 sm:p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border-2 border-sky-400/60 flex flex-col justify-between gap-4 transition-all duration-300 animate-fadeIn"
+        className="bg-sky-50/50 rounded-3xl p-5 sm:p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border-2 border-sky-400/60 flex flex-col justify-between gap-4 transition-all duration-300 animate-fadeIn w-full"
       >
         <div className="space-y-4">
           <div className="flex justify-between items-center pb-2.5 border-b border-sky-100">
@@ -370,7 +431,7 @@ export default function WorkoutCard({ workout, onUpdate, onDelete, profile }: Wo
               />
             </div>
             <div className="space-y-1">
-              <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wide">PSE (Esforço Sentido 1-10)</label>
+              <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wide">PSE (Nota da sua Sensação de Esforço / Cansaço de 1 a 10)</label>
               <select 
                 value={actualRpe} 
                 onChange={(e) => setActualRpe(Number(e.target.value))}
@@ -484,7 +545,7 @@ export default function WorkoutCard({ workout, onUpdate, onDelete, profile }: Wo
   return (
     <div 
       id={`workout-${workout.day}`} 
-      className={`bg-white rounded-3xl p-6 shadow-[0_4px_20px_rgba(15,23,42,0.03)] border transition-all duration-300 flex flex-col justify-between relative overflow-hidden select-none hover:-translate-y-1.5 hover:shadow-[0_12px_24px_rgba(15,23,42,0.07)] hover:border-slate-200 ${
+      className={`bg-white rounded-3xl p-6 shadow-[0_4px_20px_rgba(15,23,42,0.03)] border transition-all duration-300 flex flex-col justify-between relative overflow-hidden select-none hover:-translate-y-1.5 hover:shadow-[0_12px_24px_rgba(15,23,42,0.07)] hover:border-slate-200 w-full ${
         workout.completed 
           ? "border-emerald-500 shadow-emerald-500/5 bg-emerald-50/15 border-l-[6px] border-l-emerald-500" 
           : `border-slate-100 ${rpeStyles.glow}`
@@ -538,7 +599,7 @@ export default function WorkoutCard({ workout, onUpdate, onDelete, profile }: Wo
               <Flame className="w-4 h-4" />
             </div>
             <div className="flex flex-col">
-              <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider font-sans leading-none">INTENSIDADE</span>
+              <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider font-sans leading-none">ESFORÇO (PSE)</span>
               <span className="text-xs font-heading font-black text-slate-850 mt-1 uppercase tracking-wide">
                 {workout.completed && workout.actualRpe ? (
                   <>
@@ -546,7 +607,7 @@ export default function WorkoutCard({ workout, onUpdate, onDelete, profile }: Wo
                     <span className="text-emerald-600">{getSimpleEffortText(workout.actualRpe)}</span>
                   </>
                 ) : (
-                  getSimpleEffortText(workout.rpe || 5)
+                  `${getSimpleEffortText(workout.rpe || 5)} (Nota ${workout.rpe || 5}/10)`
                 )}
               </span>
             </div>
@@ -560,8 +621,8 @@ export default function WorkoutCard({ workout, onUpdate, onDelete, profile }: Wo
               <div className="flex items-center gap-2">
                 <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500/10" />
                 <div>
-                  <span className="text-[9px] text-slate-400 font-medium block leading-none uppercase">Frequência</span>
-                  <span className="font-mono font-bold text-slate-700">{workout.actualHr} bpm</span>
+                  <span className="text-[9px] text-slate-400 font-medium block leading-none uppercase">Batimentos Cardíacos</span>
+                  <span className="font-mono font-bold text-slate-700">{workout.actualHr} bpm (Nota cardíaca)</span>
                 </div>
               </div>
             )}
@@ -569,8 +630,8 @@ export default function WorkoutCard({ workout, onUpdate, onDelete, profile }: Wo
               <div className="flex items-center gap-2">
                 <Zap className="w-3.5 h-3.5 text-amber-500" />
                 <div>
-                  <span className="text-[9px] text-slate-400 font-medium block leading-none uppercase">Potência Média</span>
-                  <span className="font-mono font-bold text-slate-700">{workout.actualPower} W</span>
+                  <span className="text-[9px] text-slate-400 font-medium block leading-none uppercase">Força nos Pedais (Média)</span>
+                  <span className="font-mono font-bold text-slate-700">{workout.actualPower} Watts (W)</span>
                 </div>
               </div>
             )}
@@ -638,27 +699,34 @@ export default function WorkoutCard({ workout, onUpdate, onDelete, profile }: Wo
       {/* Interactive Controls Bar */}
       <div className="mt-auto pt-4 border-t border-slate-100 flex gap-2 w-full">
         {/* Trigger Complete Toggle */}
-        <button
-          type="button"
-          onClick={toggleCompleted}
-          className={`flex-1 py-2.5 px-3 rounded-xl text-[10px] font-extrabold uppercase font-heading tracking-wider flex items-center justify-center gap-1.5 transition-all shadow-2xs active:scale-95 cursor-pointer ${
-            workout.completed
-              ? "bg-emerald-500 text-white hover:bg-emerald-600"
-              : "bg-slate-100 text-slate-750 hover:bg-slate-200"
-          }`}
-        >
-          {workout.completed ? (
-            <>
-              <Check className="w-3.5 h-3.5 stroke-[3.5]" />
-              <span>Concluído 🏆</span>
-            </>
-          ) : (
-            <>
-              <Circle className="w-3.5 h-3.5" />
-              <span>Concluir</span>
-            </>
-          )}
-        </button>
+        {!isRestDay(workout) ? (
+          <button
+            type="button"
+            onClick={toggleCompleted}
+            className={`flex-1 py-2.5 px-3 rounded-xl text-[10px] font-extrabold uppercase font-heading tracking-wider flex items-center justify-center gap-1.5 transition-all shadow-2xs active:scale-95 cursor-pointer ${
+              workout.completed
+                ? "bg-emerald-500 text-white hover:bg-emerald-600"
+                : "bg-slate-100 text-slate-750 hover:bg-slate-200"
+            }`}
+          >
+            {workout.completed ? (
+              <>
+                <Check className="w-3.5 h-3.5 stroke-[3.5]" />
+                <span>Concluído 🏆</span>
+              </>
+            ) : (
+              <>
+                <Circle className="w-3.5 h-3.5" />
+                <span>Concluir</span>
+              </>
+            )}
+          </button>
+        ) : (
+          <div className="flex-1 bg-amber-50/50 border border-amber-100 rounded-xl py-2 px-3 flex items-center justify-center gap-1.5 text-amber-700 font-heading font-extrabold text-[10px] uppercase tracking-wider">
+            <Smile className="w-4 h-4 text-amber-500 fill-amber-500/10 shrink-0" />
+            <span>Dia de Folga</span>
+          </div>
+        )}
 
         {/* Trigger Edit Mode */}
         <button

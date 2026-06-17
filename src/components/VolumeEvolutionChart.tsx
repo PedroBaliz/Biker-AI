@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { UserProfile, TrainingPlan } from "../types";
+import { UserProfile, TrainingPlan, isRestDay } from "../types";
 import { 
   ResponsiveContainer, 
   AreaChart, 
@@ -8,6 +8,7 @@ import {
   YAxis, 
   CartesianGrid, 
   Tooltip,
+  Legend,
   BarChart,
   Bar
 } from "recharts";
@@ -20,11 +21,14 @@ interface VolumeEvolutionChartProps {
 
 interface ChartDataPoint {
   name: string;
-  minutes: number;
-  hours: number;
-  hoursFormatted: string;
-  sessions: number;
-  completedSessions: number;
+  minutes: number;             // Completed minutes
+  hours: number;               // Completed hours
+  plannedMinutes: number;      // Planned minutes
+  plannedHours: number;        // Planned hours
+  hoursFormatted: string;      // Completed hours formatted
+  plannedHoursFormatted: string; // Planned hours formatted
+  sessions: number;            // Total planned sessions
+  completedSessions: number;   // Total completed sessions
   isReal: boolean;
 }
 
@@ -35,10 +39,11 @@ export default function VolumeEvolutionChart({ profile, plan }: VolumeEvolutionC
   useEffect(() => {
     // 1. Calculate active week's details
     const activeWeekNum = plan?.weekNumber || 1;
-    const activeSessionsCount = plan?.workouts?.length || profile.daysPerWeek || 4;
-    const activeDurationMins = plan?.workouts?.reduce((sum, w) => sum + w.duration, 0) || 
+    const activeSessionsCount = plan?.workouts?.filter(w => !isRestDay(w)).length || profile.daysPerWeek || 4;
+    const activeDurationPlannedMins = plan?.workouts?.reduce((sum, w) => sum + w.duration, 0) || 
       (profile.daysPerWeek || 4) * (profile.durationPerSession || 60);
-    const activeCompletedSessions = plan?.workouts?.filter(w => w.completed).length || 0;
+    const activeDurationCompletedMins = plan?.workouts?.reduce((sum, w) => sum + (w.completed ? (w.actualDuration || w.duration) : 0), 0) || 0;
+    const activeCompletedSessions = plan?.workouts?.filter(w => w.completed && !isRestDay(w)).length || 0;
 
     // 2. Fetch real history from localStorage
     let realHistory: TrainingPlan[] = [];
@@ -57,17 +62,27 @@ export default function VolumeEvolutionChart({ profile, plan }: VolumeEvolutionC
     // Convert real history to chart data points
     const realPoints: ChartDataPoint[] = realHistory.map((p) => {
       const wNum = p.weekNumber || 1;
-      const totalMins = p.workouts?.reduce((sum, w) => sum + w.duration, 0) || 0;
-      const hoursVal = Number((totalMins / 60).toFixed(1));
-      const hoursInt = Math.floor(totalMins / 60);
-      const minsRem = totalMins % 60;
+      const plannedMins = p.workouts?.reduce((sum, w) => sum + w.duration, 0) || 0;
+      const completedMins = p.workouts?.reduce((sum, w) => sum + (w.completed ? (w.actualDuration || w.duration) : 0), 0) || 0;
+      
+      const compHoursVal = Number((completedMins / 60).toFixed(1));
+      const compHoursInt = Math.floor(completedMins / 60);
+      const compMinsRem = completedMins % 60;
+
+      const planHoursVal = Number((plannedMins / 60).toFixed(1));
+      const planHoursInt = Math.floor(plannedMins / 60);
+      const planMinsRem = plannedMins % 60;
+
       return {
-        name: `Semanas Anteriores (S.${wNum})`,
-        minutes: totalMins,
-        hours: hoursVal,
-        hoursFormatted: `${hoursInt}h${minsRem > 0 ? ` ${minsRem}m` : ""}`,
-        sessions: p.workouts?.length || 0,
-        completedSessions: p.workouts?.filter(w => w.completed).length || 0,
+        name: `Semana ${wNum}`,
+        minutes: completedMins,
+        hours: compHoursVal,
+        plannedMinutes: plannedMins,
+        plannedHours: planHoursVal,
+        hoursFormatted: `${compHoursInt}h${compMinsRem > 0 ? ` ${compMinsRem}m` : ""}`,
+        plannedHoursFormatted: `${planHoursInt}h${planMinsRem > 0 ? ` ${planMinsRem}m` : ""}`,
+        sessions: p.workouts?.filter(w => !isRestDay(w)).length || 0,
+        completedSessions: p.workouts?.filter(w => w.completed && !isRestDay(w)).length || 0,
         isReal: true,
       };
     });
@@ -82,16 +97,24 @@ export default function VolumeEvolutionChart({ profile, plan }: VolumeEvolutionC
       finalPoints.push(...realPoints);
       
       // Make sure active week isn't duplicated (if it's already in the saved history)
-      const isAlreadyInHistory = realPoints.some(pt => pt.name.includes(`S.${activeWeekNum}`));
+      const isAlreadyInHistory = realPoints.some(pt => pt.name.includes(`Semana ${activeWeekNum}`));
       if (!isAlreadyInHistory) {
-        const hoursVal = Number((activeDurationMins / 60).toFixed(1));
-        const hoursInt = Math.floor(activeDurationMins / 60);
-        const minsRem = activeDurationMins % 60;
+        const compHoursVal = Number((activeDurationCompletedMins / 60).toFixed(1));
+        const compHoursInt = Math.floor(activeDurationCompletedMins / 60);
+        const compMinsRem = activeDurationCompletedMins % 60;
+
+        const planHoursVal = Number((activeDurationPlannedMins / 60).toFixed(1));
+        const planHoursInt = Math.floor(activeDurationPlannedMins / 60);
+        const planMinsRem = activeDurationPlannedMins % 60;
+
         finalPoints.push({
           name: `Semana ${activeWeekNum} (Atual)`,
-          minutes: activeDurationMins,
-          hours: hoursVal,
-          hoursFormatted: `${hoursInt}h${minsRem > 0 ? ` ${minsRem}m` : ""}`,
+          minutes: activeDurationCompletedMins,
+          hours: compHoursVal,
+          plannedMinutes: activeDurationPlannedMins,
+          plannedHours: planHoursVal,
+          hoursFormatted: `${compHoursInt}h${compMinsRem > 0 ? ` ${compMinsRem}m` : ""}`,
+          plannedHoursFormatted: `${planHoursInt}h${planMinsRem > 0 ? ` ${planMinsRem}m` : ""}`,
           sessions: activeSessionsCount,
           completedSessions: activeCompletedSessions,
           isReal: true
@@ -117,20 +140,35 @@ export default function VolumeEvolutionChart({ profile, plan }: VolumeEvolutionC
 
       for (let i = 0; i < 4; i++) {
         const factor = factors[i];
-        const minutes = Math.round(baseDuration * factor);
-        const hoursVal = Number((minutes / 60).toFixed(1));
-        const hoursInt = Math.floor(minutes / 60);
-        const minsRem = minutes % 60;
+        const plannedMinutes = Math.round(baseDuration * factor);
+        
+        let completedMinutes = plannedMinutes;
+        let completedSessions = Math.max(1, baseSessions + sessionsAdjuster[i]);
+        if (i === 3) {
+          completedMinutes = activeDurationCompletedMins;
+          completedSessions = activeCompletedSessions;
+        } else {
+          // Assume older weeks were fully completed for visual beauty
+          completedMinutes = Math.round(plannedMinutes * 0.95);
+        }
 
-        const sessions = Math.max(1, baseSessions + sessionsAdjuster[i]);
-        const completedSessions = i === 3 ? activeCompletedSessions : sessions; // assume past weeks were completed!
+        const compHoursVal = Number((completedMinutes / 60).toFixed(1));
+        const compHoursInt = Math.floor(completedMinutes / 60);
+        const compMinsRem = completedMinutes % 60;
+
+        const planHoursVal = Number((plannedMinutes / 60).toFixed(1));
+        const planHoursInt = Math.floor(plannedMinutes / 60);
+        const planMinsRem = plannedMinutes % 60;
 
         finalPoints.push({
           name: weekLabels[i],
-          minutes,
-          hours: hoursVal,
-          hoursFormatted: `${hoursInt}h${minsRem > 0 ? ` ${minsRem}m` : ""}`,
-          sessions,
+          minutes: completedMinutes,
+          hours: compHoursVal,
+          plannedMinutes,
+          plannedHours: planHoursVal,
+          hoursFormatted: `${compHoursInt}h${compMinsRem > 0 ? ` ${compMinsRem}m` : ""}`,
+          plannedHoursFormatted: `${planHoursInt}h${planMinsRem > 0 ? ` ${planMinsRem}m` : ""}`,
+          sessions: Math.max(1, baseSessions + sessionsAdjuster[i]),
           completedSessions,
           isReal: i === 3 // Only the 4th is currently the active real state
         });
@@ -142,27 +180,44 @@ export default function VolumeEvolutionChart({ profile, plan }: VolumeEvolutionC
 
   // Total accumulation stats for general knowledge
   const totalAccumulatedHours = chartData.reduce((acc, d) => acc + d.minutes, 0) / 60;
-  const totalAccumulatedWorkouts = chartData.reduce((acc, d) => acc + d.sessions, 0);
+  const totalAccumulatedWorkouts = chartData.reduce((acc, d) => acc + d.completedSessions, 0);
 
   // Custom tooltips to make them speak human language
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
       const data: ChartDataPoint = payload[0].payload;
       return (
-        <div className="bg-slate-900 text-white rounded-xl shadow-lg border border-slate-850 p-3 text-xs space-y-1.5 font-sans">
-          <p className="font-heading font-black text-lime-400 uppercase tracking-wider text-[10px]">{data.name}</p>
-          <div className="space-y-1 font-medium">
-            <p className="flex items-center gap-1.5 text-slate-300">
-              <Clock className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Volume: <strong className="text-white">{data.hoursFormatted}</strong> ({data.minutes} min)</span>
-            </p>
-            <p className="flex items-center gap-1.5 text-slate-300">
-              <Dumbbell className="w-3.5 h-3.5 text-sky-400" />
-              <span>Sessões: <strong className="text-white">{data.sessions} treinos</strong></span>
-            </p>
-            <p className="text-[10px] text-slate-400 italic">
-              {data.isReal ? "✓ Dados reais da conta" : "⚡ Simulação de base anterior"}
-            </p>
+        <div className="bg-slate-900 text-white rounded-2xl shadow-xl border border-slate-800 p-4 text-xs space-y-2.5 font-sans w-58">
+          <p className="font-heading font-black text-lime-450 uppercase tracking-widest text-[10px] border-b border-slate-800 pb-1.5 flex items-center justify-between">
+            <span>{data.name}</span>
+            <span className="text-[9px] text-slate-450 font-mono">
+              {data.isReal ? "✓ Real" : "⚡ Simulado"}
+            </span>
+          </p>
+          <div className="space-y-1.5 font-medium text-slate-350">
+            <div className="flex flex-col gap-1 text-[11px]">
+              <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Tempo de Treino:</span>
+              <div className="flex justify-between">
+                <span className="text-slate-450">Meta Planejada:</span>
+                <span className="font-mono text-slate-200">{data.plannedHoursFormatted}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-emerald-400">Pedal Executado:</span>
+                <span className="font-mono text-emerald-400 font-bold">{data.hoursFormatted}</span>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-1 border-t border-slate-850 pt-1.5 text-[11px]">
+              <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Sessões:</span>
+              <div className="flex justify-between">
+                <span className="text-slate-450">Planejadas:</span>
+                <span className="font-mono text-slate-200">{data.sessions} treinos</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-emerald-400">Concluídas:</span>
+                <span className="font-mono text-emerald-400 font-bold">{data.completedSessions} treinos</span>
+              </div>
+            </div>
           </div>
         </div>
       );
@@ -217,13 +272,17 @@ export default function VolumeEvolutionChart({ profile, plan }: VolumeEvolutionC
       {/* Main Chart Rendering Field */}
       <div className="w-full h-64 sm:h-72 my-1" id="evolution-chart-container">
         {chartData.length > 0 ? (
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height={240}>
             {viewType === "time" ? (
               <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorTime" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#10b981" stopOpacity={0.25}/>
                     <stop offset="95%" stopColor="#10b981" stopOpacity={0.0}/>
+                  </linearGradient>
+                  <linearGradient id="colorPlanned" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#94a3b8" stopOpacity={0.12}/>
+                    <stop offset="95%" stopColor="#94a3b8" stopOpacity={0.0}/>
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
@@ -245,7 +304,26 @@ export default function VolumeEvolutionChart({ profile, plan }: VolumeEvolutionC
                   tickFormatter={(val) => `${val}h`}
                 />
                 <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#cbd5e1', strokeWidth: 1 }} />
+                <Legend 
+                  verticalAlign="top" 
+                  height={32} 
+                  iconType="circle"
+                  iconSize={6}
+                  wrapperStyle={{ fontSize: '10px', fontWeight: 600, fontFamily: 'sans-serif' }}
+                />
                 <Area 
+                  name="Meta Planejada"
+                  type="monotone" 
+                  dataKey="plannedHours" 
+                  stroke="#cbd5e1" 
+                  strokeWidth={2} 
+                  strokeDasharray="4 4"
+                  fillOpacity={1} 
+                  fill="url(#colorPlanned)" 
+                  activeDot={{ r: 4 }}
+                />
+                <Area 
+                  name="Realizado"
                   type="monotone" 
                   dataKey="hours" 
                   stroke="#10b981" 
@@ -256,7 +334,7 @@ export default function VolumeEvolutionChart({ profile, plan }: VolumeEvolutionC
                 />
               </AreaChart>
             ) : (
-              <BarChart data={chartData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+              <BarChart data={chartData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }} barGap={3}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                 <XAxis 
                   dataKey="name" 
@@ -276,11 +354,26 @@ export default function VolumeEvolutionChart({ profile, plan }: VolumeEvolutionC
                   allowDecimals={false}
                 />
                 <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f8fafc', opacity: 0.5 }} />
+                <Legend 
+                  verticalAlign="top" 
+                  height={32} 
+                  iconType="circle"
+                  iconSize={6}
+                  wrapperStyle={{ fontSize: '10px', fontWeight: 600, fontFamily: 'sans-serif' }}
+                />
                 <Bar 
+                  name="Sessões Planejadas"
                   dataKey="sessions" 
+                  fill="#cbd5e1" 
+                  radius={[4, 4, 0, 0]}
+                  maxBarSize={15}
+                />
+                <Bar 
+                  name="Sessões Concluídas"
+                  dataKey="completedSessions" 
                   fill="#0ea5e9" 
-                  radius={[6, 6, 0, 0]}
-                  maxBarSize={50}
+                  radius={[4, 4, 0, 0]}
+                  maxBarSize={15}
                 />
               </BarChart>
             )}
