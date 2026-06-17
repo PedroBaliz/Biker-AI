@@ -276,6 +276,19 @@ const checkApiKey = () => {
   getAiClient();
 };
 
+// Helper to implement a fast, client-side safety ceiling to avoid Vercel Serverless 10s execution timeout
+const withTimeout = <T>(promise: Promise<T>, ms: number, errorMessage = "Timeout exceeding limit"): Promise<T> => {
+  let timeoutId: NodeJS.Timeout;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => {
+      reject(new Error(errorMessage));
+    }, ms);
+  });
+  return Promise.race([promise, timeoutPromise]).finally(() => {
+    clearTimeout(timeoutId);
+  });
+};
+
 // Safe JSON parser block that strips away any markdown fences
 const cleanAndParseJson = (text: string): any => {
   let cleanText = text.trim();
@@ -687,44 +700,48 @@ Histórico de Mensagens anteriores: ${JSON.stringify(messageHistory?.slice(-10) 
 Analise a resposta, atualize o "parsedProfile" de acordo (pode preencher múltiplos campos caso o atleta tenha respondido mais de uma coisa ou antecipado dados), aumente o onboardingStep se ele respondeu a pergunta atual, e gere a "reply" contendo a próxima pergunta ou um encerramento amigável se todas as 10 perguntas foram respondidas.
 Se o ciclista já respondeu a tudo, diga que o perfil está completo e que ele pode confirmar os dados na tela para gerar sua planilha semanal personalizada.`;
 
-    const response = await getAiClient().models.generateContent({
-      model: "gemini-3.5-flash",
-      contents: updatedPrompt,
-      config: {
-        systemInstruction,
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          required: ["reply", "parsedProfile"],
-          properties: {
-            reply: {
-              type: Type.STRING,
-              description: "Mensagem amigável do treinador respondendo ao atleta e fazendo a próxima pergunta"
-            },
-            parsedProfile: {
-              type: Type.OBJECT,
-              required: ["onboardingStep"],
-              description: "Campos atualizados do perfil obtidos a partir da resposta",
-              properties: {
-                name: { type: Type.STRING },
-                level: { type: Type.STRING, enum: ["iniciante", "intermediário", "avançado", ""] },
-                goal: { type: Type.STRING, enum: ["perder peso", "melhorar condicionamento", "completar um evento", "competir", ""] },
-                daysPerWeek: { type: Type.INTEGER },
-                durationPerSession: { type: Type.INTEGER },
-                eventDate: { type: Type.STRING },
-                hasPowerMeter: { type: Type.BOOLEAN },
-                ftp: { type: Type.INTEGER },
-                hasHeartRate: { type: Type.BOOLEAN },
-                maxHeartRate: { type: Type.INTEGER },
-                limitations: { type: Type.STRING },
-                recentActivity: { type: Type.STRING },
-                onboardingStep: { type: Type.INTEGER }
+    const response = await withTimeout(
+      getAiClient().models.generateContent({
+        model: "gemini-3.5-flash",
+        contents: updatedPrompt,
+        config: {
+          systemInstruction,
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            required: ["reply", "parsedProfile"],
+            properties: {
+              reply: {
+                type: Type.STRING,
+                description: "Mensagem amigável do treinador respondendo ao atleta e fazendo a próxima pergunta"
+              },
+              parsedProfile: {
+                type: Type.OBJECT,
+                required: ["onboardingStep"],
+                description: "Campos atualizados do perfil obtidos a partir da resposta",
+                properties: {
+                  name: { type: Type.STRING },
+                  level: { type: Type.STRING, enum: ["iniciante", "intermediário", "avançado", ""] },
+                  goal: { type: Type.STRING, enum: ["perder peso", "melhorar condicionamento", "completar um evento", "competir", ""] },
+                  daysPerWeek: { type: Type.INTEGER },
+                  durationPerSession: { type: Type.INTEGER },
+                  eventDate: { type: Type.STRING },
+                  hasPowerMeter: { type: Type.BOOLEAN },
+                  ftp: { type: Type.INTEGER },
+                  hasHeartRate: { type: Type.BOOLEAN },
+                  maxHeartRate: { type: Type.INTEGER },
+                  limitations: { type: Type.STRING },
+                  recentActivity: { type: Type.STRING },
+                  onboardingStep: { type: Type.INTEGER }
+                }
               }
             }
           }
         }
-      }
-    });
+      }),
+      5500,
+      "Tempo limite de 5.5s esgotado ao estruturar diálogo com o Coach."
+    );
 
     const resultText = response.text;
     if (!resultText) {
@@ -817,40 +834,44 @@ Equipamentos: ${profile?.hasPowerMeter ? `Medidor de Potência (FTP: ${profile?.
 Limitações físicas: ${profile?.limitations || "Nenhuma"}
 Atividade recente cadastrada: ${profile?.recentActivity || "Nenhuma registrada"}`;
 
-    const response = await getAiClient().models.generateContent({
-      model: "gemini-3.5-flash",
-      contents: userBrief,
-      config: {
-        systemInstruction,
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          required: ["workouts", "summary", "observations", "evaluation"],
-          properties: {
-            workouts: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                required: ["day", "type", "duration", "goal", "structure", "targetZone", "rpe", "tip"],
-                properties: {
-                  day: { type: Type.STRING },
-                  type: { type: Type.STRING },
-                  duration: { type: Type.INTEGER },
-                  goal: { type: Type.STRING },
-                  structure: { type: Type.STRING },
-                  targetZone: { type: Type.STRING },
-                  rpe: { type: Type.INTEGER },
-                  tip: { type: Type.STRING }
+    const response = await withTimeout(
+      getAiClient().models.generateContent({
+        model: "gemini-3.5-flash",
+        contents: userBrief,
+        config: {
+          systemInstruction,
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            required: ["workouts", "summary", "observations", "evaluation"],
+            properties: {
+              workouts: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  required: ["day", "type", "duration", "goal", "structure", "targetZone", "rpe", "tip"],
+                  properties: {
+                    day: { type: Type.STRING },
+                    type: { type: Type.STRING },
+                    duration: { type: Type.INTEGER },
+                    goal: { type: Type.STRING },
+                    structure: { type: Type.STRING },
+                    targetZone: { type: Type.STRING },
+                    rpe: { type: Type.INTEGER },
+                    tip: { type: Type.STRING }
+                  }
                 }
-              }
-            },
-            summary: { type: Type.STRING },
-            observations: { type: Type.STRING },
-            evaluation: { type: Type.STRING }
+              },
+              summary: { type: Type.STRING },
+              observations: { type: Type.STRING },
+              evaluation: { type: Type.STRING }
+            }
           }
         }
-      }
-    });
+      }),
+      5800,
+      "Tempo limite de 5.8s excedido ao tentar extrair a periodização inicial."
+    );
 
     const resultText = response.text;
     if (!resultText) {
@@ -930,42 +951,46 @@ Planilha da Semana que passou: ${JSON.stringify(currentPlan?.workouts || [])}
 
 Gere o planejamento estruturado completo para a Semana ${nextWeekNumber} seguindo rigorosamente a estrutura JSON solicitada.`;
 
-    const response = await getAiClient().models.generateContent({
-      model: "gemini-3.5-flash",
-      contents: userBrief,
-      config: {
-        systemInstruction,
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          required: ["workouts", "summary", "observations", "evaluation", "weekNumber", "coachMessage"],
-          properties: {
-            workouts: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                required: ["day", "type", "duration", "goal", "structure", "targetZone", "rpe", "tip"],
-                properties: {
-                  day: { type: Type.STRING },
-                  type: { type: Type.STRING },
-                  duration: { type: Type.INTEGER },
-                  goal: { type: Type.STRING },
-                  structure: { type: Type.STRING },
-                  targetZone: { type: Type.STRING },
-                  rpe: { type: Type.INTEGER },
-                  tip: { type: Type.STRING }
+    const response = await withTimeout(
+      getAiClient().models.generateContent({
+        model: "gemini-3.5-flash",
+        contents: userBrief,
+        config: {
+          systemInstruction,
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            required: ["workouts", "summary", "observations", "evaluation", "weekNumber", "coachMessage"],
+            properties: {
+              workouts: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  required: ["day", "type", "duration", "goal", "structure", "targetZone", "rpe", "tip"],
+                  properties: {
+                    day: { type: Type.STRING },
+                    type: { type: Type.STRING },
+                    duration: { type: Type.INTEGER },
+                    goal: { type: Type.STRING },
+                    structure: { type: Type.STRING },
+                    targetZone: { type: Type.STRING },
+                    rpe: { type: Type.INTEGER },
+                    tip: { type: Type.STRING }
+                  }
                 }
-              }
-            },
-            summary: { type: Type.STRING },
-            observations: { type: Type.STRING },
-            evaluation: { type: Type.STRING },
-            weekNumber: { type: Type.INTEGER },
-            coachMessage: { type: Type.STRING }
+              },
+              summary: { type: Type.STRING },
+              observations: { type: Type.STRING },
+              evaluation: { type: Type.STRING },
+              weekNumber: { type: Type.INTEGER },
+              coachMessage: { type: Type.STRING }
+            }
           }
         }
-      }
-    });
+      }),
+      5800,
+      "Tempo limite de 5.8s esgotado ao recalcular o macrociclo para a próxima semana."
+    );
 
     const resultText = response.text;
     if (!resultText) {
@@ -1026,21 +1051,25 @@ TREINO REALIZADO PELO ATLETA:
 
 Faça uma avaliação amigável de coach de alto nível e retorne o resultado em JSON.`;
 
-    const response = await getAiClient().models.generateContent({
-      model: "gemini-3.5-flash",
-      contents: prompt,
-      config: {
-        systemInstruction,
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          required: ["aiFeedback"],
-          properties: {
-            aiFeedback: { type: Type.STRING }
+    const response = await withTimeout(
+      getAiClient().models.generateContent({
+        model: "gemini-3.5-flash",
+        contents: prompt,
+        config: {
+          systemInstruction,
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            required: ["aiFeedback"],
+            properties: {
+              aiFeedback: { type: Type.STRING }
+            }
           }
         }
-      }
-    });
+      }),
+      5500,
+      "Tempo limite de 5.5s excedido no feedback fisiológico do selim."
+    );
 
     const resultText = response.text;
     if (!resultText) {
@@ -1086,46 +1115,50 @@ Planilha Semanal Atual: ${JSON.stringify(currentPlan || {})}
 Histórico Recente: ${JSON.stringify(messageHistory?.slice(-10) || [])}
 Última Mensagem do Atleta: "${message || ""}"`;
 
-    const response = await getAiClient().models.generateContent({
-      model: "gemini-3.5-flash",
-      contents: userBrief,
-      config: {
-        systemInstruction,
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          required: ["reply"],
-          properties: {
-            reply: { type: Type.STRING },
-            updatedPlan: {
-              type: Type.OBJECT,
-              properties: {
-                workouts: {
-                  type: Type.ARRAY,
-                  items: {
-                    type: Type.OBJECT,
-                    required: ["day", "type", "duration", "goal", "structure", "targetZone", "rpe", "tip"],
-                    properties: {
-                      day: { type: Type.STRING },
-                      type: { type: Type.STRING },
-                      duration: { type: Type.INTEGER },
-                      goal: { type: Type.STRING },
-                      structure: { type: Type.STRING },
-                      targetZone: { type: Type.STRING },
-                      rpe: { type: Type.INTEGER },
-                      tip: { type: Type.STRING }
+    const response = await withTimeout(
+      getAiClient().models.generateContent({
+        model: "gemini-3.5-flash",
+        contents: userBrief,
+        config: {
+          systemInstruction,
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            required: ["reply"],
+            properties: {
+              reply: { type: Type.STRING },
+              updatedPlan: {
+                type: Type.OBJECT,
+                properties: {
+                  workouts: {
+                    type: Type.ARRAY,
+                    items: {
+                      type: Type.OBJECT,
+                      required: ["day", "type", "duration", "goal", "structure", "targetZone", "rpe", "tip"],
+                      properties: {
+                        day: { type: Type.STRING },
+                        type: { type: Type.STRING },
+                        duration: { type: Type.INTEGER },
+                        goal: { type: Type.STRING },
+                        structure: { type: Type.STRING },
+                        targetZone: { type: Type.STRING },
+                        rpe: { type: Type.INTEGER },
+                        tip: { type: Type.STRING }
+                      }
                     }
-                  }
-                },
-                summary: { type: Type.STRING },
-                observations: { type: Type.STRING },
-                evaluation: { type: Type.STRING }
+                  },
+                  summary: { type: Type.STRING },
+                  observations: { type: Type.STRING },
+                  evaluation: { type: Type.STRING }
+                }
               }
             }
           }
         }
-      }
-    });
+      }),
+      5500,
+      "Tempo limite de 5.5s atingido no acompanhamento do Coach."
+    );
 
     const resultText = response.text;
     if (!resultText) {
