@@ -35,6 +35,7 @@ interface ChartDataPoint {
 export default function VolumeEvolutionChart({ profile, plan }: VolumeEvolutionChartProps) {
   const [viewType, setViewType] = useState<"time" | "sessions">("time");
   const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
+  const [hasCompletedWorkouts, setHasCompletedWorkouts] = useState(false);
 
   useEffect(() => {
     // 1. Calculate active week's details
@@ -59,11 +60,19 @@ export default function VolumeEvolutionChart({ profile, plan }: VolumeEvolutionC
     // Sort real history by weekNumber
     realHistory.sort((a, b) => (a.weekNumber || 1) - (b.weekNumber || 1));
 
+    // Determine if there is any actual completed workout in active plan or stored history
+    const hasAnyCompleted = activeCompletedSessions > 0 || realHistory.some(p => p.workouts?.some(w => w.completed));
+    setHasCompletedWorkouts(hasAnyCompleted);
+
     // Convert real history to chart data points
     const realPoints: ChartDataPoint[] = realHistory.map((p) => {
       const wNum = p.weekNumber || 1;
       const plannedMins = p.workouts?.reduce((sum, w) => sum + w.duration, 0) || 0;
-      const completedMins = p.workouts?.reduce((sum, w) => sum + (w.completed ? (w.actualDuration || w.duration) : 0), 0) || 0;
+      
+      // If there are no completed workouts, strictly zero everything
+      const completedMins = hasAnyCompleted 
+        ? (p.workouts?.reduce((sum, w) => sum + (w.completed ? (w.actualDuration || w.duration) : 0), 0) || 0)
+        : 0;
       
       const compHoursVal = Number((completedMins / 60).toFixed(1));
       const compHoursInt = Math.floor(completedMins / 60);
@@ -82,14 +91,14 @@ export default function VolumeEvolutionChart({ profile, plan }: VolumeEvolutionC
         hoursFormatted: `${compHoursInt}h${compMinsRem > 0 ? ` ${compMinsRem}m` : ""}`,
         plannedHoursFormatted: `${planHoursInt}h${planMinsRem > 0 ? ` ${planMinsRem}m` : ""}`,
         sessions: p.workouts?.filter(w => !isRestDay(w)).length || 0,
-        completedSessions: p.workouts?.filter(w => w.completed && !isRestDay(w)).length || 0,
+        completedSessions: hasAnyCompleted 
+          ? (p.workouts?.filter(w => w.completed && !isRestDay(w)).length || 0)
+          : 0,
         isReal: true,
       };
     });
 
     // 3. Create simulated historical points to populate a beautiful visual trend
-    // We construct 4 data points in total. If we have real history, we blend it.
-    // If not, we simulate realistic periodization weeks leading to the active week.
     const finalPoints: ChartDataPoint[] = [];
 
     if (realPoints.length > 0) {
@@ -99,9 +108,10 @@ export default function VolumeEvolutionChart({ profile, plan }: VolumeEvolutionC
       // Make sure active week isn't duplicated (if it's already in the saved history)
       const isAlreadyInHistory = realPoints.some(pt => pt.name.includes(`Semana ${activeWeekNum}`));
       if (!isAlreadyInHistory) {
-        const compHoursVal = Number((activeDurationCompletedMins / 60).toFixed(1));
-        const compHoursInt = Math.floor(activeDurationCompletedMins / 60);
-        const compMinsRem = activeDurationCompletedMins % 60;
+        const completedMins = hasAnyCompleted ? activeDurationCompletedMins : 0;
+        const compHoursVal = Number((completedMins / 60).toFixed(1));
+        const compHoursInt = Math.floor(completedMins / 60);
+        const compMinsRem = completedMins % 60;
 
         const planHoursVal = Number((activeDurationPlannedMins / 60).toFixed(1));
         const planHoursInt = Math.floor(activeDurationPlannedMins / 60);
@@ -109,20 +119,19 @@ export default function VolumeEvolutionChart({ profile, plan }: VolumeEvolutionC
 
         finalPoints.push({
           name: `Semana ${activeWeekNum} (Atual)`,
-          minutes: activeDurationCompletedMins,
+          minutes: completedMins,
           hours: compHoursVal,
           plannedMinutes: activeDurationPlannedMins,
           plannedHours: planHoursVal,
           hoursFormatted: `${compHoursInt}h${compMinsRem > 0 ? ` ${compMinsRem}m` : ""}`,
           plannedHoursFormatted: `${planHoursInt}h${planMinsRem > 0 ? ` ${planMinsRem}m` : ""}`,
           sessions: activeSessionsCount,
-          completedSessions: activeCompletedSessions,
+          completedSessions: hasAnyCompleted ? activeCompletedSessions : 0,
           isReal: true
         });
       }
     } else {
       // No real history yet. Build a beautiful progressive curve leading to current week.
-      // Represent standard microcycle periodization: Week -3 (Adaptation), Week -2 (Load), Week -1 (Peak), Active (Stabilization/Current)
       const weekLabels = [
         `Semana ${activeWeekNum > 3 ? activeWeekNum - 3 : 1} (Início)`,
         `Semana ${activeWeekNum > 2 ? activeWeekNum - 2 : 2} (Acúmulo)`,
@@ -142,14 +151,21 @@ export default function VolumeEvolutionChart({ profile, plan }: VolumeEvolutionC
         const factor = factors[i];
         const plannedMinutes = Math.round(baseDuration * factor);
         
-        let completedMinutes = plannedMinutes;
-        let completedSessions = Math.max(1, baseSessions + sessionsAdjuster[i]);
-        if (i === 3) {
-          completedMinutes = activeDurationCompletedMins;
-          completedSessions = activeCompletedSessions;
-        } else {
-          // Assume older weeks were fully completed for visual beauty
+        let completedMinutes = 0;
+        let completedSessions = 0;
+
+        if (hasAnyCompleted) {
+          // If they have completed some workouts elsewhere, we can keep the decorative simulated past curves
           completedMinutes = Math.round(plannedMinutes * 0.95);
+          completedSessions = Math.max(1, baseSessions + sessionsAdjuster[i]);
+          if (i === 3) {
+            completedMinutes = activeDurationCompletedMins;
+            completedSessions = activeCompletedSessions;
+          }
+        } else {
+          // STRICTLY ZEROED OUT since the athlete hasn't completed any pedals yet
+          completedMinutes = 0;
+          completedSessions = 0;
         }
 
         const compHoursVal = Number((completedMinutes / 60).toFixed(1));
@@ -170,7 +186,7 @@ export default function VolumeEvolutionChart({ profile, plan }: VolumeEvolutionC
           plannedHoursFormatted: `${planHoursInt}h${planMinsRem > 0 ? ` ${planMinsRem}m` : ""}`,
           sessions: Math.max(1, baseSessions + sessionsAdjuster[i]),
           completedSessions,
-          isReal: i === 3 // Only the 4th is currently the active real state
+          isReal: i === 3
         });
       }
     }
@@ -384,6 +400,21 @@ export default function VolumeEvolutionChart({ profile, plan }: VolumeEvolutionC
           </div>
         )}
       </div>
+
+      {/* Como Concluir uma Atividade (Only shown if no completed workouts exist) */}
+      {!hasCompletedWorkouts && (
+        <div id="no-completed-workouts-instruction" className="p-4 rounded-2xl bg-amber-50 border border-amber-200/65 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <h4 className="font-heading font-black text-slate-800 text-xs flex items-center gap-1.5 uppercase tracking-wider">
+              <span className="flex h-2 w-2 rounded-full bg-amber-500 animate-ping" />
+              Como Concluir uma Atividade e Ativar Seu Gráfico
+            </h4>
+            <p className="text-[11px] font-sans text-slate-650 leading-relaxed font-medium">
+              Você ainda não marcou nenhum treino como feito. Para iniciar todo o cálculo do seu gráfico de evolução real, vá até a seção de treinos diários acima, escolha um treino programado e clique no botão <span className="font-bold text-slate-905 underline">"Marcar como Concluído"</span>. Insira os dados reais de tempo pedalado e cansaço sugerido (RPE) para que o sistema comece a preencher e processar seu progresso semanal aqui!
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Interactive Legend / Footer explanation */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 border-t border-slate-50 text-xs font-sans">

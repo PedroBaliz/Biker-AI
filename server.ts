@@ -569,6 +569,24 @@ const fallbackGeneratePlan = (profile: any, nextWeekNum: number = 1): any => {
 
 const fallbackEvaluateWorkout = (workout: any, profile: any): any => {
   const durationText = workout.actualDuration ? `${workout.actualDuration} minutos` : `${workout.duration} minutos`;
+  
+  let stravaStatsText = "";
+  if (workout.actualDistance) {
+    stravaStatsText += `- **Distância Total:** ${workout.actualDistance} km\n`;
+  }
+  if (workout.actualAvgSpeed) {
+    stravaStatsText += `- **Velocidade Média:** ${workout.actualAvgSpeed} km/h\n`;
+  }
+  if (workout.actualElevation) {
+    stravaStatsText += `- **Ganho de Altimetria:** ${workout.actualElevation} m\n`;
+  }
+  if (workout.actualCalories) {
+    stravaStatsText += `- **Gasto Calórico Estimado:** ${workout.actualCalories} kcal\n`;
+  }
+  if (workout.actualStravaLink) {
+    stravaStatsText += `- **Link da Sessão:** [Ver atividade carregada no Strava](${workout.actualStravaLink})\n`;
+  }
+
   const feedbackMarkdown = `### Avaliação do Coach para o Treino do dia 🚴
 
 Parabéns pelo registro do seu treino, **atleta**! Ter constância é o pilar número um da evolução no ciclismo de alta performance. 
@@ -576,9 +594,7 @@ Parabéns pelo registro do seu treino, **atleta**! Ter constância é o pilar n�
 Analisando a sua atividade:
 - **Treino Prescrito:** ${workout.type} (${workout.targetZone}) planejado para ${workout.duration} min com esforço sugerido de ${workout.rpe}/10.
 - **Treino Realizado:** Finalizado em ${durationText} com sensação de esforço de ${workout.actualRpe || 5}/10.
-${workout.actualHr ? `- **Frequência Cardíaca Média:** ${workout.actualHr} bpm (Sua FCmax cadastrada é ${profile?.maxHeartRate || "não definida"} bpm).` : ""}
-${workout.actualPower ? `- **Potência Média:** ${workout.actualPower} Watts (Seu FTP cadastrado é ${profile?.ftp || "não definido"}W).` : ""}
-
+${workout.actualHr ? `- **Frequência Cardíaca Média:** ${workout.actualHr} bpm (Sua FCmax cadastrada é ${profile?.maxHeartRate || "não definida"} bpm).\n` : ""}${workout.actualPower ? `- **Potência Média:** ${workout.actualPower} Watts (Seu FTP cadastrado é ${profile?.ftp || "não definido"}W).\n` : ""}${stravaStatsText}
 **Análise Fisiológica das Sensações:**
 Sua percepção de esforço relatada (${workout.actualRpe || 5}/10) em relação à zona alvo **"${workout.targetZone}"** indica que o treino atingiu os estímulos hormonais e mitocondriais planejados. 
 
@@ -1026,9 +1042,11 @@ app.post("/api/evaluate-workout", async (req, res) => {
 
 Seu papel é analisar detalhadamente:
 1. O treino sugerido (Objetivo, Tipo, Duração planejada, Zona de Treino, Esforço Planejado).
-2. O treino efetivamente realizado (Duração real, Esforço sentido recebido de 1 a 10, Frequência Cardíaca média, Potência média em Watts e os comentários do atleta).
+2. O treino efetivamente realizado (Duração real, Esforço sentido recebido de 1 a 10, Frequência Cardíaca média, Potência média em Watts, Distância (km), Velocidade Média (km/h), Altimetria acumulada (m), Calorias gastas (kcal), link opcional do Strava e comentários do atleta).
 
 Diretrizes da sua Análise Científica e Conselhos de Ouro:
+- Analise de forma direta as métricas do GPS/Strava: distância percorrida, velocidade média e altimetria. Se houve muita subida (altimetria alta), comente sobre a demanda neuromuscular e de força (cadência e torque). Se a velocidade média foi alta para a zona alvo, valide se manteve a potência correta.
+- Relacione o gasto calórico (calorias) com dicas de reabastecimento de glicogênio (ex: carboidratos pós-treino recomendados).
 - Se foi um treino "Regenerativo/Folga" (Z1/Z2) e o atleta rodou com esforço maior do que o planejado ou com frequência cardíaca muito alta, explique amigavelmente sobre o erro de "treinar forte no dia fácil", o que gera estresse crônico desnecessário sem adaptação benéfica.
 - Se foi um treino "Forte/Limiar/Intervalos" (Z4/Z5) e o atleta manteve o foco, comemore muito! Diga o que acontece fisiologicamente no corpo dele (melhora do VO2Max, recrutamento de fibras do tipo II, aumento da complacência cardíaca).
 - Relacione os dados reais (Potência em relação ao FTP, e Frequência Cardíaca em relação à FCmax do usuário) caso esses dados tenham sido informados (FTP: ${profile?.ftp || 200}W, FCmax: ${profile?.maxHeartRate || 180} bpm).
@@ -1038,7 +1056,7 @@ REGRA CRÍTICA DE COMUNICAÇÃO: Nunca utilize a palavra "RPE" ou "Percepção S
 
 Sua resposta deve ser estruturada sob o formato JSON contendo uma única chave:
 {
-  "aiFeedback": "Sua avaliação completa escrita em parágrafos de Markdown bem estruturados e amigáveis, contendo elogios específicos, análises fisiológicas sobre os dados cadastrados, e conselhos práticos de recuperação."
+  "aiFeedback": "Sua avaliação completa escrita em parágrafos de Markdown bem estruturados e amigáveis, contendo elogios específicos, análises fisiológicas sobre as métricas do GPS/Strava cadastradas, e conselhos práticos de recuperação."
 }`;
 
     const prompt = `TREINO PRESCRITO:
@@ -1053,9 +1071,14 @@ TREINO REALIZADO PELO ATLETA:
 - Esforço Real Sentido: ${workout?.actualRpe || 5}/10
 - Frequência Cardíaca Média Registrada: ${workout?.actualHr ? `${workout.actualHr} bpm` : "Não informada"} (FCmax do perfil é ${profile?.maxHeartRate || "não cadastrada"} bpm)
 - Potência Média Registrada: ${workout?.actualPower ? `${workout.actualPower} Watts` : "Não informada"} (FTP do perfil é ${profile?.ftp || "não cadastrado"}W)
+- Distância Percorrida: ${workout?.actualDistance ? `${workout.actualDistance} km` : "Não informada"}
+- Velocidade Média: ${workout?.actualAvgSpeed ? `${workout.actualAvgSpeed} km/h` : "Não informada"}
+- Altimetria Acumulada (Subida): ${workout?.actualElevation ? `${workout.actualElevation} metros de ganho` : "Não informada"}
+- Gasto Calórico Estimado: ${workout?.actualCalories ? `${workout.actualCalories} kcal` : "Não informada"}
+- Link do Pedal no Strava: ${workout?.actualStravaLink || "Não fornecido"}
 - Notas / Observações do Atleta: "${workout?.athleteNotes || "Nenhum comentário preenchido pelo atleta."}"
 
-Faça uma avaliação amigável de coach de alto nível e retorne o resultado em JSON.`;
+Faça uma avaliação amigável de coach de alto nível, comentando detalhadamente sobre essa performance e as métricas do pedal, e retorne o resultado em JSON.`;
 
     const response = await withTimeout(
       getAiClient().models.generateContent({

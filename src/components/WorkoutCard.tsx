@@ -17,7 +17,8 @@ import {
   Zap, 
   BookOpen, 
   Smile,
-  ShieldAlert
+  ShieldAlert,
+  ExternalLink
 } from "lucide-react";
 import SmartHydrationTip from "./SmartHydrationTip";
 
@@ -100,6 +101,11 @@ export default function WorkoutCard({ workout, onUpdate, onDelete, profile, allW
   const [actualRpe, setActualRpe] = useState<number>(workout.actualRpe || workout.rpe || 5);
   const [actualHr, setActualHr] = useState<string>(workout.actualHr ? String(workout.actualHr) : "");
   const [actualPower, setActualPower] = useState<string>(workout.actualPower ? String(workout.actualPower) : "");
+  const [actualAvgSpeed, setActualAvgSpeed] = useState<string>(workout.actualAvgSpeed ? String(workout.actualAvgSpeed) : "");
+  const [actualDistance, setActualDistance] = useState<string>(workout.actualDistance ? String(workout.actualDistance) : "");
+  const [actualElevation, setActualElevation] = useState<string>(workout.actualElevation ? String(workout.actualElevation) : "");
+  const [actualCalories, setActualCalories] = useState<string>(workout.actualCalories ? String(workout.actualCalories) : "");
+  const [actualStravaLink, setActualStravaLink] = useState<string>(workout.actualStravaLink || "");
   const [athleteNotes, setAthleteNotes] = useState<string>(workout.athleteNotes || "");
   const [isEvaluating, setIsEvaluating] = useState(false);
 
@@ -172,6 +178,11 @@ export default function WorkoutCard({ workout, onUpdate, onDelete, profile, allW
       setActualRpe(workout.actualRpe || workout.rpe || 5);
       setActualHr(workout.actualHr ? String(workout.actualHr) : "");
       setActualPower(workout.actualPower ? String(workout.actualPower) : "");
+      setActualAvgSpeed(workout.actualAvgSpeed ? String(workout.actualAvgSpeed) : "");
+      setActualDistance(workout.actualDistance ? String(workout.actualDistance) : "");
+      setActualElevation(workout.actualElevation ? String(workout.actualElevation) : "");
+      setActualCalories(workout.actualCalories ? String(workout.actualCalories) : "");
+      setActualStravaLink(workout.actualStravaLink || "");
       setAthleteNotes(workout.athleteNotes || "");
       setIsCompleting(true);
     }
@@ -186,6 +197,11 @@ export default function WorkoutCard({ workout, onUpdate, onDelete, profile, allW
       actualRpe: Number(actualRpe) || workout.rpe || 5,
       actualHr: actualHr ? Number(actualHr) : undefined,
       actualPower: actualPower ? Number(actualPower) : undefined,
+      actualAvgSpeed: actualAvgSpeed ? Number(actualAvgSpeed) : undefined,
+      actualDistance: actualDistance ? Number(actualDistance) : undefined,
+      actualElevation: actualElevation ? Number(actualElevation) : undefined,
+      actualCalories: actualCalories ? Number(actualCalories) : undefined,
+      actualStravaLink: actualStravaLink.trim() || undefined,
       athleteNotes: athleteNotes.trim() || undefined,
     });
     setIsCompleting(false);
@@ -201,6 +217,11 @@ export default function WorkoutCard({ workout, onUpdate, onDelete, profile, allW
       actualRpe: Number(actualRpe) || workout.rpe || 5,
       actualHr: actualHr ? Number(actualHr) : undefined,
       actualPower: actualPower ? Number(actualPower) : undefined,
+      actualAvgSpeed: actualAvgSpeed ? Number(actualAvgSpeed) : undefined,
+      actualDistance: actualDistance ? Number(actualDistance) : undefined,
+      actualElevation: actualElevation ? Number(actualElevation) : undefined,
+      actualCalories: actualCalories ? Number(actualCalories) : undefined,
+      actualStravaLink: actualStravaLink.trim() || undefined,
       athleteNotes: athleteNotes.trim() || undefined,
     };
 
@@ -409,7 +430,7 @@ export default function WorkoutCard({ workout, onUpdate, onDelete, profile, allW
           <div className="flex justify-between items-center pb-2.5 border-b border-sky-100">
             <div className="flex items-center gap-1.5 text-sky-800">
               <Sparkles className="w-4 h-4 text-sky-500 animate-pulse" />
-              <span className="text-xs font-heading font-black uppercase tracking-wider">Finalizar Sessão: {workout.day}</span>
+              <span className="text-xs font-heading font-black uppercase tracking-wider">{workout.completed ? "Editar Log do Pedal" : "Finalizar Sessão"}: {workout.day}</span>
             </div>
             <span className="text-[10px] bg-sky-100 text-sky-700 font-mono font-bold px-2 py-0.5 rounded-md">LOG DE TREINO</span>
           </div>
@@ -480,6 +501,84 @@ export default function WorkoutCard({ workout, onUpdate, onDelete, profile, allW
             </div>
           </div>
 
+          {/* Strava / Ciclocomputador Telemetry */}
+          <div className="bg-slate-50 border border-slate-200/50 p-3.5 rounded-2xl space-y-3">
+            <div className="flex items-center gap-1">
+              <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">
+                Métricas do Pedal (Strava / GPS)
+              </span>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-2.5">
+              <div className="space-y-1">
+                <label className="block text-[9.5px] font-bold text-slate-500 uppercase tracking-wide">
+                  Distância (km)
+                </label>
+                <input 
+                  type="number" 
+                  step="0.01"
+                  placeholder="Ex: 42.5"
+                  value={actualDistance} 
+                  onChange={(e) => setActualDistance(e.target.value)}
+                  className="w-full bg-white border border-slate-200 focus:border-sky-500 rounded-xl px-2.5 py-1.5 text-xs text-slate-800 outline-hidden font-mono"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="block text-[9.5px] font-bold text-slate-500 uppercase tracking-wide">
+                  Velocidade Média (km/h)
+                </label>
+                <input 
+                  type="number" 
+                  step="0.1"
+                  placeholder="Ex: 28.5"
+                  value={actualAvgSpeed} 
+                  onChange={(e) => setActualAvgSpeed(e.target.value)}
+                  className="w-full bg-white border border-slate-200 focus:border-sky-500 rounded-xl px-2.5 py-1.5 text-xs text-slate-800 outline-hidden font-mono"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2.5">
+              <div className="space-y-1">
+                <label className="block text-[9.5px] font-bold text-slate-500 uppercase tracking-wide">
+                  Elevação / Altimetria (m)
+                </label>
+                <input 
+                  type="number" 
+                  placeholder="Ex: 450"
+                  value={actualElevation} 
+                  onChange={(e) => setActualElevation(e.target.value)}
+                  className="w-full bg-white border border-slate-200 focus:border-sky-500 rounded-xl px-2.5 py-1.5 text-xs text-slate-800 outline-hidden font-mono"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="block text-[9.5px] font-bold text-slate-500 uppercase tracking-wide">
+                  Calorias (kcal)
+                </label>
+                <input 
+                  type="number" 
+                  placeholder="Ex: 750"
+                  value={actualCalories} 
+                  onChange={(e) => setActualCalories(e.target.value)}
+                  className="w-full bg-white border border-slate-200 focus:border-sky-500 rounded-xl px-2.5 py-1.5 text-xs text-slate-800 outline-hidden font-mono"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1 pt-0.5">
+              <label className="block text-[9.5px] font-bold text-slate-500 uppercase tracking-wide">
+                Link do Pedal no Strava (Opcional)
+              </label>
+              <input 
+                type="url" 
+                placeholder="https://strava.com/activities/..."
+                value={actualStravaLink} 
+                onChange={(e) => setActualStravaLink(e.target.value)}
+                className="w-full bg-white border border-slate-200 focus:border-sky-500 rounded-xl px-2.5 py-1.5 text-xs text-slate-800 outline-hidden placeholder:text-slate-400 font-sans"
+              />
+            </div>
+          </div>
+
           <div className="space-y-1">
             <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wide flex items-center gap-1">
               <Smile className="w-3.5 h-3.5 text-slate-400" />
@@ -513,7 +612,7 @@ export default function WorkoutCard({ workout, onUpdate, onDelete, profile, allW
             ) : (
               <>
                 <Sparkles className="w-4 h-4 text-amber-400 fill-amber-400/20" />
-                <span>Salvar e Avaliar com Coach AI 🤖</span>
+                <span>{workout.completed ? "Atualizar e Reavaliar com Coach AI 🤖" : "Salvar e Avaliar com Coach AI 🤖"}</span>
               </>
             )}
           </button>
@@ -525,7 +624,7 @@ export default function WorkoutCard({ workout, onUpdate, onDelete, profile, allW
               onClick={handleSimpleSave}
               className="flex-1 bg-sky-105 hover:bg-sky-200 text-sky-800 border border-sky-100 py-2 px-3 rounded-xl text-xs font-bold transition-colors cursor-pointer font-sans disabled:opacity-50"
             >
-              Concluir sem Feedback IA
+              {workout.completed ? "Apenas Salvar Alterações" : "Concluir sem Feedback IA"}
             </button>
             <button
               type="button"
@@ -615,25 +714,126 @@ export default function WorkoutCard({ workout, onUpdate, onDelete, profile, allW
         </div>
 
         {/* Real Performance Metrics if completed */}
-        {workout.completed && (workout.actualHr || workout.actualPower) && (
-          <div className="bg-slate-50/70 border border-slate-100/80 rounded-2xl p-3 mb-4 grid grid-cols-2 gap-2 text-xs font-sans">
-            {workout.actualHr && (
-              <div className="flex items-center gap-2">
-                <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500/10" />
-                <div>
-                  <span className="text-[9px] text-slate-400 font-medium block leading-none uppercase">Batimentos Cardíacos</span>
-                  <span className="font-mono font-bold text-slate-700">{workout.actualHr} bpm (Nota cardíaca)</span>
+        {workout.completed && (
+          workout.actualHr || 
+          workout.actualPower || 
+          workout.actualDistance !== undefined || 
+          workout.actualAvgSpeed !== undefined || 
+          workout.actualElevation !== undefined || 
+          workout.actualCalories !== undefined ||
+          workout.actualStravaLink
+        ) && (
+          <div className="bg-slate-50 border border-slate-200/50 rounded-2xl p-3.5 mb-5 space-y-3">
+            <div className="flex justify-between items-center">
+              <span className="text-[9px] text-slate-400 font-extrabold uppercase tracking-wider block">Métricas de Realização (GPS / Strava)</span>
+              <button 
+                type="button"
+                onClick={() => {
+                  setActualDuration(workout.actualDuration || workout.duration);
+                  setActualRpe(workout.actualRpe || workout.rpe || 5);
+                  setActualHr(workout.actualHr ? String(workout.actualHr) : "");
+                  setActualPower(workout.actualPower ? String(workout.actualPower) : "");
+                  setActualAvgSpeed(workout.actualAvgSpeed ? String(workout.actualAvgSpeed) : "");
+                  setActualDistance(workout.actualDistance ? String(workout.actualDistance) : "");
+                  setActualElevation(workout.actualElevation ? String(workout.actualElevation) : "");
+                  setActualCalories(workout.actualCalories ? String(workout.actualCalories) : "");
+                  setActualStravaLink(workout.actualStravaLink || "");
+                  setAthleteNotes(workout.athleteNotes || "");
+                  setIsCompleting(true);
+                }}
+                className="text-[10px] text-sky-650 hover:text-sky-700 font-extrabold uppercase tracking-wider flex items-center gap-1 cursor-pointer transition-colors"
+                title="Editar métricas do Strava / Pedal"
+              >
+                <Edit2 className="w-3 h-3" />
+                <span>Editar</span>
+              </button>
+            </div>
+            <div className="grid grid-cols-2 gap-3 text-xs font-sans">
+              {workout.actualDistance !== undefined && workout.actualDistance !== null && workout.actualDistance !== 0 && (
+                <div className="flex items-center gap-2">
+                  <div className="bg-slate-100 p-1.5 rounded-lg text-slate-500">
+                    <Compass className="w-3.5 h-3.5" />
+                  </div>
+                  <div>
+                    <span className="text-[9px] text-slate-400 font-medium block leading-none uppercase">Distância</span>
+                    <span className="font-mono font-bold text-slate-805">{workout.actualDistance} km</span>
+                  </div>
                 </div>
-              </div>
-            )}
-            {workout.actualPower && (
-              <div className="flex items-center gap-2">
-                <Zap className="w-3.5 h-3.5 text-amber-500" />
-                <div>
-                  <span className="text-[9px] text-slate-400 font-medium block leading-none uppercase">Força nos Pedais (Média)</span>
-                  <span className="font-mono font-bold text-slate-700">{workout.actualPower} Watts (W)</span>
+              )}
+              {workout.actualAvgSpeed !== undefined && workout.actualAvgSpeed !== null && workout.actualAvgSpeed !== 0 && (
+                <div className="flex items-center gap-2">
+                  <div className="bg-slate-100 p-1.5 rounded-lg text-slate-500">
+                    <Bike className="w-3.5 h-3.5" />
+                  </div>
+                  <div>
+                    <span className="text-[9px] text-slate-400 font-medium block leading-none uppercase">Vel. Média</span>
+                    <span className="font-mono font-bold text-slate-805">{workout.actualAvgSpeed} km/h</span>
+                  </div>
                 </div>
-              </div>
+              )}
+              {workout.actualElevation !== undefined && workout.actualElevation !== null && workout.actualElevation !== 0 && (
+                <div className="flex items-center gap-2">
+                  <div className="bg-slate-100 p-1.5 rounded-lg text-slate-500">
+                    <Clock className="w-3.5 h-3.5" />
+                  </div>
+                  <div>
+                    <span className="text-[9px] text-slate-400 font-medium block leading-none uppercase">Evolução Altif.</span>
+                    <span className="font-mono font-bold text-slate-805">{workout.actualElevation} m</span>
+                  </div>
+                </div>
+              )}
+              {workout.actualCalories !== undefined && workout.actualCalories !== null && workout.actualCalories !== 0 && (
+                <div className="flex items-center gap-2">
+                  <div className="bg-slate-100 p-1.5 rounded-lg text-rose-500/80">
+                    <Flame className="w-3.5 h-3.5 fill-rose-500/10" />
+                  </div>
+                  <div>
+                    <span className="text-[9px] text-slate-400 font-medium block leading-none uppercase">Energia</span>
+                    <span className="font-mono font-bold text-slate-805">{workout.actualCalories} kcal</span>
+                  </div>
+                </div>
+              )}
+              {workout.actualHr && (
+                <div className="flex items-center gap-2">
+                  <div className="bg-slate-100 p-1.5 rounded-lg text-rose-500">
+                    <Heart className="w-3.5 h-3.5 fill-rose-500/10" />
+                  </div>
+                  <div>
+                    <span className="text-[9px] text-slate-400 font-medium block leading-none uppercase">Frequência Card.</span>
+                    <span className="font-mono font-bold text-slate-850">{workout.actualHr} bpm</span>
+                  </div>
+                </div>
+              )}
+              {workout.actualPower && (
+                <div className="flex items-center gap-2">
+                  <div className="bg-slate-100 p-1.5 rounded-lg text-amber-500">
+                    <Zap className="w-3.5 h-3.5" />
+                  </div>
+                  <div>
+                    <span className="text-[9px] text-slate-400 font-medium block leading-none uppercase">Potência Média</span>
+                    <span className="font-mono font-bold text-slate-850">{workout.actualPower} W</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {workout.actualStravaLink && (
+              <a 
+                href={workout.actualStravaLink.startsWith("http") ? workout.actualStravaLink : `https://${workout.actualStravaLink}`}
+                target="_blank"
+                referrerPolicy="no-referrer"
+                rel="noopener noreferrer"
+                className="mt-2 text-[10px] py-1.5 px-3 bg-[#FC6100]/10 hover:bg-[#FC6100]/15 text-[#FC6100] font-heading font-extrabold uppercase tracking-wider rounded-xl flex items-center justify-center gap-1.5 transition-all w-full border border-[#FC6100]/15 text-center cursor-pointer hover:shadow-3xs focus:outline-hidden"
+              >
+                <img 
+                  src="https://cdn-icons-png.flaticon.com/512/5968/5968817.png" 
+                  alt="Strava" 
+                  className="w-3.5 h-3.5 object-contain"
+                  referrerPolicy="no-referrer"
+                />
+                <span>Ver Atividade no Strava</span>
+                <ExternalLink className="w-3 h-3 text-[#FC6100]" />
+              </a>
             )}
           </div>
         )}
@@ -669,6 +869,17 @@ export default function WorkoutCard({ workout, onUpdate, onDelete, profile, allW
         {/* Smart Hydration Suggestion Component */}
         <div id={`hydration-advice-wrapper-${workout.day}`} className="mb-5">
           <SmartHydrationTip workout={workout} />
+        </div>
+
+        {/* Saúde em Primeiro Lugar Banner */}
+        <div id={`health-safety-wrapper-${workout.day}`} className="mb-5 p-3.5 rounded-2xl bg-rose-500/[0.03] border border-rose-500/10 flex items-start gap-3 shadow-2xs">
+          <Heart className="w-4 h-4 text-rose-500 fill-rose-500/10 shrink-0 mt-0.5" />
+          <div className="space-y-0.5">
+            <span className="text-[8.5px] font-extrabold text-rose-500 uppercase tracking-widest font-heading block">Saúde em Primeiro Lugar</span>
+            <p className="text-[10.5px] font-sans text-slate-600 leading-normal font-medium">
+              Lembre-se sempre: <span className="text-rose-600 font-extrabold">a sua saúde é o mais importante!</span> Caso sinta dores fora do comum, tonturas ou cansaço excessivo, interrompa o esforço imediatamente para se preservar.
+            </p>
+          </div>
         </div>
 
         {/* Notes observe if completed */}
@@ -738,6 +949,11 @@ export default function WorkoutCard({ workout, onUpdate, onDelete, profile, allW
               setActualRpe(workout.actualRpe || workout.rpe || 5);
               setActualHr(workout.actualHr ? String(workout.actualHr) : "");
               setActualPower(workout.actualPower ? String(workout.actualPower) : "");
+              setActualAvgSpeed(workout.actualAvgSpeed ? String(workout.actualAvgSpeed) : "");
+              setActualDistance(workout.actualDistance ? String(workout.actualDistance) : "");
+              setActualElevation(workout.actualElevation ? String(workout.actualElevation) : "");
+              setActualCalories(workout.actualCalories ? String(workout.actualCalories) : "");
+              setActualStravaLink(workout.actualStravaLink || "");
               setAthleteNotes(workout.athleteNotes || "");
               setIsCompleting(true);
             } else {

@@ -31,6 +31,11 @@ export interface Workout {
   athleteNotes?: string;
   aiFeedback?: string;
   completedDate?: string;
+  actualAvgSpeed?: number;
+  actualDistance?: number;
+  actualElevation?: number;
+  actualCalories?: number;
+  actualStravaLink?: string;
 }
 
 export interface TrainingPlan {

@@ -1,4 +1,7 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { jsPDF } from "jspdf";
+// @ts-ignore
+import cyclingActionImg from "./assets/images/cycling_action_1780860242304.png";
 import { UserProfile, ChatMessage, TrainingPlan, UserAccount, Workout, isRestDay } from "./types";
 import WorkoutCard from "./components/WorkoutCard";
 import ZoneCalculator from "./components/ZoneCalculator";
@@ -209,11 +212,17 @@ export default function App() {
   const [isGeneratingPlan, setIsGeneratingPlan] = useState(false);
 
   // Derived training metrics (excluding rest/off sessions from training counts)
-  const totalW = plan?.workouts?.filter(ws => !isRestDay(ws)).length || 0;
-  const completedW = plan?.workouts?.filter(ws => ws.completed && !isRestDay(ws)).length || 0;
-  const pctW = totalW > 0 ? Math.round((completedW / totalW) * 100) : 0;
+  const derivedMetrics = useMemo(() => {
+    const workouts = plan?.workouts || [];
+    const total = workouts.filter(ws => !isRestDay(ws)).length;
+    const completed = workouts.filter(ws => ws.completed && !isRestDay(ws)).length;
+    const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
+    return { totalW: total, completedW: completed, pctW: pct };
+  }, [plan?.workouts]);
 
-  const handleUpdateWorkout = (index: number, updatedWorkout: Workout) => {
+  const { totalW, completedW, pctW } = derivedMetrics;
+
+  const handleUpdateWorkout = useCallback((index: number, updatedWorkout: Workout) => {
     if (!plan) return;
     const updatedWorkouts = [...plan.workouts];
     updatedWorkouts[index] = updatedWorkout;
@@ -223,9 +232,9 @@ export default function App() {
     };
     setPlan(updatedPlan);
     localStorage.setItem("athlete_training_plan", JSON.stringify(updatedPlan));
-  };
+  }, [plan]);
 
-  const handleAddWorkout = () => {
+  const handleAddWorkout = useCallback(() => {
     if (!plan) return;
     const newWorkout: Workout = {
       day: "Sessão Extra",
@@ -244,9 +253,9 @@ export default function App() {
     };
     setPlan(updatedPlan);
     localStorage.setItem("athlete_training_plan", JSON.stringify(updatedPlan));
-  };
+  }, [plan]);
 
-  const handleDeleteWorkout = (index: number) => {
+  const handleDeleteWorkout = useCallback((index: number) => {
     if (!plan) return;
     if (!window.confirm("Deseja realmente remover este treino da sua planilha?")) return;
     const updatedWorkouts = plan.workouts.filter((_, i) => i !== index);
@@ -256,7 +265,254 @@ export default function App() {
     };
     setPlan(updatedPlan);
     localStorage.setItem("athlete_training_plan", JSON.stringify(updatedPlan));
-  };
+  }, [plan]);
+
+  const handleClearPendingExtras = useCallback(() => {
+    if (!plan) return;
+    const extraPendingCount = plan.workouts.filter(w => w.day === "Sessão Extra" && !w.completed).length;
+    if (extraPendingCount === 0) {
+      alert("Não há sessões extras pendentes para remover!");
+      return;
+    }
+    if (window.confirm(`Deseja realmente remover as ${extraPendingCount} sessões extras pendentes para limpar sua planilha?`)) {
+      const updatedWorkouts = plan.workouts.filter(w => !(w.day === "Sessão Extra" && !w.completed));
+      const updatedPlan = {
+        ...plan,
+        workouts: updatedWorkouts
+      };
+      setPlan(updatedPlan);
+      localStorage.setItem("athlete_training_plan", JSON.stringify(updatedPlan));
+    }
+  }, [plan]);
+
+  const handleExportPDF = useCallback(() => {
+    if (!plan) return;
+    
+    const doc = new jsPDF({
+      orientation: "portrait",
+      unit: "mm",
+      format: "a4"
+    });
+
+    const athleteName = profile.name || "Atleta";
+    const levelStr = profile.level ? profile.level.charAt(0).toUpperCase() + profile.level.slice(1) : "Não especificado";
+    const ftpStr = profile.ftp ? `${profile.ftp} W` : "Não configurado";
+    const weekNum = plan.weekNumber || 1;
+
+    // --- Elegant Color Scheme ---
+    const primaryColor = [15, 23, 42]; // Slate-900 / Deep charcoal
+    const secondaryColor = [101, 163, 13]; // Lime-600
+    const accentColor = [225, 29, 72]; // Rose-600 (Health accent)
+    const textColor = [51, 65, 85]; // Slate-700
+    const lightBg = [248, 250, 252]; // Slate-50
+    const borderSlate = [226, 232, 240]; // Slate-200
+
+    // Simple helpers for layout
+    let y = 15;
+    const margin = 15;
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const contentWidth = pageWidth - (margin * 2);
+
+    const checkPageBreak = (neededHeight: number) => {
+      if (y + neededHeight > 280) {
+        doc.addPage();
+        y = 15;
+        drawFooter();
+      }
+    };
+
+    const drawHeader = () => {
+      // Top bar design
+      doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+      doc.rect(0, 0, pageWidth, 25, "F");
+
+      doc.setTextColor(255, 255, 255);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(14);
+      doc.text("BIKER AI - SEU TREINADOR DE CICLISMO INTELIGENTE", margin, 11);
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8.5);
+      doc.setTextColor(190, 242, 100); // Light lime text
+      doc.text("PLANILHA DE TREINAMENTO INDIVIDUALIZADA & SEGURA", margin, 18);
+
+      y = 35;
+    };
+
+    const drawFooter = () => {
+      const pageCount = doc.internal.pages.length - 1;
+      doc.setFont("helvetica", "italic");
+      doc.setFontSize(8);
+      doc.setTextColor(148, 163, 184);
+      doc.text("Lembre-se sempre: sua saúde é o mais importante!", margin, 287);
+      doc.text(`Página ${pageCount}`, pageWidth - margin - 15, 287);
+    };
+
+    // Draw initial header
+    drawHeader();
+
+    // 1. Athlete Information Box
+    doc.setFillColor(lightBg[0], lightBg[1], lightBg[2]);
+    doc.setDrawColor(borderSlate[0], borderSlate[1], borderSlate[2]);
+    doc.roundedRect(margin, y, contentWidth, 24, 3, 3, "FD");
+
+    doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.text(`ATLETA: ${athleteName.toUpperCase()}`, margin + 5, y + 6);
+    doc.setFont("helvetica", "normal");
+    doc.text(`Nível: ${levelStr}`, margin + 5, y + 13);
+    doc.text(`FTP Estimado: ${ftpStr}`, margin + 5, y + 19);
+
+    doc.setFont("helvetica", "bold");
+    doc.text(`PLANILHA: SEMANA ${weekNum}`, margin + 110, y + 6);
+    doc.setFont("helvetica", "normal");
+    const todayStr = new Date().toLocaleDateString("pt-BR");
+    doc.text(`Data de Exportação: ${todayStr}`, margin + 110, y + 13);
+    doc.text(`Status: Saúde em Primeiro Lugar`, margin + 110, y + 19);
+
+    y += 32;
+
+    // 2. Health & Safety Banner
+    doc.setFillColor(255, 241, 242); // Rose-50 light background
+    doc.setDrawColor(accentColor[0], accentColor[1], accentColor[2]);
+    doc.setLineWidth(0.3);
+    doc.roundedRect(margin, y, contentWidth, 18, 2, 2, "FD");
+
+    doc.setTextColor(accentColor[0], accentColor[1], accentColor[2]);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.text("SAÚDE EM PRIMEIRO LUGAR", margin + 5, y + 6);
+
+    doc.setTextColor(textColor[0], textColor[1], textColor[2]);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    const safetyMsg = "Lembre-se: a sua saúde é o mais importante! Caso sinta dores fora do comum, tonturas ou cansaço excessivo, interrompa o esforço imediatamente para se preservar.";
+    const splitSafety = doc.splitTextToSize(safetyMsg, contentWidth - 10);
+    doc.text(splitSafety, margin + 5, y + 11);
+
+    y += 24;
+
+    // 3. General Coach Messages / Observations (if exists)
+    if (plan.coachMessage || plan.observations || plan.summary) {
+      checkPageBreak(35);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(11);
+      doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+      doc.text("Mensagem do Treinador", margin, y);
+      y += 5;
+
+      // Draw a line
+      doc.setDrawColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
+      doc.setLineWidth(0.5);
+      doc.line(margin, y, margin + 25, y);
+      y += 5;
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8.5);
+      doc.setTextColor(textColor[0], textColor[1], textColor[2]);
+      
+      const message = plan.coachMessage || plan.observations || plan.summary || "Bons treinos para esta semana! Mantenha a constância e respeite as zonas de intensidade.";
+      const splitMsg = doc.splitTextToSize(message, contentWidth);
+      doc.text(splitMsg, margin, y);
+      y += (splitMsg.length * 4) + 6;
+    }
+
+    // 4. Workout Sessions List
+    checkPageBreak(30);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+    doc.text("Programação de Atividades", margin, y);
+    y += 5;
+
+    // Draw secondary line
+    doc.setDrawColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
+    doc.setLineWidth(0.5);
+    doc.line(margin, y, margin + 25, y);
+    y += 7;
+
+    const listWorkouts = plan.workouts || [];
+
+    listWorkouts.forEach((workout) => {
+      // Calculate height needed for this workout record
+      const descLines = doc.splitTextToSize(`Estrutura: ${workout.structure || workout.goal || ""}`, contentWidth - 20);
+      const tipLines = workout.tip ? doc.splitTextToSize(`Dica: ${workout.tip}`, contentWidth - 20) : [];
+      const recordHeight = 22 + (descLines.length * 4) + (tipLines.length > 0 ? (tipLines.length * 4) + 2 : 0) + 4;
+
+      checkPageBreak(recordHeight);
+
+      // Card Container for Workout
+      doc.setFillColor(lightBg[0], lightBg[1], lightBg[2]);
+      doc.setDrawColor(borderSlate[0], borderSlate[1], borderSlate[2]);
+      doc.roundedRect(margin, y, contentWidth, recordHeight - 4, 2, 2, "FD");
+
+      // Set vertical pointer for inside the card content
+      let insideY = y + 6;
+
+      // Header of card (e.g. Segunda-Feira | Treino Regenerativo)
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9.5);
+      doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+      doc.text(`${workout.day.toUpperCase()} | ${workout.type}`, margin + 5, insideY);
+
+      // Duration badge / Zone Badge
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8.5);
+      doc.text(`Duração: ${workout.duration} min`, margin + 110, insideY);
+      doc.text(`Zona Alvo: ${workout.targetZone || "Livre"}`, margin + 145, insideY);
+
+      insideY += 6;
+
+      // Draw a thin separator inside card
+      doc.setDrawColor(241, 245, 249);
+      doc.line(margin + 4, insideY, margin + contentWidth - 4, insideY);
+      insideY += 5;
+
+      // Goal & Structure Text
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8);
+      doc.setTextColor(textColor[0], textColor[1], textColor[2]);
+      doc.text("Objetivo:", margin + 5, insideY);
+      doc.setFont("helvetica", "normal");
+      doc.text(workout.goal || "Desenvolvimento de fôlego e técnica.", margin + 18, insideY);
+      insideY += 5;
+
+      // Structure
+      doc.setFont("helvetica", "bold");
+      doc.text("Estrutura:", margin + 5, insideY);
+      doc.setFont("helvetica", "normal");
+      doc.text(descLines, margin + 18, insideY);
+      insideY += (descLines.length * 4) + 1;
+
+      // Extra Coach TIP if exists
+      if (workout.tip) {
+        insideY += 2;
+        doc.setFont("helvetica", "italic");
+        doc.setTextColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
+        doc.text(tipLines, margin + 5, insideY);
+        insideY += (tipLines.length * 4);
+      }
+
+      // Check if Completed to display a cute checked badge
+      if (workout.completed) {
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
+        doc.text("[ CONCLUÍDO ]", margin + 148, y + 11);
+      }
+
+      y += recordHeight;
+    });
+
+    // Draw footers on all pages
+    const totalPages = doc.internal.pages.length - 1;
+    for (let i = 1; i <= totalPages; i++) {
+      doc.setPage(i);
+      drawFooter();
+    }
+
+    doc.save(`Planilha_Ciclismo_Semana_${weekNum}_${athleteName.replace(/\s+/g, "_")}.pdf`);
+  }, [plan, profile]);
 
   // Weekly Evolution States
   const [isGeneratingNextWeek, setIsGeneratingNextWeek] = useState(false);
@@ -1299,7 +1555,7 @@ export default function App() {
                 <div className="bg-slate-900 text-white rounded-2xl border border-slate-800 shadow-xl overflow-hidden flex flex-col">
                   <div className="h-44 bg-slate-950 overflow-hidden relative">
                     <img 
-                      src="/src/assets/images/cycling_action_1780860242304.png" 
+                      src={cyclingActionImg} 
                       alt="Atleta em Movimento" 
                       className="w-full h-full object-cover opacity-85 hover:scale-105 transition-transform duration-700"
                       referrerPolicy="no-referrer"
@@ -1542,12 +1798,31 @@ export default function App() {
                                 </button>
                                 <button
                                   type="button"
+                                  style={{ display: 'none' }}
                                   onClick={handleAddWorkout}
                                   className="px-3.5 py-2 bg-slate-900 hover:bg-slate-850 text-white hover:text-lime-400 rounded-xl text-xs font-bold font-heading flex items-center gap-1.5 transition-all shadow-xs cursor-pointer focus:outline-hidden"
                                 >
                                   <PlusCircle className="w-3.5 h-3.5" />
                                   <span>Adicionar Treino</span>
                                 </button>
+                                <button
+                                  type="button"
+                                  onClick={handleExportPDF}
+                                  className="px-3.5 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-xl text-xs font-bold font-heading flex items-center gap-1.5 transition-all shadow-xs cursor-pointer focus:outline-hidden"
+                                >
+                                  <Download className="w-3.5 h-3.5" />
+                                  <span>Exportar PDF</span>
+                                </button>
+                                {false && (
+                                  <button
+                                    type="button"
+                                    onClick={handleClearPendingExtras}
+                                    className="px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 hover:text-rose-700 rounded-xl text-xs font-bold font-heading flex items-center gap-1.5 transition-colors cursor-pointer border border-rose-100"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                    <span></span>
+                                  </button>
+                                )}
                                 {completedW > 0 && (
                                   <button
                                     type="button"
