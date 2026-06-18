@@ -752,7 +752,7 @@ export default function AchievementsDashboard({ profile, plan }: AchievementsDas
           </div>
         )}
 
-      </div>
+      </motion.div>
 
     </div>
   );
