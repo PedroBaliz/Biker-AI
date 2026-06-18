@@ -1798,31 +1798,12 @@ export default function App() {
                                 </button>
                                 <button
                                   type="button"
-                                  style={{ display: 'none' }}
-                                  onClick={handleAddWorkout}
-                                  className="px-3.5 py-2 bg-slate-900 hover:bg-slate-850 text-white hover:text-lime-400 rounded-xl text-xs font-bold font-heading flex items-center gap-1.5 transition-all shadow-xs cursor-pointer focus:outline-hidden"
-                                >
-                                  <PlusCircle className="w-3.5 h-3.5" />
-                                  <span>Adicionar Treino</span>
-                                </button>
-                                <button
-                                  type="button"
                                   onClick={handleExportPDF}
                                   className="px-3.5 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-xl text-xs font-bold font-heading flex items-center gap-1.5 transition-all shadow-xs cursor-pointer focus:outline-hidden"
                                 >
                                   <Download className="w-3.5 h-3.5" />
                                   <span>Exportar PDF</span>
                                 </button>
-                                {false && (
-                                  <button
-                                    type="button"
-                                    onClick={handleClearPendingExtras}
-                                    className="px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 hover:text-rose-700 rounded-xl text-xs font-bold font-heading flex items-center gap-1.5 transition-colors cursor-pointer border border-rose-100"
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                    <span></span>
-                                  </button>
-                                )}
                                 {completedW > 0 && (
                                   <button
                                     type="button"

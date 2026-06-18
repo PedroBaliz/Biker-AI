@@ -1,5 +1,5 @@
 // Service Worker minimal for Biker AI PWA installability
-const CACHE_NAME = 'biker-ai-cache-v1';
+const CACHE_NAME = 'biker-ai-cache-v2';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -39,14 +39,22 @@ self.addEventListener('fetch', (event) => {
     return;
   }
   
+  // Network-First Strategy
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      if (cachedResponse) {
-        return cachedResponse;
-      }
-      return fetch(event.request).catch(() => {
-        // Offline fallback
-      });
-    })
+    fetch(event.request)
+      .then((response) => {
+        // If successful, open cache and save a clone for offline use
+        if (response.status === 200 && response.type === 'basic') {
+          const responseClone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseClone);
+          });
+        }
+        return response;
+      })
+      .catch(() => {
+        // If network fails (offline), fall back to cache
+        return caches.match(event.request);
+      })
   );
 });
