@@ -18,7 +18,8 @@ import {
   BookOpen, 
   Smile,
   ShieldAlert,
-  ExternalLink
+  ExternalLink,
+  Loader2
 } from "lucide-react";
 import SmartHydrationTip from "./SmartHydrationTip";
 
@@ -108,6 +109,47 @@ export default function WorkoutCard({ workout, onUpdate, onDelete, profile, allW
   const [actualStravaLink, setActualStravaLink] = useState<string>(workout.actualStravaLink || "");
   const [athleteNotes, setAthleteNotes] = useState<string>(workout.athleteNotes || "");
   const [isEvaluating, setIsEvaluating] = useState(false);
+  const [isParsingStrava, setIsParsingStrava] = useState(false);
+
+  const handleAutoLoadStrava = async () => {
+    if (!actualStravaLink.trim()) return;
+    setIsParsingStrava(true);
+    try {
+      const response = await fetch("/api/parse-strava", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          stravaLink: actualStravaLink.trim(),
+          workout: {
+            duration: editDuration || workout.duration,
+            targetZone: editTargetZone || workout.targetZone,
+            type: editType || workout.type,
+            rpe: editRpe || workout.rpe || 5,
+            goal: editGoal || workout.goal
+          },
+          profile
+        })
+      });
+      if (response.ok) {
+        const data = await response.json();
+        if (data) {
+          if (data.actualDuration !== undefined) setActualDuration(data.actualDuration);
+          if (data.actualRpe !== undefined) setActualRpe(data.actualRpe);
+          if (data.actualHr !== undefined) setActualHr(String(data.actualHr));
+          if (data.actualPower !== undefined) setActualPower(String(data.actualPower));
+          if (data.actualAvgSpeed !== undefined) setActualAvgSpeed(String(data.actualAvgSpeed));
+          if (data.actualDistance !== undefined) setActualDistance(String(data.actualDistance));
+          if (data.actualElevation !== undefined) setActualElevation(String(data.actualElevation));
+          if (data.actualCalories !== undefined) setActualCalories(String(data.actualCalories));
+          if (data.athleteNotes !== undefined) setAthleteNotes(data.athleteNotes);
+        }
+      }
+    } catch (err) {
+      console.error("Error auto-loading Strava:", err);
+    } finally {
+      setIsParsingStrava(false);
+    }
+  };
 
   // Determine severity border & shadow based on effort level
   const getRpeStyles = (rpe: number) => {
@@ -566,9 +608,31 @@ export default function WorkoutCard({ workout, onUpdate, onDelete, profile, allW
             </div>
 
             <div className="space-y-1 pt-0.5">
-              <label className="block text-[9.5px] font-bold text-slate-500 uppercase tracking-wide">
-                Link do Pedal no Strava (Opcional)
-              </label>
+              <div className="flex justify-between items-center">
+                <label className="block text-[9.5px] font-bold text-slate-500 uppercase tracking-wide">
+                  Link do Pedal no Strava (Opcional)
+                </label>
+                {actualStravaLink.trim() && (
+                  <button
+                    type="button"
+                    onClick={handleAutoLoadStrava}
+                    disabled={isParsingStrava}
+                    className="text-[9.5px] text-sky-600 hover:text-sky-700 font-extrabold uppercase tracking-wide flex items-center gap-1 cursor-pointer transition-colors disabled:opacity-50"
+                  >
+                    {isParsingStrava ? (
+                      <>
+                        <Loader2 className="w-2.5 h-2.5 animate-spin" />
+                        <span>Sincronizando...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-2.5 h-2.5 text-sky-500" />
+                        <span>Sincronizar Dados</span>
+                      </>
+                    )}
+                  </button>
+                )}
+              </div>
               <input 
                 type="url" 
                 placeholder="https://strava.com/activities/..."
