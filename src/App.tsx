@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { jsPDF } from "jspdf";
+import confetti from "canvas-confetti";
 // @ts-ignore
 import cyclingActionImg from "./assets/images/cycling_action_1780860242304.png";
 import { UserProfile, ChatMessage, TrainingPlan, UserAccount, Workout, isRestDay } from "./types";
@@ -7,11 +8,15 @@ import WorkoutCard from "./components/WorkoutCard";
 import ZoneCalculator from "./components/ZoneCalculator";
 import LoginScreen from "./components/LoginScreen";
 import AccountSettings from "./components/AccountSettings";
+import AdminSubscribersPanel from "./components/AdminSubscribersPanel";
+import SubscriptionWall from "./components/SubscriptionWall";
 import VolumeEvolutionChart from "./components/VolumeEvolutionChart";
 import WeeklyCalorieChart from "./components/WeeklyCalorieChart";
 import AchievementsDashboard from "./components/AchievementsDashboard";
 import { motion, AnimatePresence } from "motion/react";
 import { 
+  Users,
+  ShieldCheck,
   Dumbbell, 
   Bike,
   Sparkles, 
@@ -224,6 +229,9 @@ export default function App() {
 
   const handleUpdateWorkout = useCallback((index: number, updatedWorkout: Workout) => {
     if (!plan) return;
+    const previousWorkout = plan.workouts[index];
+    const isNowCompleted = updatedWorkout.completed && (!previousWorkout || !previousWorkout.completed);
+
     const updatedWorkouts = [...plan.workouts];
     updatedWorkouts[index] = updatedWorkout;
     const updatedPlan = {
@@ -232,6 +240,18 @@ export default function App() {
     };
     setPlan(updatedPlan);
     localStorage.setItem("athlete_training_plan", JSON.stringify(updatedPlan));
+
+    if (isNowCompleted) {
+      try {
+        confetti({
+          particleCount: 150,
+          spread: 80,
+          origin: { y: 0.6 }
+        });
+      } catch (err) {
+        console.error("Erro ao rodar animação de confetes:", err);
+      }
+    }
   }, [plan]);
 
   const handleAddWorkout = useCallback(() => {
@@ -609,6 +629,10 @@ export default function App() {
   const chatEndRef = useRef<HTMLDivElement>(null);
   const workoutsSectionRef = useRef<HTMLDivElement>(null);
   const [showAccountSettings, setShowAccountSettings] = useState(false);
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
+  const [showAdminPasswordPrompt, setShowAdminPasswordPrompt] = useState(false);
+  const [adminPasswordInput, setAdminPasswordInput] = useState("");
+  const [adminPasswordError, setAdminPasswordError] = useState("");
 
   // Background migration of legacy local-only accounts to the server on startup
   useEffect(() => {
@@ -674,10 +698,11 @@ export default function App() {
       try { usersMap = JSON.parse(savedUsers); } catch (e) { }
     }
     const emailKey = currentUser.email.toLowerCase();
+    const fallbackPassword = emailKey === "pedro.bramos@sempreceub.com" ? "Pedro23072007" : "123456";
     const existingEntry = usersMap[emailKey];
     usersMap[emailKey] = {
       ...updatedUser,
-      password: existingEntry?.password || currentUser.password || "123456" // fallbacks/preserves
+      password: existingEntry?.password || currentUser.password || fallbackPassword // fallbacks/preserves
     };
     localStorage.setItem("coach_users", JSON.stringify(usersMap));
 
@@ -689,7 +714,7 @@ export default function App() {
     ) {
       setCurrentUser({
         ...updatedUser,
-        password: existingEntry?.password || currentUser.password || "123456"
+        password: existingEntry?.password || currentUser.password || fallbackPassword
       });
     }
 
@@ -700,7 +725,7 @@ export default function App() {
       body: JSON.stringify({
         email: currentUser.email,
         userAccount: updatedUser,
-        password: existingEntry?.password || currentUser.password || "123456"
+        password: existingEntry?.password || currentUser.password || fallbackPassword
       })
     })
     .then(res => {
@@ -926,7 +951,8 @@ export default function App() {
     const newEmailKey = updatedUser.email.toLowerCase();
 
     // Preserve original password unless a new one is set
-    const passwordToStore = newPassword || usersMap[currentEmailKey]?.password || "123456";
+    const fallbackPassword = currentEmailKey === "pedro.bramos@sempreceub.com" ? "Pedro23072007" : "123455";
+    const passwordToStore = newPassword || usersMap[currentEmailKey]?.password || fallbackPassword;
 
     // Migrate registry if the login email address has changed
     if (currentEmailKey !== newEmailKey) {
@@ -937,8 +963,7 @@ export default function App() {
       email: updatedUser.email,
       password: passwordToStore,
       profile: {
-        ...profile,
-        name: updatedUser.profile.name
+        ...updatedUser.profile
       },
       chatHistory,
       plan
@@ -951,17 +976,34 @@ export default function App() {
       email: updatedUser.email,
       profile: updatedRegistryEntry.profile,
       chatHistory,
-      plan
+      plan,
+      password: passwordToStore
     };
 
     setCurrentUser(finalizedSessionUser);
     localStorage.setItem("current_coach_user", JSON.stringify(finalizedSessionUser));
     
     // Sync React state for imediate rendering
-    setProfile(prev => ({
-      ...prev,
-      name: updatedUser.profile.name
-    }));
+    setProfile(updatedUser.profile);
+
+    // Sync to backend immediately for instant server persistence
+    fetch("/api/auth/save-user", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: updatedUser.email,
+        userAccount: finalizedSessionUser,
+        password: passwordToStore
+      })
+    })
+    .then(res => {
+      if (!res.ok) {
+        console.warn("Aviso: Sincronização imediata falhou");
+      }
+    })
+    .catch((err) => {
+      console.warn("Aviso: Conexão offline ao sincronizar senha imediatamente:", err);
+    });
 
     return true;
   };
@@ -1079,7 +1121,23 @@ export default function App() {
             <div>
               <h1 className="font-heading font-black text-xs sm:text-lg tracking-wider flex items-center gap-1 sm:gap-2 uppercase">
                 BIKER <span className="text-lime-400">AI</span>
-                <span className="text-[8px] sm:text-[9px] font-mono tracking-widest uppercase bg-slate-800 text-lime-400 px-1.5 py-0.5 rounded-md border border-slate-700 font-bold shrink-0">TREINADOR</span>
+                <span 
+                  onClick={() => {
+                    if (currentUser) {
+                      if (showAdminPanel) {
+                        setShowAdminPanel(false);
+                      } else {
+                        setShowAdminPasswordPrompt(true);
+                        setAdminPasswordInput("");
+                        setAdminPasswordError("");
+                      }
+                      setShowAccountSettings(false);
+                    }
+                  }}
+                  className="text-[8px] sm:text-[9px] font-mono tracking-widest uppercase bg-slate-800 text-lime-400 px-1.5 py-0.5 rounded-md border border-slate-700 font-bold shrink-0 cursor-default select-none active:opacity-90 active:scale-95 transition-all"
+                >
+                  TREINADOR
+                </span>
               </h1>
               <p className="hidden md:block text-[9px] sm:text-[10px] text-slate-400 font-sans tracking-widest uppercase mt-0.5 font-semibold">Plataforma de Treino Inteligente de Ciclismo</p>
             </div>
@@ -1100,7 +1158,10 @@ export default function App() {
             )}
             {currentUser && (
               <button 
-                onClick={() => setShowAccountSettings(!showAccountSettings)}
+                onClick={() => {
+                  setShowAccountSettings(!showAccountSettings);
+                  setShowAdminPanel(false);
+                }}
                 className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-bold font-heading uppercase tracking-wider transition-all cursor-pointer ${
                   showAccountSettings 
                     ? "bg-lime-400 text-slate-950 border-lime-400 hover:bg-lime-350" 
@@ -1207,6 +1268,41 @@ export default function App() {
             currentUser={currentUser} 
             onUpdateAccount={handleUpdateAccount} 
             onClose={() => setShowAccountSettings(false)} 
+          />
+        </main>
+      ) : showAdminPanel ? (
+        <main className="flex-1 w-full mx-auto flex flex-col gap-8">
+          <AdminSubscribersPanel 
+            currentUserEmail={currentUser.email}
+            onClose={() => setShowAdminPanel(false)}
+            onRefreshCurrentProfile={(updatedProfile) => {
+              setProfile(updatedProfile);
+              if (currentUser) {
+                setCurrentUser({
+                  ...currentUser,
+                  profile: updatedProfile
+                });
+              }
+            }}
+          />
+        </main>
+      ) : (profile.subscriptionStatus === "expired" || profile.subscriptionStatus === "pending_payment") && profile.role !== "coach" ? (
+        <main className="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-6 lg:p-8 flex flex-col gap-8">
+          <SubscriptionWall 
+            userEmail={currentUser.email}
+            userName={profile.name || currentUser.profile.name || "Atleta"}
+            currentStatus={profile.subscriptionStatus}
+            onActivated={(updatedProfile) => {
+              setProfile(updatedProfile);
+              if (currentUser) {
+                const refreshed = {
+                  ...currentUser,
+                  profile: updatedProfile
+                };
+                setCurrentUser(refreshed);
+                localStorage.setItem("current_coach_user", JSON.stringify(refreshed));
+              }
+            }}
           />
         </main>
       ) : (
@@ -1640,7 +1736,7 @@ export default function App() {
                     }`}
                   >
                     <HelpCircle className="w-4 h-4" />
-                    <span>Falar com o Coach</span>
+                    <span>Falar com o Treinador</span>
                   </button>
                 </div>
               </div>
@@ -2535,6 +2631,90 @@ export default function App() {
               >
                 Entendi, fechar instrução
               </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Sleek Password Challenge for Coach Access */}
+      <AnimatePresence>
+        {showAdminPasswordPrompt && (
+          <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              className="bg-slate-900 border border-slate-805 rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-2xl relative"
+            >
+              <div className="text-center space-y-1.5">
+                <div className="w-10 h-10 bg-lime-400/10 text-lime-400 rounded-full flex items-center justify-center mx-auto border border-lime-400/20">
+                  <ShieldCheck className="w-5 h-5" />
+                </div>
+                <h3 className="text-sm uppercase font-black tracking-widest text-white font-heading">
+                  Acesso Reservado
+                </h3>
+                <p className="text-xs text-slate-400">
+                  Insira a Credencial do Treinador para abrir o painel administrativo.
+                </p>
+              </div>
+
+              <form 
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (adminPasswordInput === "Pedro23072007") {
+                    setShowAdminPanel(true);
+                    setShowAdminPasswordPrompt(false);
+                    setAdminPasswordInput("");
+                    setAdminPasswordError("");
+                  } else {
+                    setAdminPasswordError("Senha incorreta");
+                  }
+                }}
+                className="space-y-3"
+              >
+                <div className="space-y-1">
+                  <input
+                    type="password"
+                    placeholder="Chave de Acesso"
+                    autoFocus
+                    value={adminPasswordInput}
+                    onChange={(e) => {
+                      setAdminPasswordInput(e.target.value);
+                      if (adminPasswordError) setAdminPasswordError("");
+                    }}
+                    className={`w-full bg-slate-950 border text-center text-sm px-4 py-3 rounded-xl font-mono text-lime-400 placeholder:text-slate-600 outline-hidden transition-all ${
+                      adminPasswordError 
+                        ? "border-rose-500/50 focus:border-rose-500 shadow-[0_0_15px_rgba(239,68,68,0.1)]" 
+                        : "border-slate-800 focus:border-lime-500/50 focus:shadow-[0_0_15px_rgba(132,204,22,0.1)]"
+                    }`}
+                  />
+                  {adminPasswordError && (
+                    <span className="block text-[10px] text-center text-rose-450 font-bold uppercase tracking-wider font-sans mt-1">
+                      ⚠️ {adminPasswordError}
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex gap-2.5 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowAdminPasswordPrompt(false);
+                      setAdminPasswordInput("");
+                      setAdminPasswordError("");
+                    }}
+                    className="flex-1 py-2.5 bg-slate-850 hover:bg-slate-800 text-slate-300 font-bold rounded-xl text-[10px] sm:text-xs uppercase tracking-wider transition-all cursor-pointer"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 py-2.5 bg-lime-400 hover:bg-lime-350 text-slate-950 font-black rounded-xl text-[10px] sm:text-xs uppercase tracking-wider transition-all cursor-pointer shadow-md"
+                  >
+                    Confirmar
+                  </button>
+                </div>
+              </form>
             </motion.div>
           </div>
         )}

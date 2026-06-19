@@ -78,6 +78,50 @@ async function getDatabase(): Promise<Record<string, any>> {
 }
 
 // Local database saving helper
+const BACKUPS_DIR = process.env.VERCEL
+  ? path.join(os.tmpdir(), "db_backups")
+  : path.join(process.cwd(), "db_backups");
+
+async function triggerAutomaticBackup(db: Record<string, any>) {
+  try {
+    if (!fs.existsSync(BACKUPS_DIR)) {
+      fs.mkdirSync(BACKUPS_DIR, { recursive: true });
+    }
+
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+    const filename = `users_db_backup_${timestamp}.json`;
+    const backupPath = path.join(BACKUPS_DIR, filename);
+
+    fs.writeFileSync(backupPath, JSON.stringify(db, null, 2), "utf-8");
+    console.log(`[Backup Automático] Backup salvo com sucesso em: ${backupPath}`);
+
+    // Rotacionar backups (manter apenas os últimos 10)
+    const files = fs.readdirSync(BACKUPS_DIR)
+      .filter(f => f.startsWith("users_db_backup_") && f.endsWith(".json"))
+      .map(f => {
+        try {
+          return {
+            name: f,
+            time: fs.statSync(path.join(BACKUPS_DIR, f)).mtime.getTime()
+          };
+        } catch {
+          return { name: f, time: 0 };
+        }
+      })
+      .sort((a, b) => b.time - a.time); // Do mais novo para o mais antigo
+
+    if (files.length > 10) {
+      const oldFiles = files.slice(10);
+      for (const file of oldFiles) {
+        fs.unlinkSync(path.join(BACKUPS_DIR, file.name));
+        console.log(`[Backup Automático] Backup antigo deletado para economia de espaço: ${file.name}`);
+      }
+    }
+  } catch (err) {
+    console.error("[Backup Automático] ERRO ao criar backup automático:", err);
+  }
+}
+
 async function saveDatabase(db: Record<string, any>) {
   inMemoryDbCache = db;
 
@@ -85,6 +129,11 @@ async function saveDatabase(db: Record<string, any>) {
   try {
     fs.writeFileSync(USERS_DB_PATH, JSON.stringify(db, null, 2), "utf-8");
     console.log("[Banco Local] Banco de dados persistido localmente com sucesso.");
+    
+    // Dispara backup automático em plano de fundo sem travar a thread de resposta
+    triggerAutomaticBackup(db).catch(err => {
+      console.error("[Backup Automático] Falha na promessa de backup automático:", err);
+    });
   } catch (err) {
     console.error("FALHA ao salvar cache de banco de dados local:", err);
   }
@@ -111,6 +160,7 @@ app.post("/api/auth/register", async (req, res) => {
 
     const customWelcomeText = `Olá, ${name.trim()}! Que excelente ver você aqui na Biker AI. Eu sou o seu Treinador de Ciclismo pessoal.\n\nMinhas planilhas e conselhos são focados em melhorar o seu fôlego e resistência de forma simples e segura, ajustando seus treinos por potência, batimentos do coração ou pelas suas percepções de cansaço.\n\nPara começarmos a planejar sua evolução de forma personalizada, preciso te conhecer melhor através de algumas perguntas rápidas no nosso chat.\n\nComo você já se cadastrou, podemos iniciar o questionário agora mesmo. **Qual é o seu tempo médio pedalando ou seu nível atual no ciclismo?**`;
 
+    const isCoachEmail = email.trim().toLowerCase() === "pedro.bramos@sempreceub.com";
     const newProfile = {
       name: name.trim(),
       level: "",
@@ -124,7 +174,11 @@ app.post("/api/auth/register", async (req, res) => {
       maxHeartRate: null,
       limitations: "",
       recentActivity: "",
-      onboardingStep: 1
+      onboardingStep: 1,
+      subscriptionStatus: "active",
+      subscriptionPlan: "Bronze (Mensal)",
+      subscriptionExpiresAt: "2026-12-31",
+      role: isCoachEmail ? "coach" : "athlete"
     };
 
     const initialChat = [
@@ -174,6 +228,16 @@ app.post("/api/auth/login", async (req, res) => {
       return res.status(400).json({ error: "Senha incorreta. Verifique os dados e tente novamente." });
     }
 
+    // Ensure older users get default subscription parameters gracefully
+    if (user.profile) {
+      if (!user.profile.subscriptionStatus) user.profile.subscriptionStatus = "active";
+      if (!user.profile.subscriptionPlan) user.profile.subscriptionPlan = "Bronze (Mensal)";
+      if (!user.profile.subscriptionExpiresAt) user.profile.subscriptionExpiresAt = "2026-12-31";
+      if (!user.profile.role) {
+        user.profile.role = email.trim().toLowerCase() === "pedro.bramos@sempreceub.com" ? "coach" : "athlete";
+      }
+    }
+
     res.json({ success: true, user });
   } catch (error: any) {
     console.error("Error in server login:", error);
@@ -193,7 +257,8 @@ app.post("/api/auth/save-user", async (req, res) => {
     const emailKey = email.trim().toLowerCase();
     
     // Maintain password
-    const preservedPassword = password || db[emailKey]?.password || "123456";
+    const fallbackPassword = emailKey === "pedro.bramos@sempreceub.com" ? "Pedro23072007" : "123456";
+    const preservedPassword = password || db[emailKey]?.password || fallbackPassword;
 
     db[emailKey] = {
       ...userAccount,
@@ -1356,6 +1421,323 @@ Histórico Recente: ${JSON.stringify(messageHistory?.slice(-10) || [])}
     res.json(data);
   }
 });
+
+// -------------------------------------------------------------
+// COACH/ADMIN DASHBOARD ENDPOINTS
+// -------------------------------------------------------------
+
+// Fetch all registered users in the database
+app.get("/api/admin/users", async (req, res) => {
+  try {
+    const db = await getDatabase();
+    // Return all users metadata (omitting passwords)
+    const userList = Object.keys(db).map((key) => {
+      const user = db[key];
+      const isCoach = user.email?.trim().toLowerCase() === "pedro.bramos@sempreceub.com";
+      return {
+        email: user.email,
+        profile: {
+          ...user.profile,
+          subscriptionStatus: user.profile?.subscriptionStatus || "active",
+          subscriptionPlan: user.profile?.subscriptionPlan || "Bronze (Mensal)",
+          subscriptionExpiresAt: user.profile?.subscriptionExpiresAt || "2026-12-31",
+          role: user.profile?.role || (isCoach ? "coach" : "athlete")
+        },
+        chatHistoryCount: user.chatHistory?.length || 0,
+        hasPlan: !!user.plan,
+        planSummary: user.plan?.summary || ""
+      };
+    });
+    res.json({ success: true, users: userList });
+  } catch (error: any) {
+    console.error("Error fetching admin users:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update profile status / subscription details of a user
+app.post("/api/admin/update-user-status", async (req, res) => {
+  try {
+    const { email, subscriptionStatus, subscriptionPlan, subscriptionExpiresAt, role, ftp, maxHeartRate } = req.body;
+    if (!email) {
+      return res.status(400).json({ error: "E-mail do usuário é obrigatório." });
+    }
+
+    const db = await getDatabase();
+    const emailKey = email.trim().toLowerCase();
+    const user = db[emailKey];
+
+    if (!user) {
+      return res.status(404).json({ error: "Usuário não encontrado." });
+    }
+
+    // Update profile fields
+    user.profile = {
+      ...user.profile,
+      subscriptionStatus: subscriptionStatus || user.profile.subscriptionStatus || "active",
+      subscriptionPlan: subscriptionPlan || user.profile.subscriptionPlan || "Bronze (Mensal)",
+      subscriptionExpiresAt: subscriptionExpiresAt || user.profile.subscriptionExpiresAt || "2026-12-31",
+      role: role || user.profile.role || "athlete"
+    };
+
+    if (ftp !== undefined) {
+      user.profile.ftp = ftp ? Number(ftp) : null;
+    }
+    if (maxHeartRate !== undefined) {
+      user.profile.maxHeartRate = maxHeartRate ? Number(maxHeartRate) : null;
+    }
+
+    db[emailKey] = user;
+    await saveDatabase(db);
+
+    res.json({ success: true, user });
+  } catch (error: any) {
+    console.error("Error updating user status in server:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// GET automated backups list
+app.get("/api/admin/backups", async (req, res) => {
+  try {
+    if (!fs.existsSync(BACKUPS_DIR)) {
+      fs.mkdirSync(BACKUPS_DIR, { recursive: true });
+    }
+
+    const files = fs.readdirSync(BACKUPS_DIR)
+      .filter(f => f.startsWith("users_db_backup_") && f.endsWith(".json"))
+      .map(f => {
+        try {
+          const fullPath = path.join(BACKUPS_DIR, f);
+          const stats = fs.statSync(fullPath);
+          return {
+            filename: f,
+            sizeBytes: stats.size,
+            createdAt: stats.mtime.toISOString(),
+          };
+        } catch {
+          return {
+            filename: f,
+            sizeBytes: 0,
+            createdAt: new Date().toISOString()
+          };
+        }
+      })
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt)); // Mais recentes primeiro
+
+    // Informações do banco de dados principal
+    let mainDbStats = { sizeBytes: 0, lastModified: new Date().toISOString() };
+    if (fs.existsSync(USERS_DB_PATH)) {
+      try {
+        const mStats = fs.statSync(USERS_DB_PATH);
+        mainDbStats = {
+          sizeBytes: mStats.size,
+          lastModified: mStats.mtime.toISOString()
+        };
+      } catch (err: any) {
+        console.warn("Falha ao ler status do db principal:", err.message);
+      }
+    }
+
+    res.json({ success: true, backups: files, mainDatabase: mainDbStats });
+  } catch (err: any) {
+    console.error("Erro listando backups:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Force create manual/instant backup
+app.post("/api/admin/backups/create", async (req, res) => {
+  try {
+    const db = await getDatabase();
+    await triggerAutomaticBackup(db);
+    res.json({ success: true, message: "Backup manual instantâneo criado com sucesso!" });
+  } catch (err: any) {
+    console.error("Erro ao criar backup manual:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Restore backup from specific filename
+app.post("/api/admin/backups/restore", async (req, res) => {
+  try {
+    const { filename } = req.body;
+    if (!filename) {
+      return res.status(400).json({ error: "Nome de arquivo do backup é obrigatório para o restauro." });
+    }
+
+    const targetPath = path.join(BACKUPS_DIR, filename);
+    if (!fs.existsSync(targetPath)) {
+      return res.status(404).json({ error: "Arquivo de backup não encontrado." });
+    }
+
+    // Cria um backup extra de segurança do estado atual antes do restore
+    const currentDb = await getDatabase();
+    console.log("[Backup Automático] Criando backup de segurança atual antes de restaurar...");
+    await triggerAutomaticBackup(currentDb);
+
+    // Lê o conteúdo do backup e atualiza o estado
+    const backupContent = fs.readFileSync(targetPath, "utf-8");
+    const restoredDb = JSON.parse(backupContent);
+
+    // Atualiza o cache e reescreve o arquivo JSON principal de usuários
+    inMemoryDbCache = restoredDb;
+    fs.writeFileSync(USERS_DB_PATH, JSON.stringify(restoredDb, null, 2), "utf-8");
+
+    console.log(`[Backup Automático] Banco de dados restaurado com sucesso para a versão: ${filename}`);
+    res.json({ success: true, message: `Banco de dados restaurado com sucesso para a versão: ${filename}` });
+  } catch (err: any) {
+    console.error("Erro no restauro do backup:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// -------------------------------------------------------------
+// MERCADO PAGO GATEWAY INTEGRATION ENDPOINTS
+// -------------------------------------------------------------
+
+app.get("/api/mercadopago/config", (req, res) => {
+  const isReal = !!(process.env.MERCADO_PAGO_ACCESS_TOKEN || process.env.MERCADO_PAGO_CLIENT_SECRET);
+  res.json({
+    success: true,
+    isReal,
+    publicKey: process.env.MERCADO_PAGO_PUBLIC_KEY || "TEST-PublicKey-Simulado",
+    sandbox_mode: true
+  });
+});
+
+app.post("/api/mercadopago/create-preference", async (req, res) => {
+  try {
+    const { email } = req.body;
+    const payerEmail = email || "usuario@cyclecoach.ai";
+    const accessToken = process.env.MERCADO_PAGO_ACCESS_TOKEN;
+
+    if (!accessToken) {
+      console.log("[Mercado Pago] Nenhuma credencial oficial no server. Usando container de simulação integrada.");
+      return res.json({
+        success: true,
+        isSimulated: true,
+        init_point: "#simular-checkout",
+        sandbox_init_point: "#simular-checkout",
+        preferenceId: "simulated-pref-id-123456"
+      });
+    }
+
+    const host = req.get("host") || "localhost:3000";
+    // If running in development frame or secure dev URL, determine active protocol
+    const protocol = req.secure || req.headers["x-forwarded-proto"] === "https" ? "https" : "http";
+    const baseUrl = `${protocol}://${host}`;
+
+    const mpResponse = await fetch("https://api.mercadopago.com/checkout/preferences", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${accessToken}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        items: [
+          {
+            id: "premium-monthly",
+            title: "Assinatura Mensal Premium - CycleCoach AI",
+            quantity: 1,
+            unit_price: 29.90,
+            currency_id: "BRL"
+          }
+        ],
+        payer: {
+          email: payerEmail
+        },
+        back_urls: {
+          success: `${baseUrl}/?status=success&payment_method=mercadopago`,
+          failure: `${baseUrl}/?status=failure`,
+          pending: `${baseUrl}/?status=pending`
+        },
+        auto_return: "all"
+      })
+    });
+
+    if (!mpResponse.ok) {
+      const errorData = await mpResponse.json();
+      console.error("[Mercado Pago Error] Falha ao criar preferência:", errorData);
+      throw new Error(errorData.message || "Erro retornado pela API oficial do Mercado Pago.");
+    }
+
+    const mpData = await mpResponse.json();
+    res.json({
+      success: true,
+      isSimulated: false,
+      init_point: mpData.init_point,
+      sandbox_init_point: mpData.sandbox_init_point,
+      preferenceId: mpData.id
+    });
+  } catch (error: any) {
+    console.error("Erro ao processar criação de preferência Mercado Pago:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post("/api/mercadopago/create-pix", async (req, res) => {
+  try {
+    const { email } = req.body;
+    const payerEmail = email || "usuario@cyclecoach.ai";
+    const accessToken = process.env.MERCADO_PAGO_ACCESS_TOKEN;
+
+    if (!accessToken) {
+      console.log("[Mercado Pago PIX] Nenhuma credencial oficial no server. Usando container de simulação integrada.");
+      return res.json({
+        success: true,
+        isSimulated: true,
+        qr_code: "00020101021226870014BR.GOV.BCB.PIX2565bikerai-mp-mercadopago-pedrobramos-29.90-6009SAOPAULO62070503MVP",
+        qr_code_base64: ""
+      });
+    }
+
+    const uuidRaw = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    const idempotencyKey = `pix-charge-${Date.now()}-${uuidRaw.substring(0, 8)}`;
+
+    const responseMP = await fetch("https://api.mercadopago.com/v1/payments", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+        "X-Idempotency-Key": idempotencyKey
+      },
+      body: JSON.stringify({
+        transaction_amount: 29.90,
+        description: "Assinatura CycleCoach AI Premium",
+        payment_method_id: "pix",
+        payer: {
+          email: payerEmail,
+          first_name: "Atleta",
+          last_name: "CycleCoach"
+        }
+      })
+    });
+
+    if (!responseMP.ok) {
+      const errorData = await responseMP.json();
+      console.error("[Mercado Pago Error] Falha ao criar pagamento PIX:", errorData);
+      throw new Error(errorData.message || JSON.stringify(errorData));
+    }
+
+    const mpData = await responseMP.json();
+    const qrCode = mpData.point_of_interaction?.transaction_data?.qr_code;
+    const qrCodeBase64 = mpData.point_of_interaction?.transaction_data?.qr_code_base64;
+
+    res.json({
+      success: true,
+      isSimulated: false,
+      paymentId: mpData.id,
+      qr_code: qrCode,
+      qr_code_base64: qrCodeBase64,
+      status: mpData.status
+    });
+  } catch (error: any) {
+    console.error("Erro ao gerar Pix integrado no Mercado Pago:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 
 // Serve frontend assets and start listening
 async function bootstrap() {

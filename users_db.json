@@ -1,0 +1,367 @@
+{
+  "pedro.bramos@sempreceub.com": {
+    "email": "pedro.bramos@sempreceub.com",
+    "profile": {
+      "name": "Pedro Baliza",
+      "level": "iniciante",
+      "goal": "melhorar condicionamento",
+      "daysPerWeek": 4,
+      "durationPerSession": 60,
+      "eventDate": "",
+      "hasPowerMeter": null,
+      "ftp": null,
+      "hasHeartRate": null,
+      "maxHeartRate": null,
+      "limitations": "",
+      "recentActivity": "",
+      "onboardingStep": 10,
+      "subscriptionStatus": "active",
+      "subscriptionPlan": "Bronze (Mensal)",
+      "subscriptionExpiresAt": "2026-12-31",
+      "role": "coach"
+    },
+    "chatHistory": [
+      {
+        "id": "welcome-registered",
+        "sender": "treinador",
+        "text": "Olá, Pedro Baliza! Que excelente ver você aqui na CycleCoach AI. Eu sou o seu Treinador de Ciclismo especialista em fisiologia.\n\nMinhas planilhas e conselhos são baseados na mais pura ciência do esporte, controlando sua carga por potência, frequência cardíaca ou percepção de esforço.\n\nPara começarmos a planejar sua evolução de forma segura e personalizada, preciso te conhecer melhor através de 10 perguntas rápidas no nosso chat.\n\nComo você já se cadastrou, podemos iniciar o questionário agora mesmo. **Qual é o seu tempo médio pedalando ou seu nível atual no ciclismo?**",
+        "timestamp": "16:00"
+      },
+      {
+        "id": "gen-1780871497129",
+        "sender": "treinador",
+        "text": "✨ **Planilha Semanal Gerada com Sucesso!**\n\nCarlos, montei uma periodização estratégica baseada no seu nível (**iniciante**) e seu objetivo de **melhorar condicionamento**. Confira a aba de planilha para ver os passos e dicas de cada dia! Let's ride! 🚴‍♂️💨",
+        "timestamp": "19:31"
+      },
+      {
+        "id": "msg-1780871818438",
+        "sender": "atleta",
+        "text": "como render mais na subida",
+        "timestamp": "19:36"
+      },
+      {
+        "id": "msg-1780871830071",
+        "sender": "treinador",
+        "text": "Olá, Pedro! Subir com eficiência é um dos maiores e mais recompensadores desafios do ciclismo. Para quem está no início, a subida pode parecer um monstro, mas com a técnica e a fisiologia certas, você vai dominar qualquer aclive. Vamos decifrar isso de forma simples e científica:\n\n### 1. A Fisiologia da Subida: Músculos vs. Coração\nQuando a estrada inclina, a gravidade age diretamente contra nós. Nesse momento, temos dois caminhos fisiológicos para gerar energia:\n* **Força Bruta (Baixa Cadência / Marcha Pesada):** Se você tenta subir usando marchas pesadas (\"esmagando\" os pedais abaixo de 60 RPM), você recruta predominantemente as **fibras musculares do Tipo II (rápidas/glicolíticas)**. Elas têm muita força, mas esgotam o estoque de glicogênio (energia química) rapidamente e geram muito lactato, fazendo suas pernas \"queimarem\" em poucos minutos.\n* **Giro Eficiente (Alta Cadência / Marcha Leve):** Se você coloca uma marcha bem leve e mantém o giro entre **75 e 85 RPM**, você transfere a maior parte do estresse físico para o seu **sistema cardiovascular (fibras do Tipo I, aeróbicas)**. Essas fibras são alimentadas por oxigênio e gordura, sendo virtualmente infatigáveis. O seu coração vai bater mais rápido? Sim! Mas suas pernas serão poupadas e você conseguirá subir por muito mais tempo.\n\n### 2. Dicas Práticas para Render Mais nas Subidas\n* **Pacing (Ritmo) Inteligente:** O maior erro dos iniciantes é começar a subida com tudo e quebrar no meio. Use a sua **Percepção de Esforço (RPE)**. Comece a subida em um ritmo moderado (RPE 5 ou 6). Se guardar energia, acelere apenas no final.\n* **Fique Sentado o Máximo Possível:** Pedalar em pé aumenta o consumo de oxigênio em até 10% devido ao peso do corpo que precisa ser sustentado. Prefira subir sentado, deslizando o quadril ligeiramente para trás no selim para alavancar melhor os glúteos.\n* **Relaxe a Parte Superior:** Segure levemente no topo do guidão. Mantenha os ombros relaxados e os cotovelos flexionados. Isso abre a sua caixa torácica, facilitando a respiração e a oxigenação dos músculos.\n\nNo seu plano atual, os treinos de **quinta-feira (giro e cadência)** e de **sábado (base aeróbica)** são exatamente as fundações de que você precisa para construir o motor e a coordenação motora para vencer as subidas com facilidade! Foco no processo! 🚀🏔️",
+        "timestamp": "19:37"
+      }
+    ],
+    "plan": {
+      "workouts": [
+        {
+          "day": "Segunda-feira",
+          "type": "Folga",
+          "duration": 0,
+          "goal": "Recuperação total e adaptação muscular para o início da semana",
+          "structure": "Descanso completo. Sem atividades físicas estruturadas na bicicleta.",
+          "targetZone": "N/A (Repouso)",
+          "rpe": 1,
+          "tip": "Aproveite para realizar alongamentos leves e focar na hidratação adequada ao longo do dia."
+        },
+        {
+          "day": "Terça-feira",
+          "type": "Desenvolvimento Aeróbico",
+          "duration": 45,
+          "goal": "Desenvolver a base aeróbica e o controle básico de ritmo",
+          "structure": "10min de aquecimento leve (RPE 2) + 25min em ritmo constante e confortável (RPE 3 a 4, cadência em torno de 85 RPM) + 10min de volta à calma (RPE 2)",
+          "targetZone": "RPE 3-4 (Ritmo Leve/Moderado)",
+          "rpe": 3,
+          "tip": "Foque em manter uma pedalada redonda e fluida. O esforço deve ser confortável, sem pressa."
+        },
+        {
+          "day": "Quarta-feira",
+          "type": "Folga",
+          "duration": 0,
+          "goal": "Permitir supercompensação e adaptação dos tendões e articulações",
+          "structure": "Descanso completo.",
+          "targetZone": "N/A (Repouso)",
+          "rpe": 1,
+          "tip": "O descanso é onde o seu corpo se reconstrói e melhora o condicionamento. Respeite essa pausa."
+        },
+        {
+          "day": "Quinta-feira",
+          "type": "Treino de Cadência e Ritmo",
+          "duration": 50,
+          "goal": "Melhorar a eficiência neuromuscular e a coordenação motora na pedalada",
+          "structure": "10min de aquecimento (RPE 2-3) + 3 séries de [5min em cadência ligeiramente mais alta que o normal ~90-95 RPM (RPE 4) com 3min de recuperação ativa confortável (RPE 2)] + 16min de volta à calma (RPE 2)",
+          "targetZone": "RPE 3-4 (Trabalho de Giro)",
+          "rpe": 4,
+          "tip": "Se perceber que está quicando no selim durante os giros rápidos, reduza um pouco o ritmo até estabilizar o quadril."
+        },
+        {
+          "day": "Sexta-feira",
+          "type": "Folga",
+          "duration": 0,
+          "goal": "Recuperação muscular e preparação física para o fim de semana",
+          "structure": "Descanso completo.",
+          "targetZone": "N/A (Repouso)",
+          "rpe": 1,
+          "tip": "Faça uma refeição saudável e prepare o equipamento e roupas de ciclismo na noite anterior."
+        },
+        {
+          "day": "Sábado",
+          "type": "Endurance de Base",
+          "duration": 60,
+          "goal": "Aumentar a resistência cardiovascular geral e acostumar o corpo ao tempo de selim",
+          "structure": "10min de aquecimento progressivo + 40min em ritmo constante de endurance conversacional (RPE 3, respirando confortavelmente pelo nariz) + 10min de volta à calma",
+          "targetZone": "RPE 3 (Endurance Suave)",
+          "rpe": 3,
+          "tip": "Use a regra do teste da fala: você deve conseguir conversar em frases completas sem perder o fôlego."
+        },
+        {
+          "day": "Domingo",
+          "type": "Fartlek Suave (Variações)",
+          "duration": 45,
+          "goal": "Estimular o condicionamento com pequenas e controladas variações de ritmo",
+          "structure": "10min de aquecimento + 4 séries de [2min com esforço um pouco mais firme (RPE 5) + 3min de recuperação bem leve (RPE 2)] + 15min de pedalada constante leve (RPE 3)",
+          "targetZone": "RPE 3-5 (Variação de Ritmo)",
+          "rpe": 4,
+          "tip": "Nos 2 minutos firmes, o seu fôlego deve acelerar um pouco, mas não a ponto de queimar as pernas ou causar exaustão."
+        },
+        {
+          "day": "Sessão Extra",
+          "type": "Treino Personalizado",
+          "duration": 60,
+          "goal": "Foco livre do ciclista para ganho de fôlego, resistência ou recuperação ativa.",
+          "structure": "Pedal contínuo em ritmo confortável e prazeroso.",
+          "targetZone": "Z2 - Endurance",
+          "rpe": 3,
+          "tip": "Este é um treino extra! Mantenha uma cadência confortável e beba bastante água.",
+          "completed": false
+        },
+        {
+          "day": "Sessão Extra",
+          "type": "Treino Personalizado",
+          "duration": 60,
+          "goal": "Foco livre do ciclista para ganho de fôlego, resistência ou recuperação ativa.",
+          "structure": "Pedal contínuo em ritmo confortável e prazeroso.",
+          "targetZone": "Z2 - Endurance",
+          "rpe": 3,
+          "tip": "Este é um treino extra! Mantenha uma cadência confortável e beba bastante água.",
+          "completed": false
+        },
+        {
+          "day": "Sessão Extra",
+          "type": "Treino Personalizado",
+          "duration": 60,
+          "goal": "Foco livre do ciclista para ganho de fôlego, resistência ou recuperação ativa.",
+          "structure": "Pedal contínuo em ritmo confortável e prazeroso.",
+          "targetZone": "Z2 - Endurance",
+          "rpe": 3,
+          "tip": "Este é um treino extra! Mantenha uma cadência confortável e beba bastante água.",
+          "completed": false
+        },
+        {
+          "day": "Sessão Extra",
+          "type": "Treino Personalizado",
+          "duration": 60,
+          "goal": "Foco livre do ciclista para ganho de fôlego, resistência ou recuperação ativa.",
+          "structure": "Pedal contínuo em ritmo confortável e prazeroso.",
+          "targetZone": "Z2 - Endurance",
+          "rpe": 3,
+          "tip": "Este é um treino extra! Mantenha uma cadência confortável e beba bastante água.",
+          "completed": false
+        },
+        {
+          "day": "Sessão Extra",
+          "type": "Treino Personalizado",
+          "duration": 60,
+          "goal": "Foco livre do ciclista para ganho de fôlego, resistência ou recuperação ativa.",
+          "structure": "Pedal contínuo em ritmo confortável e prazeroso.",
+          "targetZone": "Z2 - Endurance",
+          "rpe": 3,
+          "tip": "Este é um treino extra! Mantenha uma cadência confortável e beba bastante água.",
+          "completed": false
+        },
+        {
+          "day": "Sessão Extra",
+          "type": "Treino Personalizado",
+          "duration": 60,
+          "goal": "Foco livre do ciclista para ganho de fôlego, resistência ou recuperação ativa.",
+          "structure": "Pedal contínuo em ritmo confortável e prazeroso.",
+          "targetZone": "Z2 - Endurance",
+          "rpe": 3,
+          "tip": "Este é um treino extra! Mantenha uma cadência confortável e beba bastante água.",
+          "completed": false
+        },
+        {
+          "day": "Sessão Extra",
+          "type": "Treino Personalizado",
+          "duration": 60,
+          "goal": "Foco livre do ciclista para ganho de fôlego, resistência ou recuperação ativa.",
+          "structure": "Pedal contínuo em ritmo confortável e prazeroso.",
+          "targetZone": "Z2 - Endurance",
+          "rpe": 3,
+          "tip": "Este é um treino extra! Mantenha uma cadência confortável e beba bastante água.",
+          "completed": false
+        },
+        {
+          "day": "Sessão Extra",
+          "type": "Treino Personalizado",
+          "duration": 60,
+          "goal": "Foco livre do ciclista para ganho de fôlego, resistência ou recuperação ativa.",
+          "structure": "Pedal contínuo em ritmo confortável e prazeroso.",
+          "targetZone": "Z2 - Endurance",
+          "rpe": 3,
+          "tip": "Este é um treino extra! Mantenha uma cadência confortável e beba bastante água.",
+          "completed": false
+        }
+      ],
+      "summary": "Volume total estimado de 3 horas e 20 minutos de pedalada distribuídos em 4 sessões de treino. O bloco é focado na adaptação cardiovascular inicial, desenvolvimento de cadência e consistência semanal.",
+      "observations": "Como o ciclista não possui sensores de monitoramento, a Percepção Subjetiva de Esforço (RPE de 1 a 10) é a métrica principal. Atenção redobrada com a postura para evitar dores nos ombros, costas e joelhos durante os treinos.",
+      "evaluation": "O treino terá sido executado com sucesso se o atleta conseguir realizar as 4 sessões dentro do limite de 60 minutos, terminando cada atividade com energia restante e sem dores musculares agudas ou articulares residuais."
+    },
+    "password": "Pedro23072007"
+  },
+  "bambo@gmail.com": {
+    "email": "bambo@gmail.com",
+    "profile": {
+      "name": "bambo",
+      "level": "",
+      "goal": "",
+      "daysPerWeek": null,
+      "durationPerSession": null,
+      "eventDate": "",
+      "hasPowerMeter": null,
+      "ftp": null,
+      "hasHeartRate": null,
+      "maxHeartRate": null,
+      "limitations": "",
+      "recentActivity": "",
+      "onboardingStep": 1
+    },
+    "chatHistory": [
+      {
+        "id": "welcome-registered",
+        "sender": "treinador",
+        "text": "Olá, bambo! Que excelente ver você aqui na Biker AI. Eu sou o seu Treinador de Ciclismo pessoal.\n\nMinhas planilhas e conselhos são focados em melhorar o seu fôlego e resistência de forma simples e segura, ajustando seus treinos por potência, batimentos do coração ou pelas suas percepções de cansaço.\n\nPara começarmos a planejar sua evolução de forma personalizada, preciso te conhecer melhor através de algumas perguntas rápidas no nosso chat.\n\nComo você já se cadastrou, podemos iniciar o questionário agora mesmo. **Qual é o seu tempo médio pedalando ou seu nível atual no ciclismo?**",
+        "timestamp": "22:24"
+      }
+    ],
+    "plan": null,
+    "password": "bambo123"
+  },
+  "p@gmail.com": {
+    "email": "p@gmail.com",
+    "profile": {
+      "name": "eu",
+      "level": "iniciante",
+      "goal": "perder peso",
+      "daysPerWeek": 4,
+      "durationPerSession": 63,
+      "eventDate": "",
+      "hasPowerMeter": null,
+      "ftp": null,
+      "hasHeartRate": null,
+      "maxHeartRate": null,
+      "limitations": "",
+      "recentActivity": "",
+      "onboardingStep": 10,
+      "subscriptionStatus": "expired",
+      "subscriptionPlan": "Bronze (Mensal)",
+      "subscriptionExpiresAt": "2026-12-31",
+      "role": "athlete"
+    },
+    "chatHistory": [
+      {
+        "id": "welcome-registered",
+        "sender": "treinador",
+        "text": "Olá, eu! Que excelente ver você aqui na Biker AI. Eu sou o seu Treinador de Ciclismo pessoal.\n\nMinhas planilhas e conselhos são focados em melhorar o seu fôlego e resistência de forma simples e segura, ajustando seus treinos por potência, batimentos do coração ou pelas suas percepções de cansaço.\n\nPara começarmos a planejar sua evolução de forma personalizada, preciso te conhecer melhor através de algumas perguntas rápidas no nosso chat.\n\nComo você já se cadastrou, podemos iniciar o questionário agora mesmo. **Qual é o seu tempo médio pedalando ou seu nível atual no ciclismo?**",
+        "timestamp": "23:21"
+      },
+      {
+        "id": "gen-1781221553992",
+        "sender": "treinador",
+        "text": "✨ **Planilha Semanal Gerada com Sucesso!**\n\neu, montei uma planilha de treinos sob medida baseada no seu nível (**iniciante**) e seu objetivo de **perder peso**. Confira a aba de planilha para ver os passos e dicas de cada dia! Let's ride! 🚴‍♂️‍♂️💨",
+        "timestamp": "20:45"
+      },
+      {
+        "id": "system-warn-1781221553992",
+        "sender": "treinador",
+        "text": "⚠️ **Modo de Segurança Ativado (Treinador Local)**\n\nSeus treinos foram calculados utilizando nosso motor fisiológico embarcado com base profissional na grade dos 80/20, pois a chamada para a inteligência de IA personalizada retornou um erro.\n\n**Causa do erro:** `{\"error\":{\"code\":403,\"message\":\"Your API key was reported as leaked. Please use another API key.\",\"status\":\"PERMISSION_DENIED\"}}`\n\n*Geralmente isso ocorre por uma chave do Gemini que expirou ou foi bloqueada pelo Google como vazada (como a chave de demonstração padrão do projeto). Para utilizar a inteligência de IA personalizada completa, atualize a chave **GEMINI_API_KEY** no seu painel de Segredos/Configurações.*",
+        "timestamp": "20:45"
+      }
+    ],
+    "plan": {
+      "workouts": [
+        {
+          "day": "Segunda-feira",
+          "type": "Folga",
+          "duration": 0,
+          "goal": "Descanso Total e Supercompensação fisiológica.",
+          "structure": "Dia de repouso completo. Coloque as pernas para o alto e deite cedo.",
+          "targetZone": "Z1 (Recuperação)",
+          "rpe": 1,
+          "tip": "Lembre-se: o verdadeiro ganho de condicionamento acontece durante o seu descanso!"
+        },
+        {
+          "day": "Terça-feira",
+          "type": "Intervalado de Ritmo",
+          "duration": 63,
+          "goal": "Elevar a capacidade de suportar ritmos moderados sustentados.",
+          "structure": "10min aquec Z1-Z2 + 3 blocos de 5min em Z3 com 3min de recuperação ativa Z1 + 5min de soltura",
+          "targetZone": "Z3 (Tempo/Ritmo)",
+          "rpe": 5,
+          "tip": "Controle o fôlego e a postura na bicicleta. O esforço é moderado."
+        },
+        {
+          "day": "Quarta-feira",
+          "type": "Folga",
+          "duration": 0,
+          "goal": "Descanso Total e Supercompensação fisiológica.",
+          "structure": "Dia de repouso completo. Coloque as pernas para o alto e deite cedo.",
+          "targetZone": "Z1 (Recuperação)",
+          "rpe": 1,
+          "tip": "Lembre-se: o verdadeiro ganho de condicionamento acontece durante o seu descanso!"
+        },
+        {
+          "day": "Quinta-feira",
+          "type": "Giro Regenerativo",
+          "duration": 63,
+          "goal": "Oxigenar a musculatura das pernas sem gerar estresse inflamatório.",
+          "structure": "30-45min de giro leve contínuo e sem carga sobre a bike (Z1), cadência 90-95 RPM.",
+          "targetZone": "Z1 (Recuperação)",
+          "rpe": 2,
+          "tip": "Dia light. Marcha bem leve na bicicleta, hoje é só para soltar a musculatura."
+        },
+        {
+          "day": "Sexta-feira",
+          "type": "Folga",
+          "duration": 0,
+          "goal": "Descanso Total e Supercompensação fisiológica.",
+          "structure": "Dia de repouso completo. Coloque as pernas para o alto e deite cedo.",
+          "targetZone": "Z1 (Recuperação)",
+          "rpe": 1,
+          "tip": "Lembre-se: o verdadeiro ganho de condicionamento acontece durante o seu descanso!"
+        },
+        {
+          "day": "Sábado",
+          "type": "Endurance Extensivo",
+          "duration": 63,
+          "goal": "Melhorar a eficiência aeróbica celular e capilarização muscular.",
+          "structure": "10min de aquecimento livre em Z1 + 48min contínuos bem constantes em Z2 + 5min de volta à calma em Z1",
+          "targetZone": "Z2 (Endurance)",
+          "rpe": 3,
+          "tip": "Mantenha a cadência uniforme e confortável entre 85-95 RPM."
+        },
+        {
+          "day": "Domingo",
+          "type": "Endurance Longo",
+          "duration": 63,
+          "goal": "Estimular adaptações musculares duradouras e o metabolismo de ácidos graxos.",
+          "structure": "15min aquec + 75min em ritmo aeróbico Z2 constante + 5min de desaquecimento",
+          "targetZone": "Z2 (Endurance)",
+          "rpe": 4,
+          "tip": "Hidrate-se abundantemente e coma pequenos pedaços de carboidrato a cada 45 minutos de pedal."
+        }
+      ],
+      "summary": "Planilha de Treinamento - Semana 1. Volume estimado de 4.2 horas focando no seu objetivo.",
+      "observations": "Foque na consistência dos treinos fundamentais em Z2 e preserve os dias de descanso total.",
+      "evaluation": "Julgue seu treino pelo fôlego, esforço moderado e pela facilidade em manter as zonas de intensidade.",
+      "weekNumber": 1,
+      "coachMessage": "Seja muito bem-vindo à Semana 1! Gerei esta distribuição aeróbica bem balanceada baseada na fisiologia esportiva clássica. Siga os treinos e registre suas notas e dores após cada pedalada para progredirmos com segurança na próxima semana!",
+      "geminiError": "{\"error\":{\"code\":403,\"message\":\"Your API key was reported as leaked. Please use another API key.\",\"status\":\"PERMISSION_DENIED\"}}"
+    },
+    "password": "2307207"
+  }
+}

@@ -12,6 +12,10 @@ export interface UserProfile {
   limitations: string;
   recentActivity: string;
   onboardingStep: number; // 0 to 10. 10 means fully completed and profile is confirmed.
+  subscriptionStatus?: 'active' | 'expired' | 'pending_payment';
+  subscriptionPlan?: string;
+  subscriptionExpiresAt?: string;
+  role?: 'athlete' | 'coach';
 }
 
 export interface Workout {
@@ -61,6 +65,7 @@ export interface UserAccount {
   profile: UserProfile;
   chatHistory: ChatMessage[];
   plan: TrainingPlan | null;
+  password?: string;
 }
 
 export interface ZoneInfo {
