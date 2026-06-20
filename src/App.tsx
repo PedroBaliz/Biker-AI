@@ -13,6 +13,7 @@ import SubscriptionWall from "./components/SubscriptionWall";
 import VolumeEvolutionChart from "./components/VolumeEvolutionChart";
 import WeeklyCalorieChart from "./components/WeeklyCalorieChart";
 import AchievementsDashboard from "./components/AchievementsDashboard";
+import MonthlyCalendar from "./components/MonthlyCalendar";
 import { motion, AnimatePresence } from "motion/react";
 import { 
   Users,
@@ -1854,6 +1855,22 @@ export default function App() {
                       </motion.div>
 
                     </div>
+
+                    {/* Calendário Mensal Resumido Interativo */}
+                    <MonthlyCalendar 
+                      profile={profile}
+                      plan={plan}
+                      onUpdateWorkoutState={() => {
+                        const saved = localStorage.getItem("athlete_training_plan");
+                        if (saved) {
+                          try {
+                            setPlan(JSON.parse(saved));
+                          } catch (e) {
+                            console.error(e);
+                          }
+                        }
+                      }}
+                    />
 
                     {/* Progress Tracker Panel & Worksheet Actions */}
                     {plan && plan.workouts && (
