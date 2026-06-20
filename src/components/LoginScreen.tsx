@@ -595,561 +595,147 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
         </div>
       </section>
 
-      {/* SEÇÃO DE PREVIEW INTERATIVO DO APP (MOCKUP ALTA FIDELIDADE) */}
-      <section id="preview-do-app" className="relative py-24 px-4 sm:px-6 md:px-12 bg-slate-950 border-t border-slate-900 scroll-mt-24">
+      {/* SEÇÃO COMO É FÁCIL USAR O BIKER AI */}
+      <section id="como-funciona" className="relative py-24 px-4 sm:px-6 md:px-12 bg-slate-950 border-t border-slate-900 scroll-mt-24">
         <div className="absolute inset-0 bg-radial-to-b from-lime-500/5 via-transparent to-transparent opacity-60"></div>
-        <div className="max-w-7xl mx-auto w-full space-y-12 relative z-10">
+        <div className="max-w-7xl mx-auto w-full space-y-16 relative z-10">
           
-          <div className="text-center space-y-3 max-w-3xl mx-auto">
-            <span className="text-[10px] bg-lime-500/10 border border-lime-500/25 text-lime-400 font-black px-3 py-1 rounded-full uppercase tracking-wider">
-              Teste sem Cadastro
+          <div className="text-center space-y-4 max-w-3xl mx-auto">
+            <span className="text-[10px] bg-lime-500/10 border border-lime-500/25 text-lime-400 font-black px-3 py-1 rounded-full uppercase tracking-widest font-mono">
+              Sem Complicação ⚡
             </span>
             <h3 className="text-3xl sm:text-4xl font-heading font-black tracking-tight text-white">
-              Veja como o Biker AI é <span className="text-lime-400">simples de usar</span>
+              Sua planilha de treinos no piloto automático: <span className="text-lime-400">veja como é fácil</span>
             </h3>
-            <p className="text-sm text-slate-400 font-sans leading-relaxed">
-              Toque nos botões das abas abaixo para testar o aplicativo por dentro. É rápido, prático e em português.
+            <p className="text-sm sm:text-base text-slate-400 font-sans leading-relaxed">
+              Você não precisa entender de fisiologia de esporte, cálculos de watts ou passar horas configurando tabelas confusas. A inteligência artificial cuida de tudo para você pedalar melhor em apenas 3 passos simples.
             </p>
           </div>
 
-          {/* Interface do App Simulado */}
-          <div className="max-w-4xl mx-auto rounded-3xl bg-slate-900 border border-slate-800 shadow-2xl overflow-hidden">
+          {/* Gráfico de Passos Simplificado */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             
-            {/* Barra Superior Simula Dispositivo */}
-            <div className="bg-slate-950 px-4 py-3 border-b border-slate-850 flex justify-between items-center text-slate-500 text-[10px] sm:text-xs font-mono">
-              <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-red-500/40 animate-pulse"></span>
-                <span className="text-slate-400 font-bold tracking-wider uppercase">SIMULADOR BIKER AI v2.1</span>
-              </div>
-              <div className="hidden sm:flex items-center gap-4 text-slate-450">
-                <span>Sinal: Excelente</span>
-                <span>Bateria: 94%</span>
-                <span className="text-lime-400 font-black">● SEU ACESSO DE TESTES</span>
-              </div>
-            </div>
-
-            {/* Abas Internas */}
-            <div className="bg-slate-900/60 p-2 sm:p-4 border-b border-slate-850 flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => setPreviewTab("planilha")}
-                className={`flex-1 min-w-[120px] flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-heading font-black uppercase transition-all cursor-pointer ${
-                  previewTab === "planilha" ? "bg-lime-500 text-slate-950 shadow-md transform scale-[1.02]" : "bg-slate-950/40 text-slate-400 hover:text-white hover:bg-slate-950/85"
-                }`}
-              >
-                <Calendar className="w-4 h-4" />
-                <span>Minha Planilha</span>
-              </button>
+            {/* Passo 1 */}
+            <div className="p-8 rounded-2xl bg-slate-900 border border-slate-800 space-y-5 text-left relative overflow-hidden group hover:border-slate-700/50 transition-all">
+              <div className="absolute top-0 right-0 p-8 bg-lime-500/5 rounded-full pointer-events-none blur-2xl"></div>
               
-              <button
-                type="button"
-                onClick={() => setPreviewTab("desempenho")}
-                className={`flex-1 min-w-[120px] flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-heading font-black uppercase transition-all cursor-pointer ${
-                  previewTab === "desempenho" ? "bg-lime-500 text-slate-950 shadow-md transform scale-[1.02]" : "bg-slate-950/40 text-slate-400 hover:text-white hover:bg-slate-950/85"
-                }`}
-              >
-                <TrendingUp className="w-4 h-4" />
-                <span>Desempenho</span>
-              </button>
+              <div className="flex justify-between items-start">
+                <div className="w-12 h-12 rounded-xl bg-lime-500/10 border border-lime-500/20 text-lime-400 flex items-center justify-center font-heading font-black text-lg">
+                  1
+                </div>
+                <span className="text-[10px] font-mono text-slate-500 bg-slate-950 px-2.5 py-1 rounded-lg border border-slate-850">
+                  Leva 1 minuto
+                </span>
+              </div>
 
-              <button
-                type="button"
-                onClick={() => setPreviewTab("zonas")}
-                className={`flex-1 min-w-[120px] flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-heading font-black uppercase transition-all cursor-pointer ${
-                  previewTab === "zonas" ? "bg-lime-500 text-slate-950 shadow-md transform scale-[1.02]" : "bg-slate-950/40 text-slate-400 hover:text-white hover:bg-slate-950/85"
-                }`}
-              >
-                <Sliders className="w-4 h-4" />
-                <span>Zonas de Watts</span>
-              </button>
+              <div className="space-y-2">
+                <h4 className="text-lg font-heading font-black text-white">Nos conte seus objetivos</h4>
+                <p className="text-xs sm:text-sm text-slate-400 leading-relaxed font-sans">
+                  Responda a perguntas rápidas sobre quantos dias quer treinar na semana, seu nível atual e seus objetivos reais — seja ganhar fôlego em subidas, perder peso ou completar um desafio de longa distância com amigos.
+                </p>
+              </div>
 
-              <button
-                type="button"
-                onClick={() => setPreviewTab("chat")}
-                className={`flex-1 min-w-[120px] flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-heading font-black uppercase transition-all cursor-pointer ${
-                  previewTab === "chat" ? "bg-lime-500 text-slate-950 shadow-md transform scale-[1.02]" : "bg-slate-950/40 text-slate-400 hover:text-white hover:bg-slate-950/85"
-                }`}
-              >
-                <MessageSquare className="w-4 h-4" />
-                <span>Falar Treinador</span>
-              </button>
+              <div className="pt-4 border-t border-slate-850 space-y-1.5">
+                <span className="text-[9px] uppercase font-bold text-slate-500 font-mono tracking-wider block">O que você responde:</span>
+                <div className="flex flex-wrap gap-1.5">
+                  <span className="text-[10px] text-slate-300 bg-slate-950 px-2 py-0.5 rounded border border-slate-850">"Tenho 3 dias livres por semana"</span>
+                  <span className="text-[10px] text-slate-300 bg-slate-950 px-2 py-0.5 rounded border border-slate-850">"Quero subir sem cansar tanto"</span>
+                </div>
+              </div>
             </div>
 
-            {/* Conteúdo Dinâmico do Preview */}
-            <div className="p-6 sm:p-8 min-h-[380px] bg-slate-950/30 text-white relative">
-              <AnimatePresence mode="wait">
+            {/* Passo 2 */}
+            <div className="p-8 rounded-2xl bg-slate-900 border border-slate-800 space-y-5 text-left relative overflow-hidden group hover:border-slate-700/50 transition-all">
+              <div className="absolute top-0 right-0 p-8 bg-lime-500/5 rounded-full pointer-events-none blur-2xl"></div>
+              
+              <div className="flex justify-between items-start">
+                <div className="w-12 h-12 rounded-xl bg-lime-500/10 border border-lime-500/20 text-lime-400 flex items-center justify-center font-heading font-black text-lg">
+                  2
+                </div>
+                <span className="text-[10px] font-mono text-lime-400 bg-lime-500/10 px-2.5 py-1 rounded-lg border border-lime-500/20 font-bold">
+                  Planilha na Hora
+                </span>
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="text-lg font-heading font-black text-white">Sua planilha sob medida</h4>
+                <p className="text-xs sm:text-sm text-slate-400 leading-relaxed font-sans">
+                  Nossa IA calcula suas zonas de esforço personalizadas com estimativas automáticas de força em Watts (ou por percepção se não tiver sensor) e ajusta as intensidades precisas para a sua evolução no pedal.
+                </p>
+              </div>
+
+              <div className="pt-4 border-t border-slate-850 space-y-1.5">
+                <span className="text-[9px] uppercase font-bold text-slate-500 font-mono tracking-wider block">Métricas Calculadas para Você:</span>
+                <div className="flex flex-wrap gap-1.5">
+                  <span className="text-[10px] text-lime-400 bg-lime-500/5 px-2 py-0.5 rounded border border-lime-500/10">Zonas de Potência</span>
+                  <span className="text-[10px] text-lime-400 bg-lime-500/5 px-2 py-0.5 rounded border border-lime-500/10">Volume e Ritmo Inteligente</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Passo 3 */}
+            <div className="p-8 rounded-2xl bg-slate-900 border border-slate-800 space-y-5 text-left relative overflow-hidden group hover:border-slate-700/50 transition-all">
+              <div className="absolute top-0 right-0 p-8 bg-lime-500/5 rounded-full pointer-events-none blur-2xl"></div>
+              
+              <div className="flex justify-between items-start">
+                <div className="w-12 h-12 rounded-xl bg-lime-500/10 border border-lime-500/20 text-lime-400 flex items-center justify-center font-heading font-black text-lg">
+                  3
+                </div>
+                <span className="text-[10px] font-mono text-slate-405 bg-slate-950 px-2.5 py-1 rounded-lg border border-slate-850 font-bold">
+                  Recalibrar é Rápido
+                </span>
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="text-lg font-heading font-black text-white">Flexibilidade que te entende</h4>
+                <p className="text-xs sm:text-sm text-slate-400 leading-relaxed font-sans">
+                  Marcou o pedal como finalizado? Comente em português como foi o esforço ou se sentiu cansaço. Nossa IA elogia seu foco e, o melhor de tudo, se precisar saltar algum treino por imprevisto, ela reagenda toda a semana!
+                </p>
+              </div>
+
+              <div className="pt-4 border-t border-slate-850 space-y-1.5">
+                <span className="text-[9px] uppercase font-bold text-slate-500 font-mono tracking-wider block">Flexibilidade Real:</span>
+                <div className="flex flex-wrap gap-1.5">
+                  <span className="text-[10px] text-[#00E676] bg-[#00E676]/5 px-2 py-0.5 rounded border border-[#00E676]/10">Coach de Bolso no Feedback</span>
+                  <span className="text-[10px] text-[#00E676] bg-[#00E676]/5 px-2 py-0.5 rounded border border-[#00E676]/10">Adaptação sob Imprevistos</span>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          {/* Comparativo Explicativo de Valor */}
+          <div className="max-w-4xl mx-auto rounded-3xl border border-slate-800 bg-slate-950 overflow-hidden relative">
+            <div className="absolute -inset-y-12 -inset-x-12 bg-radial-to-r from-lime-500/5 to-transparent opacity-40 pointer-events-none"></div>
+            <div className="p-6 md:p-8 grid grid-cols-1 md:grid-cols-2 gap-8 relative z-10 text-left items-center">
+              <div className="space-y-3">
+                <h4 className="text-xl sm:text-2xl font-heading font-black text-white leading-tight">Por que planilhas em PDF comuns não funcionam?</h4>
+                <p className="text-xs sm:text-sm text-slate-400 leading-relaxed font-sans">
+                  Comprar um PDF genérico estático na internet parece barato, mas as tabelas travadas falham ao menor sinal de imprevisto. Se chover, se você adoecer, viajar ou trabalhar até mais tarde e pular a terça-feira, o PDF não muda sozinho para te resgatar.
+                </p>
+                <div className="text-xs text-lime-400 font-bold block pt-1">
+                  💡 No Biker AI, a planilha se curva à sua vida real, e nunca o contrário.
+                </div>
+              </div>
+
+              <div className="p-5 rounded-2xl bg-slate-905 border border-slate-800 space-y-4 font-sans text-xs">
+                <div className="flex items-center gap-2 text-xs font-bold text-white border-b border-slate-850 pb-2">
+                  <span className="w-2 h-2 rounded-full bg-lime-400 animate-pulse"></span>
+                  <span>O que acontece se você perder um treino?</span>
+                </div>
                 
-                {/* PLANILHA TAB */}
-                {previewTab === "planilha" && (
-                  <motion.div
-                    key="planilha"
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -8 }}
-                    className="space-y-6 text-left"
-                  >
-                    {/* Barra de dias da semana */}
-                    <div className="space-y-2">
-                      <label className="text-[10px] uppercase font-bold tracking-wider text-slate-400 font-mono">Planilha da Semana - Selecione o Dia (Teste clicando neles):</label>
-                      <div className="grid grid-cols-7 gap-1 sm:gap-2">
-                        {[
-                          { label: "Seg", dayNum: 0, title: "🛌 Descanso", desc: "Folga total na planilha para recuperar as pernas.", checked: false },
-                          { label: "Ter", dayNum: 1, title: "🚀 Giro Focado", desc: "45 min em Zona 2 para manter a constância ativa.", checked: true },
-                          { label: "Qua", dayNum: 2, title: "⚡ Subida Forte", desc: "Série estruturada para melhorar potência máxima nas subidas.", checked: false },
-                          { label: "Qui", dayNum: 3, title: "🛌 Descanso", desc: "Repouso total ou regenerativo leve de soltura.", checked: false },
-                          { label: "Sex", dayNum: 4, title: "📈 Ritmo Limiar", desc: "Treino firme de manutenção de ritmo constante.", checked: false },
-                          { label: "Sáb", dayNum: 5, title: "🏔️ Pedal Longo", desc: "Treino aeróbico focado em volume e resistência.", checked: false },
-                          { label: "Dom", dayNum: 6, title: "🛌 Recuperação", desc: "Desaquecimento e massagem nas pernas.", checked: false }
-                        ].map((d, idx) => (
-                          <button
-                            key={idx}
-                            type="button"
-                            onClick={() => {
-                              setPreviewDay(d.dayNum);
-                              setSecondsLeft(120);
-                              setIsTimerRunning(false);
-                            }}
-                            className={`py-2 px-1 rounded-lg text-center transition-all cursor-pointer ${
-                              previewDay === d.dayNum 
-                                ? "bg-slate-800 text-lime-400 font-black border border-lime-400/40" 
-                                : "bg-slate-900 border border-slate-850 hover:border-slate-800 text-slate-400 text-xs"
-                            }`}
-                          >
-                            <span className="block text-[10px] font-heading font-black">{d.label}</span>
-                            <span className="text-[9px] mt-0.5 inline-block opacity-80 font-mono">
-                              {d.checked ? "✓" : d.dayNum === 2 ? "★" : "•"}
-                            </span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Detalhes do Dia Selecionado */}
-                    {previewDay === 2 ? (
-                      <div className="p-5 sm:p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4 relative overflow-hidden">
-                        <div className="flex flex-wrap justify-between items-start gap-2">
-                          <div>
-                            <span className="text-[8px] sm:text-[9px] font-mono font-bold tracking-widest text-[#FFDD00] uppercase bg-[#FFDD00]/10 border border-[#FFDD00]/30 px-2 py-0.5 rounded-full">
-                              Treino Recomendado de Quarta-feira ⭐
-                             </span>
-                            <h4 className="text-base sm:text-lg font-heading font-black mt-1 text-white flex items-center gap-2">
-                              ⚡ Subir com Mais Fôlego (Célula de Força: 1h15)
-                            </h4>
-                          </div>
-                          
-                          <div className="text-right">
-                            <span className="text-xs font-mono font-black text-lime-400 block">Esforço: Fácil a Médio</span>
-                            <span className="text-[10px] text-slate-500 block font-mono">Esforço Acumulado: 75</span>
-                          </div>
-                        </div>
-
-                        <p className="text-xs text-slate-400 max-w-2xl font-sans leading-relaxed">
-                          Sessão criada pela nossa Inteligência Artificial para aumentar seu fôlego pulmonar, ajudando você a subir ladeiras sem queimar a musculatura ou cansar muito rápido.
-                        </p>
-
-                        <div className="p-3 bg-slate-950/60 rounded-xl space-y-1.5 text-xs border border-slate-850">
-                          <p className="text-slate-400"><strong>🚴 1. Começo (15 min):</strong> Giro bem leve para aquecer o corpo.</p>
-                          <p className="text-lime-400 font-bold">🔥 2. Foco Principal (3x de 4 min): Ritmo ligeiramente firme subindo, com 3 min de descanso leve.</p>
-                          <p className="text-slate-400"><strong>🛌 3. Soltura (10 min):</strong> Giro suave para relaxar as pernas.</p>
-                        </div>
-
-                        {/* Interactive Widgets de Teste */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                          
-                          {/* Timer Interval Widget */}
-                          <div className="bg-slate-950 border border-slate-850 p-4 rounded-xl flex items-center justify-between gap-4">
-                            <div>
-                               <span className="text-[8px] uppercase tracking-wider font-bold text-slate-500 block font-mono">⏱️ cronômetro do treino (Simulado)</span>
-                              <span className="text-lg sm:text-2xl font-mono tracking-wider font-extrabold text-lime-400 block mt-0.5">
-                                {Math.floor(secondsLeft / 60).toString().padStart(2, "0")}:{(secondsLeft % 60).toString().padStart(2, "0")}
-                              </span>
-                              <span className="text-[10px] text-slate-400 block">Série 2 de 3 • Toque no Play</span>
-                            </div>
-                            
-                            <div className="flex gap-2">
-                              <button
-                                type="button"
-                                onClick={() => setIsTimerRunning(!isTimerRunning)}
-                                className={`w-9 h-9 rounded-lg flex items-center justify-center transition-colors cursor-pointer ${
-                                  isTimerRunning ? "bg-amber-500 text-slate-950 hover:bg-amber-450" : "bg-lime-500 text-slate-950 hover:bg-lime-450"
-                                }`}
-                              >
-                                {isTimerRunning ? <Pause className="w-4 h-4 stroke-[3]" /> : <Play className="w-4 h-4 stroke-[3]" />}
-                              </button>
-                              
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setIsTimerRunning(false);
-                                  setSecondsLeft(120);
-                                }}
-                                className="w-9 h-9 bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-750 rounded-lg flex items-center justify-center transition-colors cursor-pointer"
-                              >
-                                <span className="text-[10px] font-mono font-bold uppercase">Reset</span>
-                              </button>
-                            </div>
-                          </div>
-
-                          {/* Checkbox Done Widget */}
-                          <div className="bg-slate-950 border border-slate-850 p-4 rounded-xl flex items-center justify-between gap-3 text-left">
-                            <div className="space-y-0.5">
-                               <span className="text-[8px] uppercase tracking-wider font-bold text-slate-500 block font-mono">✅ terminou seu pedal hoje?</span>
-                              <span className="text-xs font-bold text-slate-200 block">
-                                {previewWorkoutDone ? "🏆 Parabéns Atleta!" : "Pronto para finalizar?"}
-                              </span>
-                              <span className="text-[10px] text-slate-400 leading-normal block">
-                                {previewWorkoutDone ? "Sinal verde! Seu treino foi gravado." : "Toque ao lado para simular o fim"}
-                              </span>
-                            </div>
-
-                            <button
-                              type="button"
-                              onClick={() => setPreviewWorkoutDone(!previewWorkoutDone)}
-                              className={`h-9 px-3 text-[10px] uppercase font-black font-heading rounded-lg flex items-center gap-1.5 transition-all cursor-pointer ${
-                                previewWorkoutDone 
-                                  ? "bg-slate-900 border border-emerald-500/30 text-[#00E676]" 
-                                  : "bg-slate-800 hover:bg-slate-750 text-slate-300 hover:text-white"
-                              }`}
-                            >
-                              {previewWorkoutDone ? <Check className="w-3.5 h-3.5 text-[#00E676] stroke-[3]" /> : null}
-                              <span>{previewWorkoutDone ? "Gravar! ✓" : "Terminei"}</span>
-                            </button>
-                          </div>
-
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4 text-center py-8">
-                        <Dumbbell className="w-10 h-10 text-slate-500 mx-auto opacity-40" />
-                        <div className="space-y-1">
-                           <h4 className="font-heading font-black text-sm uppercase">🛌 Dia de Descanso ou Recuperação</h4>
-                           <p className="text-xs text-slate-400 max-w-md mx-auto leading-relaxed">
-                             Hoje é dia de pernas para cima! O descanso adequado reconstrói as fibras musculares, deixando você mais forte e descansado para aproveitar o pedal do próximo dia.
-                           </p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => setPreviewDay(2)}
-                           className="px-4 py-2 bg-slate-950 hover:bg-slate-850 text-lime-400 border border-lime-400/20 hover:border-lime-400/40 text-[10px] font-black uppercase rounded-lg transition-all font-heading cursor-pointer"
-                        >
-                           Toque aqui para ver o treino de Quarta-feira
-                        </button>
-                      </div>
-                    )}
-                  </motion.div>
-                )}
-
-                {/* DESEMPENHO TAB */}
-                {previewTab === "desempenho" && (
-                  <motion.div
-                    key="desempenho"
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -8 }}
-                    className="space-y-6 text-left"
-                  >
-                    <div className="flex flex-wrap justify-between items-center gap-3">
-                      <div>
-                        <span className="text-[8px] sm:text-[9px] font-mono font-bold tracking-widest text-lime-400 uppercase bg-lime-500/10 border border-lime-500/30 px-2 py-0.5 rounded-full">
-                          Acompanhe seu Ganho de Força 📈
-                        </span>
-                        <h4 className="text-sm sm:text-base font-heading font-black text-white mt-1">Sua evolução real explicada de forma simples</h4>
-                      </div>
-                      
-                      <div className="text-xs text-slate-400 font-mono">
-                        Período: Último mês e meio
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
-                      
-                      {/* Simulação de Gráfico FTP via SVG limpo e minimalista */}
-                      <div className="md:col-span-8 p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-3">
-                        <div className="flex justify-between text-[10px] text-slate-400 font-mono">
-                          <span>Sua força no pedal (Em Watts)</span>
-                          <span className="text-lime-400 font-bold">📈 Você evoluiu +18 Watts (+9% mais força!)</span>
-                        </div>
-                        
-                        <div className="relative">
-                          {/* SVG Plotting */}
-                          <svg viewBox="0 0 500 120" className="w-full h-24 sm:h-32 text-lime-400" preserveAspectRatio="none">
-                            <defs>
-                              <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%" stopColor="#A3E635" stopOpacity="0.25"/>
-                                <stop offset="100%" stopColor="#A3E635" stopOpacity="0"/>
-                              </linearGradient>
-                            </defs>
-                            
-                            {/* Gridlines */}
-                            <line x1="0" y1="100" x2="500" y2="100" stroke="#1E293B" strokeWidth="1" strokeDasharray="3,3" />
-                            <line x1="0" y1="60" x2="500" y2="60" stroke="#1E293B" strokeWidth="1" strokeDasharray="3,3" />
-                            <line x1="0" y1="20" x2="500" y2="20" stroke="#1E293B" strokeWidth="1" strokeDasharray="3,3" />
-
-                            {/* Área do Gráfico */}
-                            <path d="M 0,110 L 0,90 Q 100,80 200,60 T 400,30 L 500,10 L 500,120 L 0,120 Z" fill="url(#chartGrad)" />
-                            
-                            {/* Linha de Evolução */}
-                            <path d="M 0,90 L 100,80 Q 200,60 300,50 T 400,30 L 500,10" fill="none" stroke="#A3E635" strokeWidth="3.5" strokeLinecap="round" />
-                            
-                            {/* Marcadores de Dados */}
-                            <circle cx="0" cy="90" r="5" className="fill-slate-900 stroke-lime-400 stroke-[3]" />
-                            <circle cx="100" cy="80" r="5" className="fill-slate-900 stroke-lime-400 stroke-[3]" />
-                            <circle cx="200" cy="65" r="5" className="fill-slate-900 stroke-lime-400 stroke-[3]" />
-                            <circle cx="300" cy="50" r="5" className="fill-slate-900 stroke-lime-400 stroke-[3]" />
-                            <circle cx="400" cy="30" r="5" className="fill-slate-900 stroke-lime-400 stroke-[3]" />
-                            <circle cx="500" cy="10" r="6" className="fill-lime-400 stroke-slate-950 stroke-[2] animate-bounce" />
-                          </svg>
-                          
-                          {/* Legenda Vertical de Watts */}
-                          <div className="absolute left-1 top-0 h-full flex flex-col justify-between text-[11px] font-mono text-slate-500 pointer-events-none">
-                            <span>{previewFtp}W</span>
-                            <span>{Math.round(previewFtp - 15)}W</span>
-                            <span>{Math.round(previewFtp - 30)}W</span>
-                          </div>
-                        </div>
-
-                        {/* Rótulos Horizontais (Semanas) */}
-                        <div className="flex justify-between text-[9px] font-mono text-slate-450 px-2">
-                          <span>Início</span>
-                          <span>Semana 2</span>
-                          <span>Semana 3</span>
-                          <span>Semana 4</span>
-                          <span>Semana 5</span>
-                          <span className="text-lime-400 font-bold">Hoje (Semana 6)</span>
-                        </div>
-                      </div>
-
-                      {/* Principais Estatísticas Médias */}
-                      <div className="md:col-span-4 space-y-4 text-left">
-                        <div className="p-4 bg-slate-900/60 rounded-xl border border-slate-850 space-y-1">
-                          <span className="text-[9px] font-mono font-bold uppercase text-slate-500">SUA FORÇA ESTIMADA ATUAL</span>
-                          <div className="flex items-baseline gap-1.5 font-heading font-black">
-                            <span className="text-xl text-lime-400">{previewFtp} Watts</span>
-                            <span className="text-xs text-slate-400 font-sans">({Math.round((previewFtp/70)*10)/10} por kg)</span>
-                          </div>
-                          <span className="text-[10px] text-slate-450 block leading-normal">Quanto maior esse número, mais rápido você pedala.</span>
-                        </div>
-
-                        <div className="p-4 bg-slate-900/60 rounded-xl border border-slate-850 space-y-1">
-                          <span className="text-[9px] font-mono font-bold uppercase text-slate-500">FOCO E CONSTÂNCIA</span>
-                          <div className="flex items-baseline gap-1.5 font-heading font-black text-emerald-400">
-                            <span className="text-xl">96% concluído</span>
-                            <span className="text-[10px] text-slate-400 font-normal">Super focado</span>
-                          </div>
-                          {/* Mini Progress Bar */}
-                          <div className="w-full bg-slate-950 h-1.5 rounded-full overflow-hidden">
-                            <div className="bg-emerald-400 h-full w-[96%] rounded-full"></div>
-                          </div>
-                        </div>
-
-                        <div className="p-4 bg-slate-900/60 rounded-xl border border-slate-850 space-y-1">
-                          <span className="text-[9px] font-mono font-bold uppercase text-slate-500">TEMPO SOBRE A BIKE</span>
-                          <div className="flex items-baseline gap-1.5 font-heading font-black text-yellow-400">
-                            <span className="text-xl">06h45</span>
-                            <span className="text-xs text-slate-400 font-normal font-sans">esta semana</span>
-                          </div>
-                        </div>
-                      </div>
-
-                    </div>
-                  </motion.div>
-                )}
-
-                {/* ZONAS TAB */}
-                {previewTab === "zonas" && (
-                  <motion.div
-                    key="zonas"
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -8 }}
-                    className="space-y-6 text-left"
-                  >
-                    <div>
-                      <span className="text-[8px] sm:text-[9px] font-mono font-bold tracking-widest text-lime-400 uppercase bg-lime-500/10 border border-lime-500/30 px-2 py-0.5 rounded-full">
-                        Calculadora Dinâmica de Potência ⚡
-                      </span>
-                      <h4 className="text-sm sm:text-base font-heading font-black mt-1">Suas 6 Velocidades de Esforço Personalizadas</h4>
-                      <p className="text-xs text-slate-400 font-sans mt-1">
-                        Arraste a barra abaixo para fingir que tem mais ou menos força. Veja como as suas 6 intensidades de pedal são recalculadas de forma automática na hora!
-                      </p>
-                    </div>
-
-                    {/* Silders Control */}
-                    <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
-                      
-                      <div className="flex justify-between items-center bg-slate-950 p-3 rounded-xl border border-slate-850">
-                        <span className="text-xs text-slate-300 font-medium">Sua Força de Referência (Métricas de Watts):</span>
-                        <span className="px-3 py-1.5 bg-lime-500/10 border border-lime-500/30 text-lime-400 rounded-lg text-sm font-mono font-black animate-pulse">
-                          {previewFtp} Watts
-                        </span>
-                      </div>
-
-                      <div className="space-y-1">
-                        <input
-                          type="range"
-                          min="150"
-                          max="380"
-                          value={previewFtp}
-                          onChange={(e) => setPreviewFtp(parseInt(e.target.value))}
-                          className="w-full accent-lime-400 bg-slate-950 rounded-lg appearance-none h-2 cursor-pointer border border-slate-800"
-                        />
-                        <div className="flex justify-between text-[10px] font-mono text-slate-500 px-1">
-                          <span>150W (Fácil ou Iniciante)</span>
-                          <span>220W (Intermediário)</span>
-                          <span>300W (Avançado)</span>
-                          <span>380W (Super Atleta)</span>
-                        </div>
-                      </div>
-
-                    </div>
-
-                    {/* Zonas Output Grid */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                      {[
-                        { z: "Z1", name: "Giro Super Leve", pc: "< 55%", color: "border-slate-800 text-slate-400 bg-slate-900/40", range: `< ${Math.round(previewFtp * 0.55)}W`, desc: "Giro super solto de aquecimento leve ou para descansar as pernas." },
-                        { z: "Z2", name: "Ritmo de Conversa", pc: "56% - 75%", color: "border-[#00E676]/30 text-[#00E676] bg-[#00E676]/5", range: `${Math.round(previewFtp * 0.56)}W - ${Math.round(previewFtp * 0.75)}W`, desc: "Sua velocidade padrão de passeio. Otimiza queima de gordura e não cansa." },
-                        { z: "Z3", name: "Ritmo Firme / Plano", pc: "76% - 90%", color: "border-sky-500/30 text-sky-450 bg-sky-500/5", range: `${Math.round(previewFtp * 0.76)}W - ${Math.round(previewFtp * 0.90)}W`, desc: "Intensidade moderada. Força constante para pedalar no plano contra o vento." },
-                        { z: "Z4", name: "Subida e Cardio", pc: "91% - 105%", color: "border-[#FFDD00]/30 text-[#FFDD00] bg-[#FFDD00]/5", range: `${Math.round(previewFtp * 0.91)}W - ${Math.round(previewFtp * 1.05)}W`, desc: "Ponto limite tolerável. Ideal para subir ladeiras com força focada." },
-                        { z: "Z5", name: "VO2 Máximo / Estouro", pc: "106% - 120%", color: "border-rose-500/30 text-rose-400 bg-rose-500/5", range: `${Math.round(previewFtp * 1.06)}W - ${Math.round(previewFtp * 1.20)}W`, desc: "Fôlego limite máximo para aumentar explosão respiratória em sprints." },
-                        { z: "Z6", name: "Explosão Total", pc: "> 121%", color: "border-purple-500/30 text-purple-400 bg-purple-500/5", range: `> ${Math.round(previewFtp * 1.21)}W`, desc: "Microtiros de arrancada com força máxima para ultrapassagens de 10 seg." }
-                      ].map((zone, idx) => (
-                        <div key={idx} className={`p-4 rounded-xl border text-left space-y-1.5 transition-all ${zone.color}`}>
-                          <div className="flex justify-between items-baseline">
-                            <span className="text-xs font-black font-mono tracking-wider">{zone.z} • {zone.name}</span>
-                            <span className="text-[10px] font-mono opacity-80">{zone.pc}</span>
-                          </div>
-                          <p className="text-lg font-mono font-black tracking-tight">{zone.range}</p>
-                          <p className="text-[10px] opacity-70 font-sans leading-relaxed">{zone.desc}</p>
-                        </div>
-                      ))}
-                    </div>
-
-                  </motion.div>
-                )}
-
-                {/* CHAT TAB */}
-                {previewTab === "chat" && (
-                  <motion.div
-                    key="chat"
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -8 }}
-                    className="space-y-6 text-left"
-                  >
-                    <div className="flex flex-wrap justify-between items-center gap-2">
-                      <div>
-                        <span className="text-[8px] sm:text-[9px] font-mono font-bold tracking-widest text-[#00E676] uppercase bg-[#00E676]/10 border border-[#00E676]/30 px-2 py-0.5 rounded-full">
-                          Treinador de Bolso AI 💬
-                        </span>
-                        <h4 className="text-sm sm:text-base font-heading font-black text-white mt-1">Converse com seu Orientador Virtual</h4>
-                      </div>
-                      
-                      <button
-                        type="button"
-                        onClick={() => setPreviewChatMessages([
-                          { sender: "bot", text: "Olá! Como está o seu corpo após as últimas pedaladas? Tem alguma dúvida sobre alimentação, cansaço ou quer ajustar seus treinos?" }
-                        ])}
-                        className="text-[10px] text-slate-500 hover:text-slate-300 font-mono underline"
-                      >
-                        Limpar Chat
-                      </button>
-                    </div>
-
-                    {/* Chat Frame Interface */}
-                    <div className="bg-slate-900 border border-slate-800 rounded-2xl flex flex-col overflow-hidden h-72">
-                      <div className="flex-1 p-4 overflow-y-auto space-y-3.5 scrollbar-thin">
-                        {previewChatMessages.map((msg, idx) => (
-                          <div
-                            key={idx}
-                            className={`flex flex-col max-w-[85%] ${
-                              msg.sender === "user" ? "ml-auto text-right" : "mr-auto text-left"
-                            }`}
-                          >
-                            <span className="text-[8px] font-semibold text-slate-500 uppercase tracking-widest px-1 font-mono">
-                              {msg.sender === "user" ? "Você Ciclista" : "Treinador Virtual (Biker AI)"}
-                            </span>
-                            <div
-                              className={`p-3 rounded-2xl text-xs leading-relaxed mt-1 font-medium ${
-                                msg.sender === "user"
-                                  ? "bg-lime-500 text-slate-950 rounded-tr-none font-sans"
-                                  : "bg-slate-950/80 text-slate-200 border border-slate-850 rounded-tl-none font-sans"
-                              }`}
-                            >
-                              {msg.text}
-                            </div>
-                          </div>
-                        ))}
-
-                        {/* Typing simulate indicator */}
-                        {isTypingSimulated && (
-                          <div className="mr-auto text-left max-w-[80%] flex flex-col">
-                            <span className="text-[8px] text-slate-500 font-mono">Digitando orientação...</span>
-                            <div className="p-3 bg-slate-950/80 text-slate-400 border border-slate-850 rounded-2xl rounded-tl-none text-xs flex gap-1.5 items-center mt-1">
-                              <span className="w-1.5 h-1.5 rounded-full bg-lime-400 animate-pulse duration-500"></span>
-                              <span className="w-1.5 h-1.5 rounded-full bg-lime-400 animate-pulse duration-700"></span>
-                              <span className="w-1.5 h-1.5 rounded-full bg-lime-400 animate-pulse duration-900"></span>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                      
-                      {/* Input mockup line */}
-                      <div className="bg-slate-950 p-2.5 border-t border-slate-850 text-slate-500 text-[10px] font-mono flex items-center justify-between">
-                        <span>Toque em uma das perguntas prontas abaixo para ver a IA responder:</span>
-                        <span className="text-lime-400">Ativo ✓</span>
-                      </div>
-                    </div>
-
-                    {/* Clickable predefined options header */}
-                    <div className="space-y-2">
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Clique abaixo para perguntar:</span>
-                      
-                      <div className="flex flex-wrap gap-2">
-                        {[
-                          {
-                            q: "💡 Como posso cansar menos em subidas?",
-                            a: "Nas subidas longas, o segredo é manter um ritmo constante sem forçar demais logo no começo e respirar de forma profunda. O Biker AI monta treinos que acostumam seu coração e suas pernas a esse esforço aos poucos."
-                          },
-                          {
-                            q: "🤒 Estou me sentindo cansado hoje. Devo pedalar?",
-                            a: "Se o corpo estiver exausto, o melhor é descansar! O descanso é fundamental para o músculo se fortalecer. Se decidir folgar, a nossa IA reorganiza automaticamente os treinos da sua semana sem problemas."
-                          },
-                          {
-                            q: "🍌 O que comer antes de pedalar?",
-                            a: "Coma alimentos leves e com carboidratos cerca de 1 hora antes de pedalar, como pão com geleia ou banana com aveia. Isso te dá energia rápida e constante para render bem sem pesar no estômago!"
-                          }
-                        ].map((preset, idx) => (
-                          <button
-                            key={idx}
-                            type="button"
-                            disabled={isTypingSimulated}
-                            onClick={() => handlePresetQuestion(preset.q, preset.a)}
-                            className="bg-slate-900 border border-slate-800 hover:border-lime-500/20 hover:bg-slate-850 px-3 py-2 rounded-xl text-[11px] text-slate-300 hover:text-white text-left transition-all max-w-full truncate cursor-pointer disabled:opacity-50"
-                          >
-                            {preset.q}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                  </motion.div>
-                )}
-
-              </AnimatePresence>
+                <div className="space-y-3">
+                  <div className="space-y-1">
+                    <span className="font-bold text-rose-400 block tracking-wider uppercase text-[10px] font-mono">Planilhas Gerais Estáticas:</span>
+                    <p className="text-slate-400">Você se sente culpado, tenta empilhar o treino perdido, treina dolorido sem orientação e acaba se fadigando ou lesionando.</p>
+                  </div>
+                  <div className="space-y-1">
+                    <span className="font-bold text-[#00E676] block tracking-wider uppercase text-[10px] font-mono font-black">Biker AI Inteligente:</span>
+                    <p className="text-slate-300">Você simplesmente clica no botão ou avisa no chat: <span className="italic block mt-1 bg-slate-950 p-2 rounded text-slate-350 font-mono text-[11px] border border-slate-850 font-medium">"Hoje tive um imprevisto!"</span>. Nossa IA reorganiza a planilha e os descansos do restante da semana instantaneamente.</p>
+                  </div>
+                </div>
+              </div>
             </div>
-
-            {/* Rodapé Simulado do App */}
-            <div className="bg-slate-900 p-4 border-t border-slate-850 flex justify-between items-center text-xs text-slate-400 font-sans">
-              <span>Gostou de como funciona?</span>
-              <a
-                href="#auth-section"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-lime-500/10 border border-lime-500/20 text-lime-400 hover:text-white font-bold text-[10px] uppercase tracking-wider transition-all"
-              >
-                <span>Inscrever-se Grátis</span>
-                <ChevronRight className="w-3.5 h-3.5" />
-              </a>
-            </div>
-
           </div>
 
         </div>
