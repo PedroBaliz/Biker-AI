@@ -19,7 +19,9 @@ import {
   Smile,
   ShieldAlert,
   ExternalLink,
-  Loader2
+  Loader2,
+  Lock,
+  XCircle
 } from "lucide-react";
 import SmartHydrationTip from "./SmartHydrationTip";
 
@@ -111,6 +113,26 @@ export default function WorkoutCard({ workout, onUpdate, onDelete, profile, allW
   const [isEvaluating, setIsEvaluating] = useState(false);
   const [isParsingStrava, setIsParsingStrava] = useState(false);
 
+  // Check if this card represents a workout block in a past day of the week that wasn't completed
+  const getDayNumber = (dayName: string): number => {
+    if (!dayName) return 0;
+    const norm = dayName.toLowerCase();
+    if (norm.includes("segunda")) return 1;
+    if (norm.includes("terça") || norm.includes("terca")) return 2;
+    if (norm.includes("quarta")) return 3;
+    if (norm.includes("quinta")) return 4;
+    if (norm.includes("sexta")) return 5;
+    if (norm.includes("sáb") || norm.includes("sab")) return 6;
+    if (norm.includes("domingo")) return 7;
+    return 0;
+  };
+
+  const currentDayNum = new Date().getDay();
+  // Map Sunday from 0 to 7 so the week flows from Monday (1) to Sunday (7)
+  const currentDayInWeek = currentDayNum === 0 ? 7 : currentDayNum;
+  const wDayNum = getDayNumber(workout.day);
+  const isPastAndUncompleted = !workout.completed && wDayNum > 0 && wDayNum < currentDayInWeek;
+
   const handleAutoLoadStrava = async () => {
     if (!actualStravaLink.trim()) return;
     setIsParsingStrava(true);
@@ -196,6 +218,9 @@ export default function WorkoutCard({ workout, onUpdate, onDelete, profile, allW
   };
 
   const toggleCompleted = () => {
+    if (isPastAndUncompleted) {
+      return;
+    }
     if (workout.completed) {
       // Toggle back to not completed, keeping logs in state in case they want to re-complete
       onUpdate({
@@ -975,27 +1000,34 @@ export default function WorkoutCard({ workout, onUpdate, onDelete, profile, allW
       <div className="mt-auto pt-4 border-t border-slate-100 flex gap-2 w-full">
         {/* Trigger Complete Toggle */}
         {!isRestDay(workout) ? (
-          <button
-            type="button"
-            onClick={toggleCompleted}
-            className={`flex-1 py-2.5 px-3 rounded-xl text-[10px] font-extrabold uppercase font-heading tracking-wider flex items-center justify-center gap-1.5 transition-all shadow-2xs active:scale-95 cursor-pointer ${
-              workout.completed
-                ? "bg-emerald-500 text-white hover:bg-emerald-600"
-                : "bg-slate-100 text-slate-750 hover:bg-slate-200"
-            }`}
-          >
-            {workout.completed ? (
-              <>
-                <Check className="w-3.5 h-3.5 stroke-[3.5]" />
-                <span>Concluído 🏆</span>
-              </>
-            ) : (
-              <>
-                <Circle className="w-3.5 h-3.5" />
-                <span>Concluir</span>
-              </>
-            )}
-          </button>
+          isPastAndUncompleted ? (
+            <div className="flex-1 bg-slate-100/70 border border-slate-200 rounded-xl py-2 px-3 flex items-center justify-center gap-1.5 text-slate-450 font-heading font-extrabold text-[10px] uppercase tracking-wider select-none text-center" title="Treino expirado de dia anterior">
+              <Lock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+              <span>Sem conclusão (Prazo expirado)</span>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={toggleCompleted}
+              className={`flex-1 py-2.5 px-3 rounded-xl text-[10px] font-extrabold uppercase font-heading tracking-wider flex items-center justify-center gap-1.5 transition-all shadow-2xs active:scale-95 cursor-pointer ${
+                workout.completed
+                  ? "bg-emerald-500 text-white hover:bg-emerald-600"
+                  : "bg-slate-100 text-slate-750 hover:bg-slate-200"
+              }`}
+            >
+              {workout.completed ? (
+                <>
+                  <Check className="w-3.5 h-3.5 stroke-[3.5]" />
+                  <span>Concluído 🏆</span>
+                </>
+              ) : (
+                <>
+                  <Circle className="w-3.5 h-3.5" />
+                  <span>Concluir</span>
+                </>
+              )}
+            </button>
+          )
         ) : (
           <div className="flex-1 bg-amber-50/50 border border-amber-100 rounded-xl py-2 px-3 flex items-center justify-center gap-1.5 text-amber-700 font-heading font-extrabold text-[10px] uppercase tracking-wider">
             <Smile className="w-4 h-4 text-amber-500 fill-amber-500/10 shrink-0" />
@@ -1021,10 +1053,16 @@ export default function WorkoutCard({ workout, onUpdate, onDelete, profile, allW
               setAthleteNotes(workout.athleteNotes || "");
               setIsCompleting(true);
             } else {
+              if (isPastAndUncompleted) return;
               setIsEditing(true);
             }
           }}
-          className="p-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-600 rounded-xl transition-colors cursor-pointer flex items-center justify-center active:scale-95"
+          disabled={isPastAndUncompleted}
+          className={`p-2.5 border rounded-xl transition-colors flex items-center justify-center active:scale-95 ${
+            isPastAndUncompleted
+              ? "bg-slate-50 text-slate-350 border-slate-150 cursor-not-allowed opacity-40"
+              : "bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-600 cursor-pointer"
+          }`}
           title={workout.completed ? "Reavaliar / Atualizar Log" : "Editar prescrição"}
         >
           <Edit2 className="w-4 h-4" />

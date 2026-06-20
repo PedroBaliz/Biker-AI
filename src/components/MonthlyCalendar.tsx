@@ -55,7 +55,7 @@ export default function MonthlyCalendar({ profile, plan, onUpdateWorkoutState }:
 
   // Load / Save customStatuses from localStorage to guarantee persistence
   useEffect(() => {
-    const saved = localStorage.getItem("biker_calendar_custom_statuses");
+    const saved = localStorage.getItem("biker_calendar_custom_statuses_v2");
     if (saved) {
       try {
         setCustomStatuses(JSON.parse(saved));
@@ -63,10 +63,9 @@ export default function MonthlyCalendar({ profile, plan, onUpdateWorkoutState }:
         console.error("Erro ao ler custom statuses", e);
       }
     } else {
-      // Seed a beautiful starting history for June 2026 so it looks realistic and active!
+      // Seed a clean starting history for June 2026 without any prefilled completed/missed mock workouts!
       const initialStatuses: Record<string, "realizado" | "perdido" | "descanso" | "planejado"> = {};
       
-      // Let's populate some days in the current month (June 2026) prior to June 20, 2026 (today)
       // We will loop through days of June 2026
       for (let d = 1; d <= 30; d++) {
         const dateStr = `2026-06-${d.toString().padStart(2, "0")}`;
@@ -85,21 +84,8 @@ export default function MonthlyCalendar({ profile, plan, onUpdateWorkoutState }:
           if (isRestDay(matchingTemplate)) {
             initialStatuses[dateStr] = "descanso";
           } else {
-            // It's a workout day. Let's seed past as mostly completed, and maybe 2 missed, and today/future based on current workouts
-            if (d < 20) {
-              // Missed some days for realistic simulation: let's say June 4th (Thursday) and June 10th (Wednesday) were missed
-              if (d === 4 || d === 10) {
-                initialStatuses[dateStr] = "perdido";
-              } else {
-                initialStatuses[dateStr] = "realizado";
-              }
-            } else if (d === 20) {
-              // Today (Saturday)
-              initialStatuses[dateStr] = matchingTemplate.completed ? "realizado" : "planejado";
-            } else {
-              // Future (d > 20)
-              initialStatuses[dateStr] = "planejado";
-            }
+            // It's a training day, but since the athlete hasn't completed any yet, it is "planejado" (or "realizado" only if completed in standard template)
+            initialStatuses[dateStr] = matchingTemplate.completed ? "realizado" : "planejado";
           }
         } else {
           // No explicit workout in template, default to rest/descanso
@@ -107,7 +93,7 @@ export default function MonthlyCalendar({ profile, plan, onUpdateWorkoutState }:
         }
       }
       setCustomStatuses(initialStatuses);
-      localStorage.setItem("biker_calendar_custom_statuses", JSON.stringify(initialStatuses));
+      localStorage.setItem("biker_calendar_custom_statuses_v2", JSON.stringify(initialStatuses));
     }
   }, [workoutsList]);
 
@@ -135,7 +121,7 @@ export default function MonthlyCalendar({ profile, plan, onUpdateWorkoutState }:
           if (matchingTemplate) {
             const desiredStatus = isRestDay(matchingTemplate) 
               ? "descanso" 
-              : (matchingTemplate.completed ? "realizado" : (d < 20 ? "perdido" : "planejado"));
+              : (matchingTemplate.completed ? "realizado" : "planejado");
             
             if (prev[dateStr] !== desiredStatus) {
               next[dateStr] = desiredStatus;
@@ -145,7 +131,7 @@ export default function MonthlyCalendar({ profile, plan, onUpdateWorkoutState }:
         }
 
         if (changed) {
-          localStorage.setItem("biker_calendar_custom_statuses", JSON.stringify(next));
+          localStorage.setItem("biker_calendar_custom_statuses_v2", JSON.stringify(next));
           return next;
         }
         return prev;
@@ -234,7 +220,7 @@ export default function MonthlyCalendar({ profile, plan, onUpdateWorkoutState }:
       [dateStr]: nextStatus
     };
     setCustomStatuses(updated);
-    localStorage.setItem("biker_calendar_custom_statuses", JSON.stringify(updated));
+    localStorage.setItem("biker_calendar_custom_statuses_v2", JSON.stringify(updated));
 
     // If the changed day is in the current active training week (Monday June 15 - Sunday June 21, 2026)
     // we also update the main planilla workout completed state so that the two systems are fully in sync!
