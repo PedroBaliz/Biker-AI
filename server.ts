@@ -111,30 +111,53 @@ async function getDatabase(forceRefresh = false): Promise<Record<string, any>> {
     }
   }
 
-  // If we couldn't load from Firestore (or it was empty), load from local users_db.json
+  // If we loaded from Firestore or need fallback, sync/merge with the local users_db.json
   try {
     if (fs.existsSync(USERS_DB_PATH)) {
       const data = fs.readFileSync(USERS_DB_PATH, "utf-8");
       const parsed = JSON.parse(data);
       
-      // If Firestore is available but empty, let's sync the local users to Firestore!
       if (firestoreDb && !loadedFromFirestore && Object.keys(parsed).length > 0) {
+        // If Firestore is available but empty, let's sync all local users to Firestore!
         try {
           console.log("[Firebase Admin] Sincronizando banco local inicial para o Firestore...");
           const batch = firestoreDb.batch();
           for (const [email, user] of Object.entries(parsed)) {
-            const docRef = firestoreDb.collection("users").doc(email);
+            const emailKey = email.trim().toLowerCase();
+            const docRef = firestoreDb.collection("users").doc(emailKey);
             batch.set(docRef, user);
           }
           await batch.commit();
           loadedFromFirestore = true;
+          localDb = parsed;
           console.log("[Firebase Admin] Sincronização inicial concluída com sucesso.");
         } catch (syncErr: any) {
           console.error("[Firebase Admin] Erro ao sincronizar banco inicial para Firestore:", syncErr.message);
         }
-      }
-      
-      if (!loadedFromFirestore) {
+      } else if (firestoreDb && loadedFromFirestore && Object.keys(parsed).length > 0) {
+        // Firestore is NOT empty, but we want to make sure any local users not in Firestore get merged and synced!
+        try {
+          const batch = firestoreDb.batch();
+          let needsSync = false;
+          for (const [email, user] of Object.entries(parsed)) {
+            const emailKey = email.trim().toLowerCase();
+            if (!localDb[emailKey]) {
+              localDb[emailKey] = user;
+              const docRef = firestoreDb.collection("users").doc(emailKey);
+              batch.set(docRef, user);
+              needsSync = true;
+              console.log(`[Firebase Admin] Mesclando e sincronizando usuário local ausente no Firestore: ${emailKey}`);
+            }
+          }
+          if (needsSync) {
+            await batch.commit();
+            console.log("[Firebase Admin] Sincronização de usuários mesclados concluída.");
+          }
+        } catch (mergeErr: any) {
+          console.error("[Firebase Admin] Erro ao mesclar banco local com Firestore:", mergeErr.message);
+        }
+      } else if (!loadedFromFirestore) {
+        // Fallback when Firestore is not available/failed
         localDb = parsed;
       }
     }
@@ -215,23 +238,25 @@ async function saveDatabase(db: Record<string, any>) {
       let hasChanges = false;
 
       for (const [email, user] of Object.entries(db)) {
-        const prevUser = previousDb[email];
+        const emailKey = email.trim().toLowerCase();
+        const prevUser = previousDb[emailKey] || previousDb[email];
         // If user is new or has changed, add to batch
         if (!prevUser || JSON.stringify(user) !== JSON.stringify(prevUser)) {
-          const docRef = firestoreDb.collection("users").doc(email);
+          const docRef = firestoreDb.collection("users").doc(emailKey);
           batch.set(docRef, user);
           hasChanges = true;
-          console.log(`[Firebase Admin] Preparando salvamento para o atleta: ${email}`);
+          console.log(`[Firebase Admin] Preparando salvamento para o atleta: ${emailKey}`);
         }
       }
 
       // Check if any users were deleted
       for (const email of Object.keys(previousDb)) {
-        if (!db[email]) {
-          const docRef = firestoreDb.collection("users").doc(email);
+        const emailKey = email.trim().toLowerCase();
+        if (!db[emailKey] && !db[email]) {
+          const docRef = firestoreDb.collection("users").doc(emailKey);
           batch.delete(docRef);
           hasChanges = true;
-          console.log(`[Firebase Admin] Preparando exclusão para o atleta: ${email}`);
+          console.log(`[Firebase Admin] Preparando exclusão para o atleta: ${emailKey}`);
         }
       }
 
