@@ -21,7 +21,11 @@ import {
   Flame, 
   Sparkles,
   ClipboardList,
-  CreditCard
+  CreditCard,
+  Bell,
+  BellRing,
+  BellOff,
+  Volume2
 } from "lucide-react";
 
 interface AccountSettingsProps {
@@ -31,8 +35,41 @@ interface AccountSettingsProps {
 }
 
 export default function AccountSettings({ currentUser, onUpdateAccount, onClose }: AccountSettingsProps) {
-  // Tabs: 'account', 'athlete', or 'subscription'
-  const [activeTab, setActiveTab] = useState<"account" | "athlete" | "subscription">("athlete");
+  // Tabs: 'account', 'athlete', 'subscription', or 'notifications'
+  const [activeTab, setActiveTab] = useState<"account" | "athlete" | "subscription" | "notifications">("athlete");
+
+  // Helper to copy support email and trigger mailto with visual feedback
+  const handleSupportEmailClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const emailStr = "bikeraisupport@gmail.com";
+    try {
+      navigator.clipboard.writeText(emailStr);
+      setSuccess("E-mail de suporte (bikeraisupport@gmail.com) copiado! Caso seu aplicativo de e-mail não abra, basta colar este endereço.");
+    } catch (err) {
+      setSuccess(`Contato de Suporte: ${emailStr}`);
+    }
+    window.open(`mailto:${emailStr}`, "_blank", "noopener,noreferrer");
+  };
+
+  // Notification States
+  const [permission, setPermission] = useState<NotificationPermission>(
+    typeof Notification !== "undefined" ? Notification.permission : "default"
+  );
+  
+  const [notificationConfig, setNotificationConfig] = useState(() => {
+    try {
+      const saved = localStorage.getItem("biker_ai_notif_config");
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch (e) {}
+    return {
+      dailyReminders: true,
+      coachReplies: true,
+      sessionConfirmations: true,
+      systemVolume: true
+    };
+  });
 
   // Account inputs
   const [name, setName] = useState(currentUser.profile.name);
@@ -60,6 +97,58 @@ export default function AccountSettings({ currentUser, onUpdateAccount, onClose 
 
   const validateEmail = (input: string) => {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input);
+  };
+
+  const playAlertSound = () => {
+    if (!notificationConfig.systemVolume) return;
+    try {
+      const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContext) return;
+      const ctx = new AudioContext();
+      
+      const osc1 = ctx.createOscillator();
+      const gain1 = ctx.createGain();
+      osc1.type = "sine";
+      osc1.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
+      osc1.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.12); // A5
+      
+      gain1.gain.setValueAtTime(0.12, ctx.currentTime);
+      gain1.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.25);
+      
+      osc1.connect(gain1);
+      gain1.connect(ctx.destination);
+      osc1.start();
+      osc1.stop(ctx.currentTime + 0.3);
+    } catch (e) {
+      console.warn("Audio context blocked or unsupported:", e);
+    }
+  };
+
+  const requestPermission = async () => {
+    if (typeof Notification === "undefined") {
+      setError("Notificações de navegador não são suportadas neste dispositivo.");
+      return;
+    }
+    setError("");
+    setSuccess("");
+    try {
+      const resp = await Notification.requestPermission();
+      setPermission(resp);
+      if (resp === "granted") {
+        setSuccess("Notificações autorizadas com sucesso no seu navegador! 🚴🏆");
+        playAlertSound();
+        try {
+          new Notification("Biker AI Notificações Ativadas! 🚴", {
+            body: "Parabéns! De agora em diante, você receberá seus feedbacks de treino e lembretes aqui.",
+          });
+        } catch (err) {}
+      } else if (resp === "denied") {
+        setError("A permissão foi negada no navegador. Se estiver em modo de teste ou iframe, abra o site direto em uma nova aba para poder autorizar.");
+      }
+    } catch (err: any) {
+      console.error(err);
+      setError("Erro ao solicitar permissão de notificações: " + err.message);
+    }
   };
 
   const handleSave = (e: React.FormEvent) => {
@@ -201,43 +290,56 @@ export default function AccountSettings({ currentUser, onUpdateAccount, onClose 
       </div>
 
       {/* Tabs */}
-      <div className="flex bg-slate-50 p-1.5 rounded-2xl gap-1">
+      <div className="grid grid-cols-2 md:grid-cols-4 bg-slate-50 p-1.5 rounded-2xl gap-1.5">
         <button
           type="button"
           onClick={() => { setError(""); setSuccess(""); setActiveTab("athlete"); }}
-          className={`flex-1 py-3 text-xs font-black text-center rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 ${
+          className={`py-3 text-xs font-black text-center rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 ${
             activeTab === "athlete" 
               ? "bg-white text-slate-900 shadow-xs border border-slate-100" 
               : "text-slate-400 hover:text-slate-600 hover:bg-slate-100/50"
           }`}
         >
-          <Activity className="w-4 h-4" />
+          <Activity className="w-4 h-4 shrink-0" />
           <span className="hidden sm:inline">Fisiologia & Treino</span>
           <span className="inline sm:hidden">Treino</span>
         </button>
         <button
           type="button"
           onClick={() => { setError(""); setSuccess(""); setActiveTab("account"); }}
-          className={`flex-1 py-3 text-xs font-black text-center rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 ${
+          className={`py-3 text-xs font-black text-center rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 ${
             activeTab === "account" 
               ? "bg-white text-slate-900 shadow-xs border border-slate-100" 
               : "text-slate-400 hover:text-slate-600 hover:bg-slate-100/50"
           }`}
         >
-          <Shield className="w-4 h-4" />
+          <Shield className="w-4 h-4 shrink-0" />
           <span className="hidden sm:inline">Acesso & Conta</span>
           <span className="inline sm:hidden">Acesso</span>
         </button>
         <button
           type="button"
+          onClick={() => { setError(""); setSuccess(""); setActiveTab("notifications"); }}
+          className={`py-3 text-xs font-black text-center rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 ${
+            activeTab === "notifications" 
+              ? "bg-white text-slate-900 shadow-xs border border-slate-100" 
+              : "text-slate-400 hover:text-slate-600 hover:bg-slate-100/50"
+          }`}
+        >
+          <Bell className="w-4 h-4 shrink-0" />
+          <span className="hidden sm:inline">Notificações</span>
+          <span className="inline sm:hidden">Push</span>
+        </button>
+        <button
+          type="button"
           onClick={() => { setError(""); setSuccess(""); setActiveTab("subscription"); }}
-          className={`flex-1 py-3 text-xs font-black text-center rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 ${
+          className={`py-3 text-xs font-black text-center rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 ${
             activeTab === "subscription" 
               ? "bg-white text-slate-900 shadow-xs border border-slate-100" 
               : "text-slate-400 hover:text-slate-600 hover:bg-slate-100/50"
           }`}
         >
-          <CreditCard className="w-4 h-4" />
+          <CreditCard className="w-4 h-4 shrink-0" />
           <span className="hidden sm:inline">Minha Assinatura</span>
           <span className="inline sm:hidden">Plano</span>
         </button>
@@ -572,6 +674,144 @@ export default function AccountSettings({ currentUser, onUpdateAccount, onClose 
           </motion.div>
         )}
 
+        {/* NOTIFICATIONS TAB */}
+        {activeTab === "notifications" && (
+          <motion.div 
+            initial={{ opacity: 0, x: 10 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="space-y-5"
+          >
+            {/* Native Browser Permission Panel */}
+            <div className="bg-slate-900 text-white rounded-2xl p-5 border border-slate-800 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+              <div className="space-y-1">
+                <span className="text-[10px] text-lime-400 uppercase font-bold tracking-wider font-mono">Notificações por Push</span>
+                <h4 className="text-lg font-black font-heading leading-tight flex items-center gap-2">
+                  Notificações no Navegador
+                </h4>
+                <p className="text-xs text-slate-400 font-sans">
+                  Status atual: <strong className="uppercase font-mono text-lime-400">{permission === "granted" ? "Ativado (Permitido)" : permission === "denied" ? "Bloqueado" : "Não configurado"}</strong>
+                </p>
+                <p className="text-[11px] text-slate-405 leading-relaxed max-w-md">
+                  Receba lembretes diários de treino e dicas valiosas de respiração e regeneração diretamente na sua tela !
+                </p>
+              </div>
+
+              {permission !== "granted" ? (
+                <button
+                  type="button"
+                  onClick={requestPermission}
+                  className="bg-lime-400 hover:bg-lime-350 text-slate-950 px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-2 shake"
+                >
+                  <BellRing className="w-4 h-4" />
+                  <span>Ativar Push</span>
+                </button>
+              ) : (
+                <div className="flex items-center gap-2 bg-slate-850 px-3 py-1.5 rounded-xl border border-slate-700">
+                  <CheckCircle className="w-4 h-4 text-lime-400" />
+                  <span className="text-xs font-bold text-lime-400 font-mono uppercase tracking-wide">Push Ativo</span>
+                </div>
+              )}
+            </div>
+
+            {/* Notification Config Toggles */}
+            <div className="bg-slate-50 border border-slate-100 p-5 rounded-2xl space-y-4">
+              <h5 className="text-xs font-bold text-slate-700 uppercase tracking-wider font-heading flex items-center gap-2">
+                <Sliders className="w-4 h-4 text-slate-400" /> Preferências de Alerta de Treino
+              </h5>
+              
+              <div className="space-y-3.5 pt-1">
+                {/* Daily Reminders */}
+                <label className="flex items-center justify-between cursor-pointer group">
+                  <div className="space-y-0.5">
+                    <span className="text-xs font-bold text-slate-800 block group-hover:text-slate-900 transition-colors">
+                      Lembrete de Treino Diário
+                    </span>
+                    <span className="text-[10.5px] text-slate-450 block font-sans">
+                      Dica motivacional e resumo do treino do dia de manhã bem cedo
+                    </span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={notificationConfig.dailyReminders}
+                    onChange={(e) => {
+                      const updated = { ...notificationConfig, dailyReminders: e.target.checked };
+                      setNotificationConfig(updated);
+                      localStorage.setItem("biker_ai_notif_config", JSON.stringify(updated));
+                    }}
+                    className="w-4 h-4 rounded-sm accent-lime-500 cursor-pointer"
+                  />
+                </label>
+
+                {/* Coach Replies */}
+                <label className="flex items-center justify-between cursor-pointer group pt-2.5 border-t border-slate-100">
+                  <div className="space-y-0.5">
+                    <span className="text-xs font-bold text-slate-800 block group-hover:text-slate-900 transition-colors">
+                      Mensagens e Feedback do Coach Virtual
+                    </span>
+                    <span className="text-[10.5px] text-slate-450 block font-sans">
+                      Receber uma notificação push sempre que o Coach responder na aba de Chat !
+                    </span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={notificationConfig.coachReplies}
+                    onChange={(e) => {
+                      const updated = { ...notificationConfig, coachReplies: e.target.checked };
+                      setNotificationConfig(updated);
+                      localStorage.setItem("biker_ai_notif_config", JSON.stringify(updated));
+                    }}
+                    className="w-4 h-4 rounded-sm accent-lime-500 cursor-pointer"
+                  />
+                </label>
+
+                {/* Training Log Confirmations */}
+                <label className="flex items-center justify-between cursor-pointer group pt-2.5 border-t border-slate-100">
+                  <div className="space-y-0.5">
+                    <span className="text-xs font-bold text-slate-800 block group-hover:text-slate-900 transition-colors">
+                      Confirmações de Treino Realizado
+                    </span>
+                    <span className="text-[10.5px] text-slate-450 block font-sans">
+                      Receber avaliação imediata na sua barra de status após anexar arquivos ou Strava
+                    </span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={notificationConfig.sessionConfirmations}
+                    onChange={(e) => {
+                      const updated = { ...notificationConfig, sessionConfirmations: e.target.checked };
+                      setNotificationConfig(updated);
+                      localStorage.setItem("biker_ai_notif_config", JSON.stringify(updated));
+                    }}
+                    className="w-4 h-4 rounded-sm accent-lime-500 cursor-pointer"
+                  />
+                </label>
+
+                {/* Audio Feedback / Beeps */}
+                <label className="flex items-center justify-between cursor-pointer group pt-2.5 border-t border-slate-100">
+                  <div className="space-y-0.5">
+                    <span className="text-xs font-bold text-slate-800 block group-hover:text-slate-900 transition-colors">
+                      Efeito Estimulante Sonoro (Bip-Bop)
+                    </span>
+                    <span className="text-[10.5px] text-slate-450 block font-sans">
+                      Emitir sinal sonoro de alta frequência (chime) junto com as notificações
+                    </span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={notificationConfig.systemVolume}
+                    onChange={(e) => {
+                      const updated = { ...notificationConfig, systemVolume: e.target.checked };
+                      setNotificationConfig(updated);
+                      localStorage.setItem("biker_ai_notif_config", JSON.stringify(updated));
+                    }}
+                    className="w-4 h-4 rounded-sm accent-lime-500 cursor-pointer"
+                  />
+                </label>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
         {/* SUBSCRIPTION TAB */}
         {activeTab === "subscription" && (
           <motion.div 
@@ -639,8 +879,8 @@ export default function AccountSettings({ currentUser, onUpdateAccount, onClose 
             </div>
 
             {/* Support footer info */}
-            <div className="bg-amber-50 border border-amber-150 p-3 rounded-2xl text-amber-900 text-xs">
-              Para alterações de faturamento, faturas fiscais, cancelamento ou alteração voluntária de plano, mande uma mensagem de suporte direta ao seu Coach Pedro no WhatsApp cadastrado.
+            <div className="bg-amber-50 border border-amber-100 p-3.5 rounded-2xl text-amber-900 text-xs">
+              Para faturamento, suporte técnico, dúvidas de faturas ou alteração de plano, entre em contato diretamente com nossa equipe pelo e-mail <button type="button" onClick={handleSupportEmailClick} className="font-extrabold text-amber-950 underline hover:text-amber-800 cursor-pointer bg-transparent border-none p-0">bikeraisupport@gmail.com</button>.
             </div>
           </motion.div>
         )}

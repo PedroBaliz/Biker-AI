@@ -216,6 +216,7 @@ export default function App() {
   });
 
   const [isGeneratingPlan, setIsGeneratingPlan] = useState(false);
+  const [physiologyChangedPending, setPhysiologyChangedPending] = useState(false);
 
   // Derived training metrics (excluding rest/off sessions from training counts)
   const derivedMetrics = useMemo(() => {
@@ -227,6 +228,34 @@ export default function App() {
   }, [plan?.workouts]);
 
   const { totalW, completedW, pctW } = derivedMetrics;
+
+  const [activePushToast, setActivePushToast] = useState<{ title: string; body: string; id: number } | null>(null);
+
+  useEffect(() => {
+    const handlePushEvent = (e: Event) => {
+      const customEv = e as CustomEvent;
+      if (customEv && customEv.detail) {
+        setActivePushToast({
+          title: customEv.detail.title || "Notificação Biker AI",
+          body: customEv.detail.body || "",
+          id: Date.now()
+        });
+      }
+    };
+    window.addEventListener("biker_ai_simulated_push", handlePushEvent);
+    return () => {
+      window.removeEventListener("biker_ai_simulated_push", handlePushEvent);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (activePushToast) {
+      const timer = setTimeout(() => {
+        setActivePushToast(null);
+      }, 7000);
+      return () => clearTimeout(timer);
+    }
+  }, [activePushToast]);
 
   const handleUpdateWorkout = useCallback((index: number, updatedWorkout: Workout) => {
     if (!plan) return;
@@ -251,6 +280,52 @@ export default function App() {
         });
       } catch (err) {
         console.error("Erro ao rodar animação de confetes:", err);
+      }
+
+      // Play audio and show push alert!
+      try {
+        const notifConfig = JSON.parse(localStorage.getItem("biker_ai_notif_config") || "{}");
+        if (notifConfig.sessionConfirmations !== false) {
+          const volumeOn = notifConfig.systemVolume !== false;
+          if (volumeOn) {
+            const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+            if (AudioContext) {
+              const ctx = new AudioContext();
+              const notes = [261.63, 329.63, 392.00, 523.25]; // C4, E4, G4, C5
+              notes.forEach((freq, idx) => {
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = "sine";
+                osc.frequency.setValueAtTime(freq, ctx.currentTime + idx * 0.08);
+                gain.gain.setValueAtTime(0, ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.08, ctx.currentTime + idx * 0.08 + 0.02);
+                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + idx * 0.08 + 0.25);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start(ctx.currentTime + idx * 0.08);
+                osc.stop(ctx.currentTime + idx * 0.08 + 0.3);
+              });
+            }
+          }
+
+          const title = "Treino Concluído! 🏆🚴";
+          const body = `Excelente pedal! Sua sessão de "${updatedWorkout.type || "Treino"}" foi salva com sucesso. O Coach Biker AI já está analisando seu rendimento!`;
+          
+          let sentNative = false;
+          if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+            try {
+              new Notification(title, { body });
+              sentNative = true;
+            } catch (err) {}
+          }
+          
+          const customEvent = new CustomEvent("biker_ai_simulated_push", {
+            detail: { title, body, native: sentNative }
+          });
+          window.dispatchEvent(customEvent);
+        }
+      } catch (e) {
+        console.error("Erro ao emitir aviso de conclusão:", e);
       }
     }
   }, [plan]);
@@ -603,21 +678,12 @@ export default function App() {
 
       // Adcciona mensagem ao histórico do chat do treinador
       setChatHistory(prev => {
-        const history = [...prev, {
+        return [...prev, {
           id: `gen-week-${Date.now()}`,
           sender: "treinador",
           text: `🚀 **Sua Semana ${nextWeek} de Treinos Iniciou!**\n\n${data.coachMessage || "Preparei estímulos novos na planilha baseando-me nas suas sensações, cargas anteriores e nas conclusões!"}`,
           timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
         }];
-        if (data.geminiError) {
-          history.push({
-            id: `system-warn-${Date.now()}`,
-            sender: "treinador",
-            text: `⚠️ **Modo de Segurança Ativado (Treinador Local)**\n\nSua nova semana foi evoluída utilizando as regras de periodização embarcada para progressão de carga (supercompensação clássica) por conta de um erro técnico na IA.\n\n**Causa do erro:** \`${data.geminiError}\`\n\n*Para obter comentários analíticos profundos de IA integrada, configure uma chave de acesso GEMINI_API_KEY válida em seu painel.*`,
-            timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-          });
-        }
-        return history;
       });
 
     } catch (err: any) {
@@ -812,18 +878,53 @@ export default function App() {
         timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
       };
 
-      setChatHistory(prev => {
-        const history = [...prev, coachMsg];
-        if (data && data.geminiError) {
-          history.push({
-            id: `system-warn-${Date.now()}`,
-            sender: "treinador",
-            text: `⚠️ **Aviso de Chamada Off-line**\n\nO coach respondeu usando respostas dinâmicas embarcadas de salvaguarda, pois a busca avançada por IA personalizada falhou.\n\n**Causa do erro:** \`${data.geminiError}\``,
-            timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+      setChatHistory(prev => [...prev, coachMsg]);
+
+      // Trigger coach reply notification
+      try {
+        const notifConfig = JSON.parse(localStorage.getItem("biker_ai_notif_config") || "{}");
+        if (notifConfig.coachReplies !== false) {
+          const volumeOn = notifConfig.systemVolume !== false;
+          if (volumeOn) {
+            const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+            if (AudioContext) {
+              const ctx = new AudioContext();
+              const osc = ctx.createOscillator();
+              const gain = ctx.createGain();
+              osc.type = "sine";
+              osc.frequency.setValueAtTime(659.25, ctx.currentTime); // E5
+              osc.frequency.exponentialRampToValueAtTime(987.77, ctx.currentTime + 0.12); // B5
+              gain.gain.setValueAtTime(0.12, ctx.currentTime);
+              gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.25);
+              osc.connect(gain);
+              gain.connect(ctx.destination);
+              osc.start();
+              osc.stop(ctx.currentTime + 0.3);
+            }
+          }
+
+          const title = "Conselho do Coach Virtual - Biker AI 🚴🏆";
+          let bodyText = data.reply || "";
+          if (bodyText.length > 120) {
+            bodyText = bodyText.substring(0, 117) + "...";
+          }
+
+          let sentNative = false;
+          if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+            try {
+              new Notification(title, { body: bodyText });
+              sentNative = true;
+            } catch (err) {}
+          }
+
+          const customEvent = new CustomEvent("biker_ai_simulated_push", {
+            detail: { title, body: bodyText, native: sentNative }
           });
+          window.dispatchEvent(customEvent);
         }
-        return history;
-      });
+      } catch (e) {
+        console.error("Erro ao notificar feedback do coach:", e);
+      }
 
       // If in onboarding, update parsed fields
       if (isOnboarding && data.parsedProfile) {
@@ -899,21 +1000,12 @@ export default function App() {
 
       // Add coach announcement to chat
       setChatHistory(prev => {
-        const history = [...prev, {
+        return [...prev, {
           id: `gen-${Date.now()}`,
           sender: "treinador",
           text: `✨ **Planilha Semanal Gerada com Sucesso!**\n\n${profile.name || "Atleta"}, montei uma planilha de treinos sob medida baseada no seu nível (**${profile.level}**) e seu objetivo de **${profile.goal}**. Confira a aba de planilha para ver os passos e dicas de cada dia! Let's ride! 🚴‍♂️‍♂️💨`,
           timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
         }];
-        if (data.geminiError) {
-          history.push({
-            id: `system-warn-${Date.now()}`,
-            sender: "treinador",
-            text: `⚠️ **Modo de Segurança Ativado (Treinador Local)**\n\nSeus treinos foram calculados utilizando nosso motor fisiológico embarcado com base profissional na grade dos 80/20, pois a chamada para a inteligência de IA personalizada retornou um erro.\n\n**Causa do erro:** \`${data.geminiError}\`\n\n*Geralmente isso ocorre por uma chave do Gemini que expirou ou foi bloqueada pelo Google como vazada (como a chave de demonstração padrão do projeto). Para utilizar a inteligência de IA personalizada completa, atualize a chave **GEMINI_API_KEY** no seu painel de Segredos/Configurações.*`,
-            timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-          });
-        }
-        return history;
       });
 
     } catch (err: any) {
@@ -987,6 +1079,23 @@ export default function App() {
     // Sync React state for imediate rendering
     setProfile(updatedUser.profile);
 
+    const physFieldsChanged = 
+      updatedUser.profile.level !== currentUser.profile.level ||
+      updatedUser.profile.goal !== currentUser.profile.goal ||
+      updatedUser.profile.daysPerWeek !== currentUser.profile.daysPerWeek ||
+      updatedUser.profile.durationPerSession !== currentUser.profile.durationPerSession ||
+      updatedUser.profile.eventDate !== currentUser.profile.eventDate ||
+      updatedUser.profile.hasPowerMeter !== currentUser.profile.hasPowerMeter ||
+      updatedUser.profile.ftp !== currentUser.profile.ftp ||
+      updatedUser.profile.hasHeartRate !== currentUser.profile.hasHeartRate ||
+      updatedUser.profile.maxHeartRate !== currentUser.profile.maxHeartRate ||
+      updatedUser.profile.limitations !== currentUser.profile.limitations ||
+      updatedUser.profile.recentActivity !== currentUser.profile.recentActivity;
+
+    if (physFieldsChanged) {
+      setPhysiologyChangedPending(true);
+    }
+
     // Sync to backend immediately for instant server persistence
     fetch("/api/auth/save-user", {
       method: "POST",
@@ -1038,6 +1147,30 @@ export default function App() {
       }
     ]);
     setPlan(null);
+  };
+
+  // Support click handler to copy email & open mailto in new tab to bypass iframe sandbox restrictions
+  const handleSupportClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const email = "bikeraisupport@gmail.com";
+    try {
+      navigator.clipboard.writeText(email);
+    } catch (err) {
+      const textArea = document.createElement("textarea");
+      textArea.value = email;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textArea);
+    }
+    
+    window.open(`mailto:${email}`, "_blank", "noopener,noreferrer");
+    
+    setActivePushToast({
+      title: "Suporte Técnico Biker AI 🚴",
+      body: "O e-mail de suporte (bikeraisupport@gmail.com) foi copiado! Caso o seu aplicativo de e-mail não abra automaticamente, cole o endereço no destinatário.",
+      id: Date.now()
+    });
   };
 
   // Reset App / Reset athlete specific progress
@@ -1177,16 +1310,18 @@ export default function App() {
                 </span>
               </button>
             )}
-            {currentUser && plan && (
+            {currentUser && (
               <button 
-                onClick={handleReset} 
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-800 bg-slate-800/50 hover:bg-slate-800 text-xs text-slate-300 font-bold font-heading uppercase tracking-wider transition-all cursor-pointer"
-                title="Resetar todos os dados"
+                type="button"
+                onClick={handleSupportClick} 
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-800 bg-slate-800/50 hover:bg-slate-800 hover:text-lime-400 text-xs text-slate-300 font-bold font-heading uppercase tracking-wider transition-all cursor-pointer"
+                title="Contatar Suporte: bikeraisupport@gmail.com"
               >
-                <RotateCcw className="w-3.5 h-3.5 text-rose-500" />
-                <span className="hidden xs:inline">Resetar</span>
+                <HelpCircle className="w-3.5 h-3.5 text-lime-450 shrink-0" />
+                <span>Suporte</span>
               </button>
             )}
+
             {currentUser && (
               <button 
                 onClick={handleSignOut} 
@@ -1730,15 +1865,6 @@ export default function App() {
                     <Sliders className="w-4 h-4" />
                     <span>Minhas Zonas</span>
                   </button>
-                  <button 
-                    onClick={() => setActiveTab("chat")}
-                    className={`flex items-center gap-1.5 px-3 py-2 sm:px-4 sm:py-2.5 text-[11px] sm:text-xs font-black leading-none font-heading uppercase rounded-xl transition-all cursor-pointer ${
-                      activeTab === "chat" ? "bg-slate-900 text-lime-400 shadow-sm" : "text-slate-600 hover:bg-slate-205 hover:text-slate-900"
-                    }`}
-                  >
-                    <HelpCircle className="w-4 h-4" />
-                    <span>Falar com o Treinador</span>
-                  </button>
                 </div>
               </div>
 
@@ -1753,6 +1879,44 @@ export default function App() {
                     transition={{ duration: 0.2 }}
                     className="space-y-8"
                   >
+                    {physiologyChangedPending && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm"
+                      >
+                        <div className="flex gap-3 items-start">
+                          <span className="text-2xl mt-0.5">⚙️</span>
+                          <div>
+                            <h4 className="font-heading font-extrabold text-amber-850 text-sm">Dados de Fisiologia/Treino Alterados!</h4>
+                            <p className="text-xs font-sans text-amber-700 leading-relaxed mt-1">
+                              Detectamos novas configurações no seu perfil de atleta. Você quer que o Treinador AI refaça e substitua seus treinos atuais de acordo com as novas métricas?
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => setPhysiologyChangedPending(false)}
+                            className="px-3.5 py-2 rounded-xl text-xs font-bold text-slate-500 hover:bg-slate-100 transition-all cursor-pointer"
+                          >
+                            Manter Atuais
+                          </button>
+                          <button
+                            type="button"
+                            disabled={isGeneratingPlan}
+                            onClick={async () => {
+                              await generateTrainingPlan();
+                              setPhysiologyChangedPending(false);
+                            }}
+                            className="bg-slate-900 text-lime-400 border border-slate-800 hover:bg-slate-800 px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
+                          >
+                            {isGeneratingPlan ? "Refazendo..." : "Substituir Treinos Atuais"}
+                          </button>
+                        </div>
+                      </motion.div>
+                    )}
+
                     {plan?.coachMessage && (
                       <motion.div 
                         initial={{ opacity: 0, y: 20 }}
@@ -1855,22 +2019,6 @@ export default function App() {
                       </motion.div>
 
                     </div>
-
-                    {/* Calendário Mensal Resumido Interativo */}
-                    <MonthlyCalendar 
-                      profile={profile}
-                      plan={plan}
-                      onUpdateWorkoutState={() => {
-                        const saved = localStorage.getItem("athlete_training_plan");
-                        if (saved) {
-                          try {
-                            setPlan(JSON.parse(saved));
-                          } catch (e) {
-                            console.error(e);
-                          }
-                        }
-                      }}
-                    />
 
                     {/* Progress Tracker Panel & Worksheet Actions */}
                     {plan && plan.workouts && (
@@ -2553,7 +2701,9 @@ export default function App() {
             <Bike className="w-5 h-5 text-lime-400" />
             <span>&copy; 2026 Biker AI. Todos os direitos reservados.</span>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 flex-wrap justify-center font-medium">
+            <span>Suporte: <button type="button" onClick={handleSupportClick} className="text-lime-400 hover:underline cursor-pointer bg-transparent border-none p-0 font-medium">bikeraisupport@gmail.com</button></span>
+            <span>•</span>
             <span>Treino Equilibrado</span>
             <span>•</span>
             <span>Controle de Esforço</span>
@@ -2736,6 +2886,55 @@ export default function App() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Visual Push Notification Toast Overlay */}
+      <AnimatePresence>
+        {activePushToast && (
+          <motion.div
+            initial={{ opacity: 0, y: -50, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9, y: -20 }}
+            className="fixed top-4 right-4 left-4 sm:left-auto sm:max-w-md z-[60] bg-slate-900/95 border border-lime-400/30 rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.5)] p-4 text-white flex items-start gap-3.5 backdrop-blur-md"
+          >
+            {/* Notification Bell ring indicator */}
+            <div className="p-2.5 bg-lime-500/15 border border-lime-500/30 rounded-xl text-lime-400 shrink-0">
+              <span className="relative flex h-4 w-4">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-lime-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-4 w-4 text-lime-400">
+                  <Bike className="w-4 h-4" />
+                </span>
+              </span>
+            </div>
+
+            {/* Notification Message content */}
+            <div className="flex-1 space-y-0.5 text-left font-sans">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-black uppercase text-lime-400 tracking-wider">
+                  {activePushToast.title}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setActivePushToast(null)}
+                  className="text-slate-400 hover:text-white text-xs font-bold leading-none p-1 rounded-sm hover:bg-slate-800 transition-all cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+              <p className="text-xs text-slate-200 leading-relaxed font-sans mt-1 whitespace-pre-wrap">
+                {activePushToast.body}
+              </p>
+              <div className="flex items-center gap-1.5 pt-1.5 font-mono text-[9px] text-slate-400 border-t border-slate-800 mt-2">
+                <span>🔔 Notificações Ativas</span>
+                <span>•</span>
+                <span>Biker AI Notifier</span>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+
+      {/* Floating Support Button removed */}
 
     </div>
   );

@@ -300,7 +300,10 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
           maxHeartRate: null,
           limitations: "",
           recentActivity: "",
-          onboardingStep: 1
+          onboardingStep: 1,
+          subscriptionStatus: "pending_payment",
+          subscriptionPlan: "Mensal Premium",
+          subscriptionExpiresAt: "2026-12-31"
         };
 
         const initialChat: ChatMessage[] = [
@@ -455,6 +458,28 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
               </p>
             </div>
 
+            {/* Quick Pricing Offer Banner */}
+            <div className="bg-linear-to-r from-lime-500/10 to-emerald-500/10 border border-lime-500/20 p-4 rounded-2xl relative overflow-hidden space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[9px] bg-lime-400 text-slate-950 font-black px-2 py-0.5 rounded-full uppercase tracking-wider">Promoção Ativa</span>
+                <span className="text-[10px] text-lime-450 font-extrabold flex items-center gap-1 font-heading">
+                  <Sparkles className="w-3.5 h-3.5 text-lime-400 animate-pulse" />
+                  <span>R$ 19,89 / mês</span>
+                </span>
+              </div>
+              <p className="text-[10px] text-slate-300 leading-normal font-sans">
+                Acesse planilhas inteligentes recalibradas por IA e o treinador pessoal ilimitadamente.
+              </p>
+              <a 
+                href="https://mpago.la/24PgikU" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="w-full flex items-center justify-center gap-1.5 py-2.5 bg-lime-400 hover:bg-lime-350 text-slate-950 font-black rounded-lg text-[10px] uppercase tracking-wider transition-all cursor-pointer shadow-md text-center inline-block"
+              >
+                <span>Instanciar Assinatura Premium ↗</span>
+              </a>
+            </div>
+
             {/* Selector de Abas */}
             <div className="flex p-0.5 bg-slate-950 rounded-xl border border-slate-850">
               <button 
@@ -592,6 +617,53 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
             </div>
 
           </div>
+
+          {/* Premium Subscription Dedicated Box */}
+          <div className="mt-4 w-full bg-linear-to-b from-slate-900/40 to-slate-950 border-2 border-lime-400/30 rounded-3xl p-6 sm:p-7 shadow-xl relative overflow-hidden text-left space-y-4">
+            <div className="absolute right-0 bottom-0 opacity-10 translate-x-6 translate-y-6 pointer-events-none">
+              <Bike className="w-40 h-40 text-lime-400" />
+            </div>
+            
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-lime-400/10 border border-lime-400/20 rounded-xl text-lime-400 animate-pulse">
+                  <Zap className="w-5 h-5 text-lime-450" />
+                </div>
+                <div>
+                  <h4 className="font-heading font-black text-sm text-white uppercase tracking-wide">ASSINATURA PREMIUM BIKER AI</h4>
+                  <p className="text-[9px] text-slate-400 uppercase tracking-widest font-mono font-bold leading-none mt-0.5">Suporte a múltiplos ciclistas e sensores</p>
+                </div>
+              </div>
+              <span className="text-[10px] bg-slate-955 text-lime-450 border border-lime-400/20 font-black px-2.5 py-1 rounded-full uppercase">
+                R$ 19,89 / mês
+              </span>
+            </div>
+
+            <div className="space-y-1.5">
+              <h5 className="font-heading font-black text-base text-white">Pronto para começar seus treinos?</h5>
+              <p className="text-xs text-slate-350 leading-relaxed font-sans">
+                Seja qual for seu nível, garanta seu acesso ao Biker AI por apenas <strong>R$ 19,89 por mês</strong>. Clique no botão abaixo para concluir sua assinatura segura no Mercado Pago.
+              </p>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-1">
+              <a 
+                href="https://mpago.la/24PgikU"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 bg-lime-400 hover:bg-lime-350 text-slate-950 font-black text-center py-3.5 rounded-xl text-xs uppercase tracking-wider transition-all shadow-md cursor-pointer block"
+              >
+                Fazer Assinatura por R$ 19,89/mês ⚡
+              </a>
+              <a 
+                href="#auth-section"
+                className="px-5 py-3.5 bg-slate-800 hover:bg-slate-700/80 text-white font-extrabold text-center rounded-xl text-xs uppercase transition-all cursor-pointer border border-slate-705"
+              >
+                Ver Instruções
+              </a>
+            </div>
+          </div>
+
         </div>
       </section>
 

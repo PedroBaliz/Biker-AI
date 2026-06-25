@@ -523,7 +523,7 @@ export default function WorkoutCard({ workout, onUpdate, onDelete, profile, allW
               <select 
                 value={actualRpe} 
                 onChange={(e) => setActualRpe(Number(e.target.value))}
-                className="w-full bg-white border border-slate-200 focus:border-sky-550 rounded-xl px-1.5 py-1.5 text-xs text-slate-805 outline-hidden font-medium"
+                className="w-full bg-white border border-slate-200 focus:border-sky-500 rounded-xl px-1.5 py-1.5 text-xs text-slate-805 outline-hidden font-medium"
               >
                 <option value={1}>1/10 (Super Leve) 👍</option>
                 <option value={2}>2/10 (Giro Regenerativo)</option>
