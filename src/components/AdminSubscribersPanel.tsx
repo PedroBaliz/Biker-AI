@@ -304,15 +304,15 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
 
   // Metrics calculations
   const totalUsers = users.length;
-  const activeCount = users.filter(u => u.profile.subscriptionStatus === 'active').length;
-  const pendingCount = users.filter(u => u.profile.subscriptionStatus === 'pending_payment').length;
-  const expiredCount = users.filter(u => u.profile.subscriptionStatus === 'expired').length;
-  const avgFtp = (users.filter(u => u.profile.ftp).reduce((sum, u) => sum + (u.profile.ftp || 0), 0) / (users.filter(u => u.profile.ftp).length || 1)).toFixed(0);
+  const activeCount = users.filter(u => u.profile?.subscriptionStatus === 'active').length;
+  const pendingCount = users.filter(u => u.profile?.subscriptionStatus === 'pending_payment').length;
+  const expiredCount = users.filter(u => u.profile?.subscriptionStatus === 'expired').length;
+  const avgFtp = (users.filter(u => u.profile?.ftp).reduce((sum, u) => sum + (u.profile?.ftp || 0), 0) / (users.filter(u => u.profile?.ftp).length || 1)).toFixed(0);
 
   // Estimativa de faturamento de MVP (Bronze R$ 29,90/mês, Prata R$ 24,90/mês equ., Ouro R$ 16,58/mês equ.)
   const estimatedRevenue = users.reduce((sum, u) => {
-    if (u.profile.subscriptionStatus !== 'active') return sum;
-    const plan = (u.profile.subscriptionPlan || "").toLowerCase();
+    if (u.profile?.subscriptionStatus !== 'active') return sum;
+    const plan = (u.profile?.subscriptionPlan || "").toLowerCase();
     if (plan.includes("ouro") || plan.includes("anual")) return sum + 16.58; // mensalizado
     if (plan.includes("prata") || plan.includes("trimestral")) return sum + 24.9;
     return sum + 29.9; // Bronze

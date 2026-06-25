@@ -85,7 +85,7 @@ try {
 // Local database retriever helper
 async function getDatabase(): Promise<Record<string, any>> {
   if (inMemoryDbCache) {
-    return inMemoryDbCache;
+    return JSON.parse(JSON.stringify(inMemoryDbCache));
   }
 
   // Load from Firestore first if available!
@@ -143,7 +143,7 @@ async function getDatabase(): Promise<Record<string, any>> {
   }
 
   inMemoryDbCache = localDb;
-  return localDb;
+  return JSON.parse(JSON.stringify(localDb));
 }
 
 // Local database saving helper
@@ -192,8 +192,8 @@ async function triggerAutomaticBackup(db: Record<string, any>) {
 }
 
 async function saveDatabase(db: Record<string, any>) {
-  const previousDb = inMemoryDbCache || {};
-  inMemoryDbCache = db;
+  const previousDb = inMemoryDbCache ? JSON.parse(JSON.stringify(inMemoryDbCache)) : {};
+  inMemoryDbCache = JSON.parse(JSON.stringify(db));
 
   // Write locally right away to guarantee instant local persistence and backups
   try {
