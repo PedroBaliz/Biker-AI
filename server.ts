@@ -83,8 +83,8 @@ try {
 }
 
 // Local database retriever helper
-async function getDatabase(): Promise<Record<string, any>> {
-  if (inMemoryDbCache) {
+async function getDatabase(forceRefresh = false): Promise<Record<string, any>> {
+  if (inMemoryDbCache && !forceRefresh) {
     return JSON.parse(JSON.stringify(inMemoryDbCache));
   }
 
@@ -534,7 +534,7 @@ app.post("/api/auth/register", async (req, res) => {
       return res.status(400).json({ error: "Dados inválidos de cadastro." });
     }
 
-    const db = await getDatabase();
+    const db = await getDatabase(true);
     const emailKey = email.trim().toLowerCase();
 
     if (db[emailKey]) {
@@ -599,7 +599,7 @@ app.post("/api/auth/login", async (req, res) => {
       return res.status(400).json({ error: "E-mail e senha são obrigatórios." });
     }
 
-    const db = await getDatabase();
+    const db = await getDatabase(true);
     const emailKey = email.trim().toLowerCase();
     const user = db[emailKey];
 
@@ -2056,7 +2056,7 @@ Histórico Recente: ${JSON.stringify(messageHistory?.slice(-10) || [])}
 // Fetch all registered users in the database
 app.get("/api/admin/users", async (req, res) => {
   try {
-    const db = await getDatabase();
+    const db = await getDatabase(true);
     // Return all users metadata (omitting passwords)
     const userList = Object.keys(db).map((key) => {
       const user = db[key];
@@ -2090,7 +2090,7 @@ app.post("/api/admin/update-user-status", async (req, res) => {
       return res.status(400).json({ error: "E-mail do usuário é obrigatório." });
     }
 
-    const db = await getDatabase();
+    const db = await getDatabase(true);
     const emailKey = email.trim().toLowerCase();
     const user = db[emailKey];
 
