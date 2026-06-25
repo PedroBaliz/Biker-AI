@@ -392,11 +392,11 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
         </div>
       </header>
 
-      {/* Hero Split Section */}
-      <section className="relative pt-10 pb-20 px-4 sm:px-6 md:px-12 max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+      {/* Hero Centered Section */}
+      <section className="relative pt-16 pb-20 px-4 sm:px-6 md:px-12 max-w-4xl mx-auto w-full text-center space-y-8">
         
-        {/* Hero Copy (Left 7 Cols) */}
-        <div className="lg:col-span-7 space-y-6 text-left">
+        {/* Hero Copy (Centered) */}
+        <div className="space-y-6 text-center max-w-3xl mx-auto">
           
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-lime-500/10 border border-lime-500/20 text-lime-400 rounded-full text-[10px] font-black uppercase tracking-wider">
             <Sparkles className="w-3.5 h-3.5" />
@@ -409,259 +409,36 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
             <span className="bg-linear-to-r from-lime-400 to-emerald-400 bg-clip-text text-transparent">Treine como os profissionais.</span>
           </h2>
 
-          <p className="text-sm sm:text-base text-slate-300 font-sans leading-relaxed max-w-2xl">
+          <p className="text-sm sm:text-base text-slate-300 font-sans leading-relaxed max-w-2xl mx-auto">
             Descubra as planilhas semanais que se adaptam de verdade à sua vida. Ajustamos seus treinos de acordo com o seu cansaço e o seu tempo livre. Chega de treinar no escuro seguindo planilhas de papel ou PDFs parados!
           </p>
 
           {/* Key Metrics grid */}
-          <div className="grid grid-cols-3 gap-4 pt-4 border-t border-slate-900">
-            <div className="space-y-0.5">
+          <div className="grid grid-cols-3 gap-4 pt-6 border-t border-slate-900 max-w-2xl mx-auto">
+            <div className="space-y-0.5 text-center">
               <p className="text-2xl sm:text-3xl font-heading font-black text-lime-400 tracking-tight">Mais Força</p>
               <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Aumente seus watts</p>
               <p className="text-[10px] text-slate-500 leading-normal font-sans">Pedale com mais facilidade e canse muito menos</p>
             </div>
-            <div className="space-y-0.5 border-l border-slate-900 pl-4">
+            <div className="space-y-0.5 border-l border-slate-900 pl-4 text-center">
               <p className="text-2xl sm:text-3xl font-heading font-black text-emerald-400 tracking-tight">Mais Fôlego</p>
               <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Subidas fáceis</p>
               <p className="text-[10px] text-slate-500 leading-normal font-sans">Sinta menos cansaço nas pernas e suba no seu ritmo</p>
             </div>
-            <div className="space-y-0.5 border-l border-slate-900 pl-4">
+            <div className="space-y-0.5 border-l border-slate-900 pl-4 text-center">
               <p className="text-2xl sm:text-3xl font-heading font-black text-yellow-400 tracking-tight font-heading">No Seu Tempo</p>
               <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Treinos Flexíveis</p>
               <p className="text-[10px] text-slate-500 leading-normal font-sans">As sessões cabem no seu tempo livre, dia a dia</p>
             </div>
           </div>
 
-
-
-        </div>
-
-        {/* Auth Floating Card (Right 5 Cols) */}
-        <div id="auth-section" className="lg:col-span-5 relative scroll-mt-24">
-          <div className="absolute inset-0 bg-linear-to-r from-lime-500/10 to-emerald-500/10 rounded-3xl blur-2xl -z-10 opacity-70"></div>
-          
-          <div className="w-full bg-slate-900/90 border border-slate-800 rounded-3xl shadow-2xl p-6 sm:p-8 backdrop-blur-md relative z-10 space-y-6">
-            
-            {/* Logo e Welcome */}
-            <div className="text-center space-y-1.5">
-              <div className="inline-flex p-2.5 bg-lime-500/10 border border-lime-500/20 rounded-2xl text-lime-400 mb-1">
-                <Bike className="w-6 h-6" />
-              </div>
-              <h3 className="font-heading font-black text-lg tracking-tight uppercase">
-                {isLogin ? "Entrar na sua conta" : "Criar sua conta nova"}
-              </h3>
-              <p className="text-[11px] text-slate-400 leading-relaxed font-sans">
-                {isLogin 
-                  ? "Coloque seu e-mail e senha abaixo para ver seus treinos de hoje e falar com o treinador." 
-                  : "Crie seu cadastro rápido para receber treinos fáceis e personalizados de verdade."
-                }
-              </p>
-            </div>
-
-            {/* Quick Pricing Offer Banner */}
-            <div className="bg-linear-to-r from-lime-500/10 to-emerald-500/10 border border-lime-500/20 p-4 rounded-2xl relative overflow-hidden space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-[9px] bg-lime-400 text-slate-950 font-black px-2 py-0.5 rounded-full uppercase tracking-wider">Promoção Ativa</span>
-                <span className="text-[10px] text-lime-450 font-extrabold flex items-center gap-1 font-heading">
-                  <Sparkles className="w-3.5 h-3.5 text-lime-400 animate-pulse" />
-                  <span>R$ 19,89 / mês</span>
-                </span>
-              </div>
-              <p className="text-[10px] text-slate-300 leading-normal font-sans">
-                Acesse planilhas inteligentes recalibradas por IA e o treinador pessoal ilimitadamente.
-              </p>
-              <a 
-                href="https://mpago.la/24PgikU" 
-                target="_blank" 
-                rel="noopener noreferrer" 
-                className="w-full flex items-center justify-center gap-1.5 py-2.5 bg-lime-400 hover:bg-lime-350 text-slate-950 font-black rounded-lg text-[10px] uppercase tracking-wider transition-all cursor-pointer shadow-md text-center inline-block"
-              >
-                <span>Instanciar Assinatura Premium ↗</span>
-              </a>
-            </div>
-
-            {/* Selector de Abas */}
-            <div className="flex p-0.5 bg-slate-950 rounded-xl border border-slate-850">
-              <button 
-                type="button"
-                onClick={() => { setIsLogin(true); setError(""); setSuccessMsg(""); }}
-                className={`flex-1 py-2 text-[11px] font-bold font-heading rounded-lg uppercase transition-all cursor-pointer ${isLogin ? 'bg-slate-800 text-lime-400 shadow-sm border border-slate-700' : 'text-slate-450 hover:text-white'}`}
-              >
-                Entrar
-              </button>
-              <button 
-                type="button"
-                onClick={() => { setIsLogin(false); setError(""); setSuccessMsg(""); }}
-                className={`flex-1 py-2 text-[11px] font-bold font-heading rounded-lg uppercase transition-all cursor-pointer ${!isLogin ? 'bg-slate-800 text-lime-400 shadow-sm border border-slate-700' : 'text-slate-450 hover:text-white'}`}
-              >
-                Criar Conta
-              </button>
-            </div>
-
-            {/* Alertas de Status */}
-            <AnimatePresence mode="wait">
-              {error && (
-                <motion.div 
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-400 text-xs flex gap-2.5 items-start text-left"
-                >
-                  <ShieldAlert className="w-4 h-4 shrink-0 mt-0.5" />
-                  <span>{error}</span>
-                </motion.div>
-              )}
-
-              {successMsg && (
-                <motion.div 
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-400 text-xs flex gap-2.5 items-start text-left"
-                >
-                  <CheckCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                  <span>{successMsg}</span>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            {/* Form */}
-            <form onSubmit={handleSubmit} className="space-y-4 text-left">
-              
-              {/* Campo Nome (Apenas Cadastro) */}
-              {!isLogin && (
-                <div className="space-y-1">
-                  <label className="block text-[10px] uppercase font-bold tracking-wider text-slate-400">Seu Nome de Atleta</label>
-                  <div className="relative">
-                    <User className="absolute left-3.5 top-3.5 w-4 h-4 text-slate-500" />
-                    <input 
-                      type="text"
-                      required
-                      placeholder="Ex: Pedro Henrique"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-850 hover:border-slate-800 focus:border-lime-500/40 rounded-xl pl-10 pr-4 py-3 text-xs outline-hidden focus:ring-1 focus:ring-lime-500/40 transition-all text-white placeholder:text-slate-600 font-heading font-medium"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Campo Email */}
-              <div className="space-y-1">
-                <label className="block text-[10px] uppercase font-bold tracking-wider text-slate-400">E-mail de Cadastro</label>
-                <div className="relative">
-                  <Mail className="absolute left-3.5 top-3.5 w-4 h-4 text-slate-500" />
-                  <input 
-                    type="email"
-                    required
-                    placeholder="atleta@exemplo.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-850 hover:border-slate-800 focus:border-lime-500/40 rounded-xl pl-10 pr-4 py-3 text-xs outline-hidden focus:ring-1 focus:ring-lime-500/40 transition-all text-white placeholder:text-slate-600 font-mono"
-                  />
-                </div>
-              </div>
-
-              {/* Campo Senha */}
-              <div className="space-y-1">
-                <div className="flex justify-between items-center">
-                  <label className="block text-[10px] uppercase font-bold tracking-wider text-slate-400">Senha Privada</label>
-                  {isLogin && <span className="text-[9px] text-slate-500 select-none">Mínimo 6 dígitos</span>}
-                </div>
-                <div className="relative">
-                  <Lock className="absolute left-3.5 top-3.5 w-4 h-4 text-slate-500" />
-                  <input 
-                    type={showPassword ? "text" : "password"}
-                    required
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-850 hover:border-slate-800 focus:border-lime-500/40 rounded-xl pl-10 pr-10 py-3 text-xs outline-hidden focus:ring-1 focus:ring-lime-500/40 transition-all text-white placeholder:text-slate-600 font-mono"
-                  />
-                  <button 
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3.5 top-3.5 text-slate-500 hover:text-white"
-                  >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-
-              <button 
-                type="submit"
-                className="w-full bg-linear-to-r from-lime-500 to-emerald-500 hover:from-lime-450 hover:to-emerald-450 active:scale-98 text-slate-950 py-3.5 px-4 rounded-xl text-xs font-black font-heading uppercase tracking-wider flex items-center justify-center gap-2 transition-all mt-6 shadow-lg shadow-lime-500/20 cursor-pointer"
-              >
-                <span>{isLogin ? "Acessar Portal do Atleta" : "Confirmar e Iniciar Cadastro"}</span>
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </form>
-
-            {/* App installation container */}
-            <div className="pt-4 border-t border-slate-800/60 text-center">
-              {isPortable ? (
-                <div className="inline-flex items-center gap-1.5 py-1.5 px-3 bg-emerald-500/10 border border-emerald-500/20 rounded-full text-emerald-400 text-[10px] font-semibold">
-                  <CheckCircle className="w-3.5 h-3.5" />
-                  <span>Aplicativo Instalado com Sucesso</span>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={handleInstallClick}
-                  className="inline-flex justify-center items-center gap-1.5 text-xs text-slate-400 hover:text-lime-400 transition-colors uppercase tracking-wider font-bold"
-                >
-                  <Download className="w-3.5 h-3.5 shrink-0" />
-                  <span>Baixar Biker AI no seu Celular</span>
-                </button>
-              )}
-            </div>
-
-          </div>
-
-          {/* Premium Subscription Dedicated Box */}
-          <div className="mt-4 w-full bg-linear-to-b from-slate-900/40 to-slate-950 border-2 border-lime-400/30 rounded-3xl p-6 sm:p-7 shadow-xl relative overflow-hidden text-left space-y-4">
-            <div className="absolute right-0 bottom-0 opacity-10 translate-x-6 translate-y-6 pointer-events-none">
-              <Bike className="w-40 h-40 text-lime-400" />
-            </div>
-            
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="p-2 bg-lime-400/10 border border-lime-400/20 rounded-xl text-lime-400 animate-pulse">
-                  <Zap className="w-5 h-5 text-lime-450" />
-                </div>
-                <div>
-                  <h4 className="font-heading font-black text-sm text-white uppercase tracking-wide">ASSINATURA PREMIUM BIKER AI</h4>
-                  <p className="text-[9px] text-slate-400 uppercase tracking-widest font-mono font-bold leading-none mt-0.5">Suporte a múltiplos ciclistas e sensores</p>
-                </div>
-              </div>
-              <span className="text-[10px] bg-slate-955 text-lime-450 border border-lime-400/20 font-black px-2.5 py-1 rounded-full uppercase">
-                R$ 19,89 / mês
-              </span>
-            </div>
-
-            <div className="space-y-1.5">
-              <h5 className="font-heading font-black text-base text-white">Pronto para começar seus treinos?</h5>
-              <p className="text-xs text-slate-350 leading-relaxed font-sans">
-                Seja qual for seu nível, garanta seu acesso ao Biker AI por apenas <strong>R$ 19,89 por mês</strong>. Clique no botão abaixo para concluir sua assinatura segura no Mercado Pago.
-              </p>
-            </div>
-
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-1">
-              <a 
-                href="https://mpago.la/24PgikU"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex-1 bg-lime-400 hover:bg-lime-350 text-slate-950 font-black text-center py-3.5 rounded-xl text-xs uppercase tracking-wider transition-all shadow-md cursor-pointer block"
-              >
-                Fazer Assinatura por R$ 19,89/mês ⚡
-              </a>
-              <a 
-                href="#auth-section"
-                className="px-5 py-3.5 bg-slate-800 hover:bg-slate-700/80 text-white font-extrabold text-center rounded-xl text-xs uppercase transition-all cursor-pointer border border-slate-705"
-              >
-                Ver Instruções
-              </a>
-            </div>
+          <div className="pt-4 flex justify-center">
+            <a 
+              href="#auth-section"
+              className="inline-flex items-center gap-2 px-6 py-3.5 bg-linear-to-r from-lime-500 to-emerald-500 hover:from-lime-450 hover:to-emerald-450 text-slate-950 text-xs font-black uppercase tracking-wider rounded-xl shadow-lg shadow-lime-500/10 cursor-pointer animate-bounce"
+            >
+              <span>Quero Começar Agora ⚡</span>
+            </a>
           </div>
 
         </div>
@@ -1018,6 +795,256 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
               <span>Criar Minha Conta Grátis Agora</span>
               <ChevronRight className="w-4 h-4" />
             </a>
+          </div>
+
+        </div>
+      </section>
+
+      {/* Auth & Premium Plans Section (placed after Como Funciona) */}
+      <section id="auth-section" className="bg-slate-950 border-y border-slate-900 py-24 px-4 sm:px-6 md:px-12 scroll-mt-24 relative overflow-hidden">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-lime-500/5 rounded-full blur-[140px] pointer-events-none"></div>
+        
+        <div className="max-w-7xl mx-auto w-full space-y-12 relative z-10">
+          
+          <div className="text-center space-y-3 max-w-3xl mx-auto">
+            <span className="text-[10px] bg-lime-500/10 border border-lime-500/25 text-lime-400 font-black px-3 py-1 rounded-full uppercase tracking-wider">
+              Área de Cadastro & Planos
+            </span>
+            <h3 className="text-3xl sm:text-4xl font-heading font-black tracking-tight">
+              Pronto para transformar seus pedais?
+            </h3>
+            <p className="text-sm text-slate-400 font-sans leading-relaxed">
+              Crie sua conta em segundos para começar seus treinos ou finalize sua assinatura Premium abaixo.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start max-w-5xl mx-auto">
+            
+            {/* Login & Register Card */}
+            <div className="lg:col-span-7 bg-slate-900/90 border border-slate-800 rounded-3xl shadow-2xl p-6 sm:p-8 backdrop-blur-md space-y-6 relative">
+              
+              {/* Logo e Welcome */}
+              <div className="text-center space-y-1.5">
+                <div className="inline-flex p-2.5 bg-lime-500/10 border border-lime-500/20 rounded-2xl text-lime-400 mb-1">
+                  <Bike className="w-6 h-6" />
+                </div>
+                <h3 className="font-heading font-black text-lg tracking-tight uppercase">
+                  {isLogin ? "Entrar na sua conta" : "Criar sua conta nova"}
+                </h3>
+                <p className="text-[11px] text-slate-400 leading-relaxed font-sans">
+                  {isLogin 
+                    ? "Coloque seu e-mail e senha abaixo para ver seus treinos de hoje e falar com o treinador." 
+                    : "Crie seu cadastro rápido para receber treinos fáceis e personalizados de verdade."
+                  }
+                </p>
+              </div>
+
+              {/* Quick Pricing Offer Banner */}
+              <div className="bg-linear-to-r from-lime-500/10 to-emerald-500/10 border border-lime-500/20 p-4 rounded-2xl relative overflow-hidden space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[9px] bg-lime-400 text-slate-950 font-black px-2 py-0.5 rounded-full uppercase tracking-wider">Promoção Ativa</span>
+                  <span className="text-[10px] text-lime-450 font-extrabold flex items-center gap-1 font-heading">
+                    <Sparkles className="w-3.5 h-3.5 text-lime-400 animate-pulse" />
+                    <span>R$ 19,89 / mês</span>
+                  </span>
+                </div>
+                <p className="text-[10px] text-slate-300 leading-normal font-sans">
+                  Acesse planilhas inteligentes recalibradas por IA e o treinador pessoal ilimitadamente.
+                </p>
+                <a 
+                  href="https://mpago.la/24PgikU" 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="w-full flex items-center justify-center gap-1.5 py-2.5 bg-lime-400 hover:bg-lime-350 text-slate-950 font-black rounded-lg text-[10px] uppercase tracking-wider transition-all cursor-pointer shadow-md text-center inline-block"
+                >
+                  <span>Instanciar Assinatura Premium ↗</span>
+                </a>
+              </div>
+
+              {/* Selector de Abas */}
+              <div className="flex p-0.5 bg-slate-950 rounded-xl border border-slate-850">
+                <button 
+                  type="button"
+                  onClick={() => { setIsLogin(true); setError(""); setSuccessMsg(""); }}
+                  className={`flex-1 py-2 text-[11px] font-bold font-heading rounded-lg uppercase transition-all cursor-pointer ${isLogin ? 'bg-slate-800 text-lime-400 shadow-sm border border-slate-700' : 'text-slate-450 hover:text-white'}`}
+                >
+                  Entrar
+                </button>
+                <button 
+                  type="button"
+                  onClick={() => { setIsLogin(false); setError(""); setSuccessMsg(""); }}
+                  className={`flex-1 py-2 text-[11px] font-bold font-heading rounded-lg uppercase transition-all cursor-pointer ${!isLogin ? 'bg-slate-800 text-lime-400 shadow-sm border border-slate-700' : 'text-slate-450 hover:text-white'}`}
+                >
+                  Criar Conta
+                </button>
+              </div>
+
+              {/* Alertas de Status */}
+              <AnimatePresence mode="wait">
+                {error && (
+                  <motion.div 
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-400 text-xs flex gap-2.5 items-start text-left"
+                  >
+                    <ShieldAlert className="w-4 h-4 shrink-0 mt-0.5" />
+                    <span>{error}</span>
+                  </motion.div>
+                )}
+
+                {successMsg && (
+                  <motion.div 
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-400 text-xs flex gap-2.5 items-start text-left"
+                  >
+                    <CheckCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                    <span>{successMsg}</span>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Form */}
+              <form onSubmit={handleSubmit} className="space-y-4 text-left">
+                
+                {/* Campo Nome (Apenas Cadastro) */}
+                {!isLogin && (
+                  <div className="space-y-1">
+                    <label className="block text-[10px] uppercase font-bold tracking-wider text-slate-400">Seu Nome de Atleta</label>
+                    <div className="relative">
+                      <User className="absolute left-3.5 top-3.5 w-4 h-4 text-slate-500" />
+                      <input 
+                        type="text"
+                        required
+                        placeholder="Ex: Pedro Henrique"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        className="w-full bg-slate-950 border border-slate-850 hover:border-slate-800 focus:border-lime-500/40 rounded-xl pl-10 pr-4 py-3 text-xs outline-hidden focus:ring-1 focus:ring-lime-500/40 transition-all text-white placeholder:text-slate-600 font-heading font-medium"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Campo Email */}
+                <div className="space-y-1">
+                  <label className="block text-[10px] uppercase font-bold tracking-wider text-slate-400">E-mail de Cadastro</label>
+                  <div className="relative">
+                    <Mail className="absolute left-3.5 top-3.5 w-4 h-4 text-slate-500" />
+                    <input 
+                      type="email"
+                      required
+                      placeholder="atleta@exemplo.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-850 hover:border-slate-800 focus:border-lime-500/40 rounded-xl pl-10 pr-4 py-3 text-xs outline-hidden focus:ring-1 focus:ring-lime-500/40 transition-all text-white placeholder:text-slate-600 font-mono"
+                    />
+                  </div>
+                </div>
+
+                {/* Campo Senha */}
+                <div className="space-y-1">
+                  <div className="flex justify-between items-center">
+                    <label className="block text-[10px] uppercase font-bold tracking-wider text-slate-400">Senha Privada</label>
+                    {isLogin && <span className="text-[9px] text-slate-500 select-none">Mínimo 6 dígitos</span>}
+                  </div>
+                  <div className="relative">
+                    <Lock className="absolute left-3.5 top-3.5 w-4 h-4 text-slate-500" />
+                    <input 
+                      type={showPassword ? "text" : "password"}
+                      required
+                      placeholder="••••••••"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-850 hover:border-slate-800 focus:border-lime-500/40 rounded-xl pl-10 pr-10 py-3 text-xs outline-hidden focus:ring-1 focus:ring-lime-500/40 transition-all text-white placeholder:text-slate-600 font-mono"
+                    />
+                    <button 
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3.5 top-3.5 text-slate-500 hover:text-white"
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                <button 
+                  type="submit"
+                  className="w-full bg-linear-to-r from-lime-500 to-emerald-500 hover:from-lime-450 hover:to-emerald-450 active:scale-98 text-slate-950 py-3.5 px-4 rounded-xl text-xs font-black font-heading uppercase tracking-wider flex items-center justify-center gap-2 transition-all mt-6 shadow-lg shadow-lime-500/20 cursor-pointer"
+                >
+                  <span>{isLogin ? "Acessar Portal do Atleta" : "Confirmar e Iniciar Cadastro"}</span>
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </form>
+
+              {/* App installation container */}
+              <div className="pt-4 border-t border-slate-800/60 text-center">
+                {isPortable ? (
+                  <div className="inline-flex items-center gap-1.5 py-1.5 px-3 bg-emerald-500/10 border border-emerald-500/20 rounded-full text-emerald-400 text-[10px] font-semibold">
+                    <CheckCircle className="w-3.5 h-3.5" />
+                    <span>Aplicativo Instalado com Sucesso</span>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleInstallClick}
+                    className="inline-flex justify-center items-center gap-1.5 text-xs text-slate-400 hover:text-lime-400 transition-colors uppercase tracking-wider font-bold"
+                  >
+                    <Download className="w-3.5 h-3.5 shrink-0" />
+                    <span>Baixar Biker AI no seu Celular</span>
+                  </button>
+                )}
+              </div>
+
+            </div>
+
+            {/* Premium Subscription Dedicated Box */}
+            <div className="lg:col-span-5 bg-linear-to-b from-slate-900/40 to-slate-950 border-2 border-lime-400/30 rounded-3xl p-6 sm:p-7 shadow-xl relative overflow-hidden text-left space-y-4">
+              <div className="absolute right-0 bottom-0 opacity-10 translate-x-6 translate-y-6 pointer-events-none">
+                <Bike className="w-40 h-40 text-lime-400" />
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 bg-lime-400/10 border border-lime-400/20 rounded-xl text-lime-400 animate-pulse">
+                    <Zap className="w-5 h-5 text-lime-450" />
+                  </div>
+                  <div>
+                    <h4 className="font-heading font-black text-sm text-white uppercase tracking-wide">ASSINATURA PREMIUM BIKER AI</h4>
+                    <p className="text-[9px] text-slate-400 uppercase tracking-widest font-mono font-bold leading-none mt-0.5">Suporte a múltiplos ciclistas e sensores</p>
+                  </div>
+                </div>
+                <span className="text-[10px] bg-slate-955 text-lime-450 border border-lime-400/20 font-black px-2.5 py-1 rounded-full uppercase">
+                  R$ 19,89 / mês
+                </span>
+              </div>
+
+              <div className="space-y-1.5">
+                <h5 className="font-heading font-black text-base text-white">Pronto para começar seus treinos?</h5>
+                <p className="text-xs text-slate-350 leading-relaxed font-sans">
+                  Seja qual for seu nível, garanta seu acesso ao Biker AI por apenas <strong>R$ 19,89 por mês</strong>. Clique no botão abaixo para concluir sua assinatura segura no Mercado Pago.
+                </p>
+              </div>
+
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-1">
+                <a 
+                  href="https://mpago.la/24PgikU"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 bg-lime-400 hover:bg-lime-350 text-slate-950 font-black text-center py-3.5 rounded-xl text-xs uppercase tracking-wider transition-all shadow-md cursor-pointer block"
+                >
+                  Fazer Assinatura por R$ 19,89/mês ⚡
+                </a>
+                <a 
+                  href="#auth-section"
+                  className="px-5 py-3.5 bg-slate-800 hover:bg-slate-700/80 text-white font-extrabold text-center rounded-xl text-xs uppercase transition-all cursor-pointer border border-slate-705"
+                >
+                  Ver Instruções
+                </a>
+              </div>
+            </div>
+
           </div>
 
         </div>
