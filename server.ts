@@ -5,6 +5,8 @@ import fs from "fs";
 import os from "os";
 import { GoogleGenAI, Type } from "@google/genai";
 import nodemailer from "nodemailer";
+import { initializeApp } from "firebase-admin/app";
+import { getFirestore } from "firebase-admin/firestore";
 
 dotenv.config();
 
@@ -57,21 +59,87 @@ app.use((req, res, next) => {
 // In-memory cache to keep performance high and prevent disk read fatigue
 let inMemoryDbCache: Record<string, any> | null = null;
 
+// Initialize Firebase Admin SDK
+let firestoreDb: any = null;
+try {
+  const firebaseConfigPath = path.join(process.cwd(), "firebase-applet-config.json");
+  if (fs.existsSync(firebaseConfigPath)) {
+    const configData = JSON.parse(fs.readFileSync(firebaseConfigPath, "utf-8"));
+    if (configData.projectId) {
+      const app = initializeApp({
+        projectId: configData.projectId
+      });
+      const dbId = configData.firestoreDatabaseId || "(default)";
+      firestoreDb = getFirestore(app, dbId);
+      console.log(`[Firebase Admin] Inicializado com sucesso para o projeto ${configData.projectId}, banco de dados ${dbId}`);
+    } else {
+      console.warn("[Firebase Admin] projectId ausente no arquivo de configuração.");
+    }
+  } else {
+    console.warn("[Firebase Admin] Arquivo firebase-applet-config.json não encontrado. Operando em modo local.");
+  }
+} catch (error: any) {
+  console.error("[Firebase Admin] Falha ao inicializar o Firebase Admin:", error.message);
+}
+
 // Local database retriever helper
 async function getDatabase(): Promise<Record<string, any>> {
   if (inMemoryDbCache) {
     return inMemoryDbCache;
   }
 
-  // Load from the local JSON file
+  // Load from Firestore first if available!
   let localDb: Record<string, any> = {};
+  let loadedFromFirestore = false;
+
+  if (firestoreDb) {
+    try {
+      console.log("[Firebase Admin] Carregando atletas do Firestore...");
+      const snapshot = await firestoreDb.collection("users").get();
+      if (!snapshot.empty) {
+        snapshot.forEach((doc: any) => {
+          const userEmail = doc.id;
+          localDb[userEmail] = doc.data();
+        });
+        loadedFromFirestore = true;
+        console.log(`[Firebase Admin] ${snapshot.size} atletas carregados com sucesso do Firestore.`);
+      } else {
+        console.log("[Firebase Admin] Coleção 'users' vazia no Firestore. Usando banco local para iniciar.");
+      }
+    } catch (err: any) {
+      console.error("[Firebase Admin] Erro ao carregar do Firestore, usando backup local:", err.message);
+    }
+  }
+
+  // If we couldn't load from Firestore (or it was empty), load from local users_db.json
   try {
     if (fs.existsSync(USERS_DB_PATH)) {
       const data = fs.readFileSync(USERS_DB_PATH, "utf-8");
-      localDb = JSON.parse(data);
+      const parsed = JSON.parse(data);
+      
+      // If Firestore is available but empty, let's sync the local users to Firestore!
+      if (firestoreDb && !loadedFromFirestore && Object.keys(parsed).length > 0) {
+        try {
+          console.log("[Firebase Admin] Sincronizando banco local inicial para o Firestore...");
+          const batch = firestoreDb.batch();
+          for (const [email, user] of Object.entries(parsed)) {
+            const docRef = firestoreDb.collection("users").doc(email);
+            batch.set(docRef, user);
+          }
+          await batch.commit();
+          loadedFromFirestore = true;
+          console.log("[Firebase Admin] Sincronização inicial concluída com sucesso.");
+        } catch (syncErr: any) {
+          console.error("[Firebase Admin] Erro ao sincronizar banco inicial para Firestore:", syncErr.message);
+        }
+      }
+      
+      if (!loadedFromFirestore) {
+        localDb = parsed;
+      }
     }
   } catch (err: any) {
-    console.warn("Nenhum cache de banco de dados local encontrado ou falha na leitura, iniciando novo:", err.message);
+    console.warn("Nenhum cache de banco de dados local encontrado ou falha na leitura:", err.message);
   }
 
   inMemoryDbCache = localDb;
@@ -124,9 +192,10 @@ async function triggerAutomaticBackup(db: Record<string, any>) {
 }
 
 async function saveDatabase(db: Record<string, any>) {
+  const previousDb = inMemoryDbCache || {};
   inMemoryDbCache = db;
 
-  // Write locally right away to guarantee instant local persistence
+  // Write locally right away to guarantee instant local persistence and backups
   try {
     fs.writeFileSync(USERS_DB_PATH, JSON.stringify(db, null, 2), "utf-8");
     console.log("[Banco Local] Banco de dados persistido localmente com sucesso.");
@@ -137,6 +206,42 @@ async function saveDatabase(db: Record<string, any>) {
     });
   } catch (err) {
     console.error("FALHA ao salvar cache de banco de dados local:", err);
+  }
+
+  // Persist only changed users to Firestore!
+  if (firestoreDb) {
+    try {
+      const batch = firestoreDb.batch();
+      let hasChanges = false;
+
+      for (const [email, user] of Object.entries(db)) {
+        const prevUser = previousDb[email];
+        // If user is new or has changed, add to batch
+        if (!prevUser || JSON.stringify(user) !== JSON.stringify(prevUser)) {
+          const docRef = firestoreDb.collection("users").doc(email);
+          batch.set(docRef, user);
+          hasChanges = true;
+          console.log(`[Firebase Admin] Preparando salvamento para o atleta: ${email}`);
+        }
+      }
+
+      // Check if any users were deleted
+      for (const email of Object.keys(previousDb)) {
+        if (!db[email]) {
+          const docRef = firestoreDb.collection("users").doc(email);
+          batch.delete(docRef);
+          hasChanges = true;
+          console.log(`[Firebase Admin] Preparando exclusão para o atleta: ${email}`);
+        }
+      }
+
+      if (hasChanges) {
+        await batch.commit();
+        console.log("[Firebase Admin] Mudanças persistidas com sucesso no Firestore.");
+      }
+    } catch (err: any) {
+      console.error("[Firebase Admin] Erro ao persistir mudanças no Firestore:", err.message);
+    }
   }
 }
 

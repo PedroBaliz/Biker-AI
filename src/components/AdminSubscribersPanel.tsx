@@ -320,12 +320,18 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
 
   // Filter users list
   const filteredUsers = users.filter(user => {
+    if (!user) return false;
+    const userEmail = user.email || "";
+    const userName = user.profile?.name || "";
+    const userStatus = user.profile?.subscriptionStatus || "active";
+    const userPlan = user.profile?.subscriptionPlan || "Bronze (Mensal)";
+
     const matchesSearch = 
-      user.profile.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-      user.email.toLowerCase().includes(searchTerm.toLowerCase());
+      userName.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      userEmail.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesStatus = statusFilter === "all" || (user.profile.subscriptionStatus || "active") === statusFilter;
-    const matchesPlan = planFilter === "all" || (user.profile.subscriptionPlan || "Bronze (Mensal)") === planFilter;
+    const matchesStatus = statusFilter === "all" || userStatus === statusFilter;
+    const matchesPlan = planFilter === "all" || userPlan === planFilter;
 
     return matchesSearch && matchesStatus && matchesPlan;
   });
@@ -511,7 +517,7 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
             ) : (
               <div className="divide-y divide-slate-100 max-h-[500px] overflow-y-auto">
                 {filteredUsers.map((user) => {
-                  const subStatus = user.profile.subscriptionStatus || 'active';
+                  const subStatus = user.profile?.subscriptionStatus || 'active';
                   const isCurSelected = selectedUser?.email === user.email;
                   return (
                     <div 
@@ -525,8 +531,8 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
                     >
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
-                          <h4 className="font-heading font-extrabold text-sm text-slate-800">{user.profile.name}</h4>
-                          {user.profile.role === "coach" && (
+                          <h4 className="font-heading font-extrabold text-sm text-slate-800">{user.profile?.name || "Sem Nome"}</h4>
+                          {user.profile?.role === "coach" && (
                             <span className="bg-amber-100 text-amber-800 text-[8px] font-black uppercase px-1.5 py-0.5 rounded-full border border-amber-250">
                               Coach
                             </span>
@@ -541,12 +547,12 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
                         <div className="flex gap-2.5 items-center flex-wrap pt-0.5">
                           <span className="text-[10px] text-slate-500 font-sans flex items-center gap-1">
                             <Tag className="w-3 h-3" />
-                            {user.profile.subscriptionPlan || "Bronze (Mensal)"}
+                            {user.profile?.subscriptionPlan || "Bronze (Mensal)"}
                           </span>
                           <span className="text-slate-200">|</span>
                           <span className="text-[10px] text-slate-500 font-sans flex items-center gap-1">
                             <Zap className="w-3 h-3 text-amber-500" />
-                            {user.profile.ftp ? `${user.profile.ftp}W` : "Sem FTP"}
+                            {user.profile?.ftp ? `${user.profile.ftp}W` : "Sem FTP"}
                           </span>
                           <span className="text-slate-200">|</span>
                           <span className="text-[10px] text-slate-500 font-sans flex items-center gap-1">
