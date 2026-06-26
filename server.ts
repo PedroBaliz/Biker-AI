@@ -5,7 +5,7 @@ import fs from "fs";
 import os from "os";
 import { GoogleGenAI, Type } from "@google/genai";
 import { initializeApp, getApps, getApp } from "firebase/app";
-import { getFirestore, collection, getDocs, doc, setDoc, writeBatch, limit, query } from "firebase/firestore";
+import { getFirestore, collection, getDocs, doc, setDoc } from "firebase/firestore/lite";
 
 dotenv.config();
 
@@ -24,7 +24,7 @@ let firestoreDb: any = null;
 let useFirestore = false;
 
 try {
-  if (firebaseAppletConfig && firebaseAppletConfig.projectId) {
+  if (firebaseAppletConfig && firebaseAppletConfig.projectId && firebaseAppletConfig.apiKey) {
     const firebaseApp = getApps().length === 0 
       ? initializeApp({
           apiKey: firebaseAppletConfig.apiKey,
@@ -38,10 +38,12 @@ try {
 
     firestoreDb = getFirestore(firebaseApp, firebaseAppletConfig.firestoreDatabaseId || undefined);
     useFirestore = true;
-    console.log("[Firebase Client SDK] Inicializado com sucesso no servidor:", firebaseAppletConfig.projectId);
+    console.log("[Firebase Lite] Inicializado com sucesso para o projeto:", firebaseAppletConfig.projectId);
+  } else {
+    console.log("[Firebase Lite] Desativado. Usando apenas persistência local.");
   }
 } catch (err: any) {
-  console.error("[Firebase Client SDK] Falha ao inicializar. Usando persistência local:", err.message);
+  console.error("[Firebase Lite] Falha ao inicializar. Usando persistência local:", err.message);
   firestoreDb = null;
   useFirestore = false;
 }
@@ -96,7 +98,30 @@ app.use((req, res, next) => {
 // In-memory cache to keep performance high and prevent disk read fatigue
 let inMemoryDbCache: Record<string, any> | null = null;
 
-// Local database retriever helper backed by Firebase Firestore
+// Fetch all users from Firestore via Firestore Lite SDK
+async function fetchFirestoreUsers(): Promise<Record<string, any>> {
+  if (!useFirestore || !firestoreDb) {
+    throw new Error("Firestore não está habilitado.");
+  }
+  const colRef = collection(firestoreDb, "users");
+  const snapshot = await getDocs(colRef);
+  const users: Record<string, any> = {};
+  snapshot.docs.forEach((doc) => {
+    users[doc.id] = doc.data();
+  });
+  return users;
+}
+
+// Save a single user doc in Firestore via Firestore Lite SDK
+async function saveFirestoreUser(email: string, userData: any): Promise<void> {
+  if (!useFirestore || !firestoreDb) {
+    throw new Error("Firestore não está habilitado.");
+  }
+  const docRef = doc(firestoreDb, "users", email.trim().toLowerCase());
+  await setDoc(docRef, userData);
+}
+
+// Local database retriever helper backed by Firebase Firestore Lite SDK
 async function getDatabase(): Promise<Record<string, any>> {
   if (inMemoryDbCache) {
     return inMemoryDbCache;
@@ -104,19 +129,15 @@ async function getDatabase(): Promise<Record<string, any>> {
 
   const localDb: Record<string, any> = {};
 
-  if (useFirestore && firestoreDb) {
+  if (useFirestore) {
     try {
-      const snapshot = await firestoreDb.collection("users").get();
-      snapshot.forEach((doc: any) => {
-        localDb[doc.id] = doc.data();
-      });
-      console.log(`[Firestore] Carregados ${Object.keys(localDb).length} usuários com sucesso do Firestore.`);
+      const users = await fetchFirestoreUsers();
+      Object.assign(localDb, users);
+      console.log(`[Firestore SDK] Carregados ${Object.keys(localDb).length} usuários com sucesso.`);
       inMemoryDbCache = localDb;
       return localDb;
     } catch (err: any) {
-      console.warn("[Firestore] Erro ao carregar do Firestore (pode ser falta de credenciais ou permissão no preview), usando fallback local:", err.message);
-      useFirestore = false;
-      firestoreDb = null;
+      console.warn("[Firestore SDK] Falha ao carregar do Firestore via SDK, usando fallback local:", err.message);
     }
   }
 
@@ -184,19 +205,20 @@ async function triggerAutomaticBackup(db: Record<string, any>) {
 async function saveDatabase(db: Record<string, any>) {
   inMemoryDbCache = db;
 
-  // Persistir no Firestore se habilitado
-  if (useFirestore && firestoreDb) {
+  // Persistir no Firestore se habilitado via SDK
+  if (useFirestore) {
     try {
-      const batch = firestoreDb.batch();
-      for (const email of Object.keys(db)) {
-        const emailKey = email.trim().toLowerCase();
-        const docRef = firestoreDb.collection("users").doc(emailKey);
-        batch.set(docRef, db[email]);
-      }
-      await batch.commit();
-      console.log("[Firestore] Banco de dados sincronizado com sucesso no Firestore.");
+      const savePromises = Object.keys(db).map(async (email) => {
+        try {
+          await saveFirestoreUser(email, db[email]);
+        } catch (err: any) {
+          console.error(`[Firestore SDK] Erro ao salvar usuário ${email}:`, err.message);
+        }
+      });
+      await Promise.all(savePromises);
+      console.log("[Firestore SDK] Banco de dados sincronizado com sucesso no Firestore.");
     } catch (err: any) {
-      console.error("[Firestore] ERRO ao sincronizar com Firestore:", err.message);
+      console.error("[Firestore SDK] ERRO ao sincronizar com Firestore:", err.message);
     }
   }
 
@@ -214,17 +236,17 @@ async function saveDatabase(db: Record<string, any>) {
   }
 }
 
-// Executar migração inicial de dados locais para Firestore de forma assíncrona
+// Executar migração inicial de dados locais para Firestore de forma assíncrona via SDK
 async function runInitialMigration() {
-  if (!useFirestore || !firestoreDb) {
-    console.log("[Migração] Ignorando migração para o Firestore (fora de produção ou desabilitado).");
+  if (!useFirestore) {
+    console.log("[Migração] Ignorando migração para o Firestore (desabilitado).");
     return;
   }
 
   try {
-    console.log("[Migração] Verificando se é necessária migração local -> Firestore...");
-    const snapshot = await firestoreDb.collection("users").limit(1).get();
-    if (!snapshot.empty) {
+    console.log("[Migração] Verificando se é necessária migração local -> Firestore via SDK...");
+    const currentUsers = await fetchFirestoreUsers();
+    if (Object.keys(currentUsers).length > 0) {
       console.log("[Migração] Firestore já contém dados. Nenhuma migração necessária.");
       return;
     }
@@ -234,21 +256,20 @@ async function runInitialMigration() {
       const localDb = JSON.parse(data);
       const userEmails = Object.keys(localDb);
       if (userEmails.length > 0) {
-        console.log(`[Migração] Migrando ${userEmails.length} usuários locais para o Firestore...`);
-        const batch = firestoreDb.batch();
-        for (const email of userEmails) {
-          const emailKey = email.trim().toLowerCase();
-          const docRef = firestoreDb.collection("users").doc(emailKey);
-          batch.set(docRef, localDb[email]);
-        }
-        await batch.commit();
-        console.log("[Migração] Todos os usuários locais foram migrados com sucesso para o Firestore!");
+        console.log(`[Migração] Migrando ${userEmails.length} usuários locais para o Firestore via SDK...`);
+        const migrationPromises = userEmails.map(async (email) => {
+          try {
+            await saveFirestoreUser(email, localDb[email]);
+          } catch (mErr: any) {
+            console.error(`[Migração] Erro ao migrar ${email}:`, mErr.message);
+          }
+        });
+        await Promise.all(migrationPromises);
+        console.log("[Migração] Todos os usuários locais foram migrados com sucesso para o Firestore via SDK!");
       }
     }
   } catch (err: any) {
-    console.warn("[Migração] Erro durante a migração inicial para o Firestore (pode ser falta de credenciais no preview):", err.message);
-    useFirestore = false;
-    firestoreDb = null;
+    console.warn("[Migração] Erro durante a migração inicial para o Firestore via SDK:", err.message);
   }
 }
 
@@ -452,17 +473,17 @@ app.get("/api/diagnostics", async (req, res) => {
     nodeEnv: process.env.NODE_ENV,
     modelName: "gemini-3.5-flash",
     useFirestore,
-    firestoreInitialized: !!firestoreDb,
+    firestoreInitialized: useFirestore,
     firestoreDatabaseId: firebaseAppletConfig?.firestoreDatabaseId || null
   };
 
   // Test Firestore Connection
-  if (useFirestore && firestoreDb) {
+  if (useFirestore) {
     try {
-      const snapshot = await firestoreDb.collection("users").limit(1).get();
+      const users = await fetchFirestoreUsers();
       responses.firestoreConnection = "SUCCESS";
-      responses.firestoreEmpty = snapshot.empty;
-      responses.firestoreMessage = "Successfully queried Firestore 'users' collection.";
+      responses.firestoreEmpty = Object.keys(users).length === 0;
+      responses.firestoreMessage = "Successfully queried Firestore 'users' collection via native SDK Lite.";
     } catch (err: any) {
       responses.firestoreConnection = "FAILED";
       responses.firestoreErrorName = err.name || "Error";
