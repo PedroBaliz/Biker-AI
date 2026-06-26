@@ -12,7 +12,8 @@ import {
   Activity, TrendingUp, Zap, Award, MessageSquare, Calendar, Heart, Percent, Star, Check,
   Play, Pause, Sliders, Gauge
 } from "lucide-react";
-const bikerHero = "/src/assets/images/biker_hero_1780860230528.png";
+// @ts-ignore
+import bikerHero from "../assets/images/biker_hero_1780860230528.png";
 
 interface LoginScreenProps {
   onLoginSuccess: (user: UserAccount) => void;
