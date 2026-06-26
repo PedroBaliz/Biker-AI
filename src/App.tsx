@@ -1122,16 +1122,7 @@ export default function App() {
                 </span>
               </button>
             )}
-            {currentUser && plan && (
-              <button 
-                onClick={handleReset} 
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-800 bg-slate-800/50 hover:bg-slate-800 text-xs text-slate-300 font-bold font-heading uppercase tracking-wider transition-all cursor-pointer"
-                title="Resetar todos os dados"
-              >
-                <RotateCcw className="w-3.5 h-3.5 text-rose-500" />
-                <span className="hidden xs:inline">Resetar</span>
-              </button>
-            )}
+
             {currentUser && (
               <button 
                 onClick={handleSignOut} 
