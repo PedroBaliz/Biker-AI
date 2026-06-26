@@ -53,34 +53,12 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
   const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
 
   // Backups tab and management state
-  const [rightTab, setRightTab] = useState<"athlete" | "backups" | "emails">("athlete");
+  const [rightTab, setRightTab] = useState<"athlete" | "backups">("athlete");
   const [backupsList, setBackupsList] = useState<any[]>([]);
   const [mainDbInfo, setMainDbInfo] = useState<any>(null);
   const [backupsLoading, setBackupsLoading] = useState(false);
   const [restoringBackup, setRestoringBackup] = useState<string | null>(null);
   const [creatingBackup, setCreatingBackup] = useState(false);
-
-  // Emails tab state
-  const [sentEmails, setSentEmails] = useState<any[]>([]);
-  const [emailsLoading, setEmailsLoading] = useState(false);
-  const [selectedPreviewEmail, setSelectedPreviewEmail] = useState<any | null>(null);
-
-  const fetchSentEmails = async () => {
-    setEmailsLoading(true);
-    try {
-      const response = await fetch("/api/admin/sent-emails");
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success) {
-          setSentEmails(data.emails || []);
-        }
-      }
-    } catch (err) {
-      console.error("Erro ao buscar logs de emails:", err);
-    } finally {
-      setEmailsLoading(false);
-    }
-  };
 
   // Fetch automatic backups from server
   const fetchBackups = async () => {
@@ -173,10 +151,8 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
   const [editMaxHr, setEditMaxHr] = useState<number | "">("");
 
   // Load subscribers list
-  const loadSubscribers = async (isBackground = false) => {
-    if (!isBackground) {
-      setLoading(true);
-    }
+  const loadSubscribers = async () => {
+    setLoading(true);
     setError("");
     try {
       const response = await fetch("/api/admin/users");
@@ -202,19 +178,12 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
       console.error(err);
       setError("Erro de rede ao conectar com o banco de assinantes. Verifique a internet.");
     } finally {
-      if (!isBackground) {
-        setLoading(false);
-      }
+      setLoading(false);
     }
   };
 
   useEffect(() => {
     loadSubscribers();
-    // Auto-refresh/poll the list every 4 seconds so the coach sees new signups and subscription clicks instantly!
-    const interval = setInterval(() => {
-      loadSubscribers(true);
-    }, 4000);
-    return () => clearInterval(interval);
   }, []);
 
   // Set edit form values when selectedUser changes
@@ -304,15 +273,15 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
 
   // Metrics calculations
   const totalUsers = users.length;
-  const activeCount = users.filter(u => u.profile?.subscriptionStatus === 'active').length;
-  const pendingCount = users.filter(u => u.profile?.subscriptionStatus === 'pending_payment').length;
-  const expiredCount = users.filter(u => u.profile?.subscriptionStatus === 'expired').length;
-  const avgFtp = (users.filter(u => u.profile?.ftp).reduce((sum, u) => sum + (u.profile?.ftp || 0), 0) / (users.filter(u => u.profile?.ftp).length || 1)).toFixed(0);
+  const activeCount = users.filter(u => u.profile.subscriptionStatus === 'active').length;
+  const pendingCount = users.filter(u => u.profile.subscriptionStatus === 'pending_payment').length;
+  const expiredCount = users.filter(u => u.profile.subscriptionStatus === 'expired').length;
+  const avgFtp = (users.filter(u => u.profile.ftp).reduce((sum, u) => sum + (u.profile.ftp || 0), 0) / (users.filter(u => u.profile.ftp).length || 1)).toFixed(0);
 
   // Estimativa de faturamento de MVP (Bronze R$ 29,90/mês, Prata R$ 24,90/mês equ., Ouro R$ 16,58/mês equ.)
   const estimatedRevenue = users.reduce((sum, u) => {
-    if (u.profile?.subscriptionStatus !== 'active') return sum;
-    const plan = (u.profile?.subscriptionPlan || "").toLowerCase();
+    if (u.profile.subscriptionStatus !== 'active') return sum;
+    const plan = (u.profile.subscriptionPlan || "").toLowerCase();
     if (plan.includes("ouro") || plan.includes("anual")) return sum + 16.58; // mensalizado
     if (plan.includes("prata") || plan.includes("trimestral")) return sum + 24.9;
     return sum + 29.9; // Bronze
@@ -320,18 +289,12 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
 
   // Filter users list
   const filteredUsers = users.filter(user => {
-    if (!user) return false;
-    const userEmail = user.email || "";
-    const userName = user.profile?.name || "";
-    const userStatus = user.profile?.subscriptionStatus || "active";
-    const userPlan = user.profile?.subscriptionPlan || "Bronze (Mensal)";
-
     const matchesSearch = 
-      userName.toLowerCase().includes(searchTerm.toLowerCase()) || 
-      userEmail.toLowerCase().includes(searchTerm.toLowerCase());
+      user.profile.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      user.email.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesStatus = statusFilter === "all" || userStatus === statusFilter;
-    const matchesPlan = planFilter === "all" || userPlan === planFilter;
+    const matchesStatus = statusFilter === "all" || (user.profile.subscriptionStatus || "active") === statusFilter;
+    const matchesPlan = planFilter === "all" || (user.profile.subscriptionPlan || "Bronze (Mensal)") === planFilter;
 
     return matchesSearch && matchesStatus && matchesPlan;
   });
@@ -487,7 +450,7 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
               >
                 <option value="all">Filtro: Todos</option>
                 <option value="active">✓ Ativos</option>
-                <option value="pending_payment">⏳ Pendentes/Atrasados</option>
+                <option value="pending_payment">⏳ Atrasados</option>
                 <option value="expired">🔒 Expirados</option>
               </select>
             </div>
@@ -495,7 +458,7 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
 
           {/* TABLE OF USERS */}
           <div className="overflow-hidden border border-slate-100 rounded-2xl">
-            {loading && users.length === 0 ? (
+            {loading ? (
               <div className="py-20 text-center space-y-3">
                 <RefreshCw className="w-8 h-8 animate-spin mx-auto text-lime-500" />
                 <p className="text-xs text-slate-400 font-sans">Carregando banco de usuários...</p>
@@ -517,7 +480,7 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
             ) : (
               <div className="divide-y divide-slate-100 max-h-[500px] overflow-y-auto">
                 {filteredUsers.map((user) => {
-                  const subStatus = user.profile?.subscriptionStatus || 'active';
+                  const subStatus = user.profile.subscriptionStatus || 'active';
                   const isCurSelected = selectedUser?.email === user.email;
                   return (
                     <div 
@@ -531,8 +494,8 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
                     >
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
-                          <h4 className="font-heading font-extrabold text-sm text-slate-800">{user.profile?.name || "Sem Nome"}</h4>
-                          {user.profile?.role === "coach" && (
+                          <h4 className="font-heading font-extrabold text-sm text-slate-800">{user.profile.name}</h4>
+                          {user.profile.role === "coach" && (
                             <span className="bg-amber-100 text-amber-800 text-[8px] font-black uppercase px-1.5 py-0.5 rounded-full border border-amber-250">
                               Coach
                             </span>
@@ -547,12 +510,12 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
                         <div className="flex gap-2.5 items-center flex-wrap pt-0.5">
                           <span className="text-[10px] text-slate-500 font-sans flex items-center gap-1">
                             <Tag className="w-3 h-3" />
-                            {user.profile?.subscriptionPlan || "Bronze (Mensal)"}
+                            {user.profile.subscriptionPlan || "Bronze (Mensal)"}
                           </span>
                           <span className="text-slate-200">|</span>
                           <span className="text-[10px] text-slate-500 font-sans flex items-center gap-1">
                             <Zap className="w-3 h-3 text-amber-500" />
-                            {user.profile?.ftp ? `${user.profile.ftp}W` : "Sem FTP"}
+                            {user.profile.ftp ? `${user.profile.ftp}W` : "Sem FTP"}
                           </span>
                           <span className="text-slate-200">|</span>
                           <span className="text-[10px] text-slate-500 font-sans flex items-center gap-1">
@@ -649,22 +612,6 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
               >
                 <Database className="w-3 h-3" />
                 <span>Backups</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setRightTab("emails");
-                  fetchSentEmails();
-                }}
-                className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${
-                  rightTab === "emails"
-                    ? "bg-sky-400 text-slate-950 shadow-xs"
-                    : "text-sky-400 hover:text-sky-300 hover:bg-slate-800"
-                }`}
-                title="Histórico de E-mails de Notificação Enviados"
-              >
-                <FileText className="w-3 h-3" />
-                <span>E-mails</span>
               </button>
             </div>
           </div>
@@ -865,7 +812,7 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
                   Clique sobre qualquer inscrito da lista à esquerda para revisar sua ficha fisiológica completa, gerenciar sua mensalidade ou alternar seu perfil de faturamento.
                 </p>
               </div>
-            ) : rightTab === "backups" ? (
+            ) : (
               /* THE MASTER BACKUPS PANEL UI CONTAINER */
               <motion.div 
                 key="backups-management"
@@ -991,125 +938,6 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
                     <span>Estabilidade de Alta Performance</span>
                   </p>
                   <p>Qualquer ação do treinador (salvar atleta, alterar status) ou ativações de alunos disparam backups silenciosos imediatos de segurança.</p>
-                </div>
-              </motion.div>
-            ) : (
-              /* THE MASTER EMAILS PANEL UI CONTAINER */
-              <motion.div 
-                key="emails-management"
-                initial={{ opacity: 0, scale: 0.98 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.98 }}
-                className="bg-white rounded-3xl border border-slate-100 p-6 shadow-sm space-y-5"
-              >
-                <div className="pb-3 border-b border-slate-100 flex justify-between items-start">
-                  <div>
-                    <h3 className="font-heading font-extrabold text-slate-800 text-sm leading-tight flex items-center gap-1.5">
-                      <FileText className="w-4 h-4 text-sky-500 animate-pulse" />
-                      <span>Notificações por E-mail</span>
-                    </h3>
-                    <p className="text-[10.5px] text-slate-450 mt-1 leading-normal">
-                      Acompanhamento de e-mails de ativação e boas-vindas disparados aos ciclistas desbloqueados.
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={fetchSentEmails}
-                    className="p-1 px-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1 shrink-0"
-                    title="Sincronizar emails disparados"
-                  >
-                    <RefreshCw className={`w-3 h-3 ${emailsLoading ? "animate-spin" : ""}`} />
-                    <span>Atualizar</span>
-                  </button>
-                </div>
-
-                {emailsLoading && sentEmails.length === 0 ? (
-                  <div className="py-12 text-center text-slate-400 text-xs flex flex-col items-center gap-2">
-                    <RefreshCw className="w-6 h-6 animate-spin text-sky-500" />
-                    <span>Carregando logs de e-mails...</span>
-                  </div>
-                ) : sentEmails.length === 0 ? (
-                  <div className="py-12 text-center border border-dashed border-slate-150 rounded-2xl text-slate-450 text-xs space-y-2">
-                    <FileText className="w-8 h-8 text-slate-300 mx-auto animate-bounce" />
-                    <p className="font-extrabold text-slate-750 text-xs">Nenhum e-mail enviado ou simulado ainda.</p>
-                    <p className="text-[10.5px] max-w-xs mx-auto text-slate-500 leading-normal">
-                      Experimente alterar o status de algum atleta para "Ativo" utilizando o botão rápido "Ativar". A notificação será registrada e exibida aqui!
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {/* Selected Preview Modal iframe scrolling view */}
-                    {selectedPreviewEmail && (
-                      <div className="bg-slate-950 text-slate-200 p-4 rounded-2xl border border-slate-850 space-y-3 relative text-xs">
-                        <div className="flex justify-between items-start">
-                          <div className="min-w-0 pr-2">
-                            <span className="text-[9px] uppercase font-black tracking-wider text-sky-400 block mb-0.5">Destinatário do Aluno (Preview)</span>
-                            <span className="font-bold text-white block truncate">{selectedPreviewEmail.athleteName} ({selectedPreviewEmail.recipient})</span>
-                            <span className="text-[10px] text-slate-400 truncate block">{selectedPreviewEmail.subject}</span>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => setSelectedPreviewEmail(null)}
-                            className="text-[9px] font-black text-rose-400 bg-rose-500/10 border border-rose-500/20 px-2.5 py-1.5 rounded-lg hover:bg-rose-500/20 cursor-pointer shrink-0"
-                          >
-                            Fechar Preview
-                          </button>
-                        </div>
-                        <div className="border border-slate-800 rounded-xl overflow-hidden bg-slate-900 leading-none">
-                          <iframe 
-                            srcDoc={selectedPreviewEmail.body} 
-                            style={{ width: '100%', height: '320px', border: 'none', background: '#0d1527' }}
-                            title="Interactive Email Html Body Preview"
-                          />
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
-                      {sentEmails.map((email) => (
-                        <div
-                          key={email.id}
-                          onClick={() => setSelectedPreviewEmail(email)}
-                          className={`p-3 rounded-xl border cursor-pointer hover:border-sky-300 transition-all text-xs flex flex-col gap-1.5 ${
-                            selectedPreviewEmail?.id === email.id
-                              ? "bg-sky-50/50 border-sky-300 shadow-xs"
-                              : "bg-slate-50/40 border-slate-150 hover:bg-slate-50/70"
-                          }`}
-                        >
-                          <div className="flex justify-between items-start gap-2">
-                            <span className="font-bold text-slate-800 block truncate">
-                              {email.athleteName || "Ciclista"}
-                            </span>
-                            <span className={`text-[9.5px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-wider shrink-0 border ${
-                              email.status === "success"
-                                ? "bg-emerald-50 border-emerald-250 text-emerald-800"
-                                : email.status === "simulated"
-                                ? "bg-sky-50 border-sky-200 text-sky-800"
-                                : "bg-rose-50 border-rose-250 text-rose-800"
-                            }`}>
-                              {email.status === "success" ? "Enviado (SMTP)" : email.status === "simulated" ? "Simulado" : "Falhou"}
-                            </span>
-                          </div>
-                          <div className="text-[11px] font-mono text-slate-500 break-all leading-tight">
-                            {email.recipient}
-                          </div>
-                          <div className="flex justify-between items-center text-[10px] text-slate-400 pt-1 border-t border-slate-100/60 mt-1">
-                            <span>Plano: <strong className="text-slate-600">{email.plan || "N/A"}</strong></span>
-                            <span>
-                              {new Date(email.sentAt).toLocaleDateString("pt-BR")} às {new Date(email.sentAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                <div className="bg-sky-50/30 border border-sky-100 rounded-xl p-3 text-[10px] leading-relaxed text-slate-650">
-                  <p className="font-extrabold text-sky-800">💡 Como disparar emails reais via SMTP?</p>
-                  <p className="mt-1 leading-normal">
-                    Basta cadastrar as variáveis <code className="bg-white/70 px-1 rounded border font-mono">SMTP_USER</code> e <code className="bg-white/70 px-1 rounded border font-mono">SMTP_PASS</code> nas configurações de Secrets do aplicativo. Caso contrário, a simulação acima funcionará perfeitamente para testes de diagnóstico.
-                  </p>
                 </div>
               </motion.div>
             )}

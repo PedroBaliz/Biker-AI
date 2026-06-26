@@ -4,11 +4,30 @@ import dotenv from "dotenv";
 import fs from "fs";
 import os from "os";
 import { GoogleGenAI, Type } from "@google/genai";
-import nodemailer from "nodemailer";
-import { initializeApp } from "firebase-admin/app";
+import { initializeApp, getApps } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 
 dotenv.config();
+
+// Carregar configuração do Firebase Applet
+const configPath = path.join(process.cwd(), "firebase-applet-config.json");
+let firebaseAppletConfig: any = {};
+if (fs.existsSync(configPath)) {
+  try {
+    firebaseAppletConfig = JSON.parse(fs.readFileSync(configPath, "utf-8"));
+  } catch (err: any) {
+    console.error("Erro ao carregar firebase-applet-config.json:", err.message);
+  }
+}
+
+if (getApps().length === 0) {
+  initializeApp({
+    projectId: firebaseAppletConfig.projectId,
+  });
+}
+
+const firestoreDb = getFirestore(firebaseAppletConfig.firestoreDatabaseId || undefined);
+
 
 // JSON file database path for local persistence (declared early to avoid temporal dead zone)
 const USERS_DB_PATH = process.env.VERCEL
@@ -59,114 +78,35 @@ app.use((req, res, next) => {
 // In-memory cache to keep performance high and prevent disk read fatigue
 let inMemoryDbCache: Record<string, any> | null = null;
 
-// Initialize Firebase Admin SDK
-let firestoreDb: any = null;
-try {
-  const firebaseConfigPath = path.join(process.cwd(), "firebase-applet-config.json");
-  if (fs.existsSync(firebaseConfigPath)) {
-    const configData = JSON.parse(fs.readFileSync(firebaseConfigPath, "utf-8"));
-    if (configData.projectId) {
-      const app = initializeApp({
-        projectId: configData.projectId
-      });
-      const dbId = configData.firestoreDatabaseId || "(default)";
-      firestoreDb = getFirestore(app, dbId);
-      console.log(`[Firebase Admin] Inicializado com sucesso para o projeto ${configData.projectId}, banco de dados ${dbId}`);
-    } else {
-      console.warn("[Firebase Admin] projectId ausente no arquivo de configuração.");
-    }
-  } else {
-    console.warn("[Firebase Admin] Arquivo firebase-applet-config.json não encontrado. Operando em modo local.");
-  }
-} catch (error: any) {
-  console.error("[Firebase Admin] Falha ao inicializar o Firebase Admin:", error.message);
-}
-
-// Local database retriever helper
-async function getDatabase(forceRefresh = false): Promise<Record<string, any>> {
-  if (inMemoryDbCache && !forceRefresh) {
-    return JSON.parse(JSON.stringify(inMemoryDbCache));
+// Local database retriever helper backed by Firebase Firestore
+async function getDatabase(): Promise<Record<string, any>> {
+  if (inMemoryDbCache) {
+    return inMemoryDbCache;
   }
 
-  // Load from Firestore first if available!
-  let localDb: Record<string, any> = {};
-  let loadedFromFirestore = false;
-
-  if (firestoreDb) {
-    try {
-      console.log("[Firebase Admin] Carregando atletas do Firestore...");
-      const snapshot = await firestoreDb.collection("users").get();
-      if (!snapshot.empty) {
-        snapshot.forEach((doc: any) => {
-          const userEmail = doc.id;
-          localDb[userEmail] = doc.data();
-        });
-        loadedFromFirestore = true;
-        console.log(`[Firebase Admin] ${snapshot.size} atletas carregados com sucesso do Firestore.`);
-      } else {
-        console.log("[Firebase Admin] Coleção 'users' vazia no Firestore. Usando banco local para iniciar.");
-      }
-    } catch (err: any) {
-      console.error("[Firebase Admin] Erro ao carregar do Firestore, usando backup local:", err.message);
-    }
-  }
-
-  // If we loaded from Firestore or need fallback, sync/merge with the local users_db.json
+  const localDb: Record<string, any> = {};
   try {
-    if (fs.existsSync(USERS_DB_PATH)) {
-      const data = fs.readFileSync(USERS_DB_PATH, "utf-8");
-      const parsed = JSON.parse(data);
-      
-      if (firestoreDb && !loadedFromFirestore && Object.keys(parsed).length > 0) {
-        // If Firestore is available but empty, let's sync all local users to Firestore!
-        try {
-          console.log("[Firebase Admin] Sincronizando banco local inicial para o Firestore...");
-          const batch = firestoreDb.batch();
-          for (const [email, user] of Object.entries(parsed)) {
-            const emailKey = email.trim().toLowerCase();
-            const docRef = firestoreDb.collection("users").doc(emailKey);
-            batch.set(docRef, user);
-          }
-          await batch.commit();
-          loadedFromFirestore = true;
-          localDb = parsed;
-          console.log("[Firebase Admin] Sincronização inicial concluída com sucesso.");
-        } catch (syncErr: any) {
-          console.error("[Firebase Admin] Erro ao sincronizar banco inicial para Firestore:", syncErr.message);
-        }
-      } else if (firestoreDb && loadedFromFirestore && Object.keys(parsed).length > 0) {
-        // Firestore is NOT empty, but we want to make sure any local users not in Firestore get merged and synced!
-        try {
-          const batch = firestoreDb.batch();
-          let needsSync = false;
-          for (const [email, user] of Object.entries(parsed)) {
-            const emailKey = email.trim().toLowerCase();
-            if (!localDb[emailKey]) {
-              localDb[emailKey] = user;
-              const docRef = firestoreDb.collection("users").doc(emailKey);
-              batch.set(docRef, user);
-              needsSync = true;
-              console.log(`[Firebase Admin] Mesclando e sincronizando usuário local ausente no Firestore: ${emailKey}`);
-            }
-          }
-          if (needsSync) {
-            await batch.commit();
-            console.log("[Firebase Admin] Sincronização de usuários mesclados concluída.");
-          }
-        } catch (mergeErr: any) {
-          console.error("[Firebase Admin] Erro ao mesclar banco local com Firestore:", mergeErr.message);
-        }
-      } else if (!loadedFromFirestore) {
-        // Fallback when Firestore is not available/failed
-        localDb = parsed;
-      }
-    }
+    const snapshot = await firestoreDb.collection("users").get();
+    snapshot.forEach((doc) => {
+      localDb[doc.id] = doc.data();
+    });
+    console.log(`[Firestore] Carregados ${Object.keys(localDb).length} usuários com sucesso.`);
   } catch (err: any) {
-    console.warn("Nenhum cache de banco de dados local encontrado ou falha na leitura:", err.message);
+    console.warn("[Firestore] Erro ao carregar do Firestore, tentando fallback local:", err.message);
+    // Fallback to local file if Firestore is not accessible
+    try {
+      if (fs.existsSync(USERS_DB_PATH)) {
+        const data = fs.readFileSync(USERS_DB_PATH, "utf-8");
+        const parsed = JSON.parse(data);
+        Object.assign(localDb, parsed);
+      }
+    } catch (localErr: any) {
+      console.error("[Local Fallback] Falha no fallback local:", localErr.message);
+    }
   }
 
   inMemoryDbCache = localDb;
-  return JSON.parse(JSON.stringify(localDb));
+  return localDb;
 }
 
 // Local database saving helper
@@ -215,13 +155,26 @@ async function triggerAutomaticBackup(db: Record<string, any>) {
 }
 
 async function saveDatabase(db: Record<string, any>) {
-  const previousDb = inMemoryDbCache ? JSON.parse(JSON.stringify(inMemoryDbCache)) : {};
-  inMemoryDbCache = JSON.parse(JSON.stringify(db));
+  inMemoryDbCache = db;
 
-  // Write locally right away to guarantee instant local persistence and backups
+  // Persistir no Firestore
+  try {
+    const batch = firestoreDb.batch();
+    for (const email of Object.keys(db)) {
+      const emailKey = email.trim().toLowerCase();
+      const docRef = firestoreDb.collection("users").doc(emailKey);
+      batch.set(docRef, db[email]);
+    }
+    await batch.commit();
+    console.log("[Firestore] Banco de dados sincronizado com sucesso no Firestore.");
+  } catch (err: any) {
+    console.error("[Firestore] ERRO ao sincronizar com Firestore:", err.message);
+  }
+
+  // Gravar arquivo local como cópia de segurança
   try {
     fs.writeFileSync(USERS_DB_PATH, JSON.stringify(db, null, 2), "utf-8");
-    console.log("[Banco Local] Banco de dados persistido localmente com sucesso.");
+    console.log("[Banco Local] Cópia local persistida com sucesso.");
     
     // Dispara backup automático em plano de fundo sem travar a thread de resposta
     triggerAutomaticBackup(db).catch(err => {
@@ -230,322 +183,43 @@ async function saveDatabase(db: Record<string, any>) {
   } catch (err) {
     console.error("FALHA ao salvar cache de banco de dados local:", err);
   }
+}
 
-  // Persist only changed users to Firestore!
-  if (firestoreDb) {
-    try {
-      const batch = firestoreDb.batch();
-      let hasChanges = false;
+// Executar migração inicial de dados locais para Firestore de forma assíncrona
+async function runInitialMigration() {
+  try {
+    console.log("[Migração] Verificando se é necessária migração local -> Firestore...");
+    const snapshot = await firestoreDb.collection("users").limit(1).get();
+    if (!snapshot.empty) {
+      console.log("[Migração] Firestore já contém dados. Nenhuma migração necessária.");
+      return;
+    }
 
-      for (const [email, user] of Object.entries(db)) {
-        const emailKey = email.trim().toLowerCase();
-        const prevUser = previousDb[emailKey] || previousDb[email];
-        // If user is new or has changed, add to batch
-        if (!prevUser || JSON.stringify(user) !== JSON.stringify(prevUser)) {
+    if (fs.existsSync(USERS_DB_PATH)) {
+      const data = fs.readFileSync(USERS_DB_PATH, "utf-8");
+      const localDb = JSON.parse(data);
+      const userEmails = Object.keys(localDb);
+      if (userEmails.length > 0) {
+        console.log(`[Migração] Migrando ${userEmails.length} usuários locais para o Firestore...`);
+        const batch = firestoreDb.batch();
+        for (const email of userEmails) {
+          const emailKey = email.trim().toLowerCase();
           const docRef = firestoreDb.collection("users").doc(emailKey);
-          batch.set(docRef, user);
-          hasChanges = true;
-          console.log(`[Firebase Admin] Preparando salvamento para o atleta: ${emailKey}`);
+          batch.set(docRef, localDb[email]);
         }
-      }
-
-      // Check if any users were deleted
-      for (const email of Object.keys(previousDb)) {
-        const emailKey = email.trim().toLowerCase();
-        if (!db[emailKey] && !db[email]) {
-          const docRef = firestoreDb.collection("users").doc(emailKey);
-          batch.delete(docRef);
-          hasChanges = true;
-          console.log(`[Firebase Admin] Preparando exclusão para o atleta: ${emailKey}`);
-        }
-      }
-
-      if (hasChanges) {
         await batch.commit();
-        console.log("[Firebase Admin] Mudanças persistidas com sucesso no Firestore.");
+        console.log("[Migração] Todos os usuários locais foram migrados com sucesso para o Firestore!");
       }
-    } catch (err: any) {
-      console.error("[Firebase Admin] Erro ao persistir mudanças no Firestore:", err.message);
     }
+  } catch (err: any) {
+    console.error("[Migração] Erro durante a migração inicial:", err.message);
   }
 }
 
-// -------------------------------------------------------------
-// SECURE EMAIL SENDING & NOTIFICATION LOGGING SYSTEM
-// -------------------------------------------------------------
-const SENT_EMAILS_FILE = process.env.VERCEL
-  ? path.join(os.tmpdir(), "sent_emails.json")
-  : path.join(process.cwd(), "sent_emails.json");
+runInitialMigration().catch((err) => {
+  console.error("[Migração] Erro ao iniciar a thread de migração:", err);
+});
 
-interface SentEmailRecord {
-  id: string;
-  recipient: string;
-  subject: string;
-  body: string;
-  sentAt: string;
-  status: "success" | "simulated" | "failed";
-  error?: string;
-  plan?: string;
-  athleteName?: string;
-}
-
-function getSentEmailsLog(): SentEmailRecord[] {
-  try {
-    if (fs.existsSync(SENT_EMAILS_FILE)) {
-      const content = fs.readFileSync(SENT_EMAILS_FILE, "utf-8");
-      return JSON.parse(content);
-    }
-  } catch (e) {
-    console.warn("Failed to read sent_emails.json:", e);
-  }
-  return [];
-}
-
-function saveSentEmailLog(log: SentEmailRecord[]) {
-  try {
-    fs.writeFileSync(SENT_EMAILS_FILE, JSON.stringify(log, null, 2), "utf-8");
-  } catch (e) {
-    console.warn("Failed to write sent_emails.json:", e);
-  }
-}
-
-async function sendActivationEmail(athleteName: string, recipientEmail: string, selectedPlan: string, originUrl: string) {
-  const subject = "🚴‍♂️ Seu Acesso ao Biker AI foi Liberado!";
-  const loginUrl = originUrl || "https://ais-dev-ig3xpt2tylya4dpumxckiy-403337948550.us-west2.run.app";
-  
-  const emailHtml = `
-  <!DOCTYPE html>
-  <html>
-  <head>
-    <meta charset="utf-8">
-    <title>Acesso Liberado!</title>
-    <style>
-      body {
-        margin: 0;
-        padding: 0;
-        background-color: #0f172a;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-        color: #f8fafc;
-      }
-      .wrapper {
-        background-color: #0d1527;
-        padding: 40px 10px;
-      }
-      .container {
-        max-width: 600px;
-        margin: 0 auto;
-        background-color: #1e293b;
-        border: 1px solid #334155;
-        border-radius: 24px;
-        padding: 40px;
-        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-      }
-      .logo {
-        color: #a3e635;
-        font-size: 24px;
-        font-weight: 900;
-        font-style: italic;
-        text-transform: uppercase;
-        letter-spacing: -0.05em;
-        margin-bottom: 30px;
-        text-align: center;
-      }
-      .title {
-        font-size: 22px;
-        font-weight: 850;
-        color: #ffffff;
-        margin-bottom: 20px;
-        text-align: center;
-        line-height: 1.3;
-      }
-      .greeting {
-        font-size: 15px;
-        color: #cbd5e1;
-        margin-bottom: 20px;
-        line-height: 1.6;
-      }
-      .highlight-box {
-        background-color: rgba(163, 230, 53, 0.08);
-        border: 1px solid rgba(163, 230, 53, 0.3);
-        border-radius: 16px;
-        padding: 20px;
-        margin-bottom: 30px;
-        text-align: center;
-      }
-      .plan-badge {
-        background-color: #a3e635;
-        color: #0f172a;
-        font-weight: 900;
-        font-size: 13px;
-        text-transform: uppercase;
-        padding: 6px 16px;
-        border-radius: 50px;
-        display: inline-block;
-        margin-top: 5px;
-        letter-spacing: 0.05em;
-      }
-      .features {
-        margin-bottom: 30px;
-      }
-      .feature-item {
-        margin-bottom: 15px;
-        color: #94a3b8;
-        font-size: 14px;
-        line-height: 1.5;
-      }
-      .button-wrapper {
-        text-align: center;
-        margin-top: 30px;
-        margin-bottom: 30px;
-      }
-      .button {
-        background-color: #a3e635;
-        color: #0d1527 !important;
-        font-weight: 950;
-        text-transform: uppercase;
-        font-size: 13px;
-        letter-spacing: 0.06em;
-        text-decoration: none;
-        padding: 16px 32px;
-        border-radius: 12px;
-        display: inline-block;
-        box-shadow: 0 10px 15px -3px rgba(163, 230, 53, 0.3);
-      }
-      .signature {
-        border-top: 1px solid #334155;
-        padding-top: 25px;
-        font-size: 13px;
-        color: #94a3b8;
-        line-height: 1.6;
-      }
-      .footer {
-        margin-top: 30px;
-        text-align: center;
-        font-size: 11px;
-        color: #64748b;
-        line-height: 1.5;
-      }
-      .footer a {
-        color: #a3e635;
-        text-decoration: none;
-      }
-    </style>
-  </head>
-  <body>
-    <div class="wrapper">
-      <div class="container">
-        <div class="logo">⚡ Biker AI</div>
-        
-        <h1 class="title">Seu Acesso está Ativado, ${athleteName}!</h1>
-        
-        <p class="greeting">
-          Fala, campeão! Temos excelentes notícias para os seus treinos. Sua assinatura foi validada com sucesso pelo nosso treinador. Seu painel de preparação esportiva do <strong>Biker AI</strong> está oficialmente liberado para uso.
-        </p>
-
-        <div class="highlight-box">
-          <p style="margin: 0 0 8px 0; font-size: 12px; color: #94a3b8; text-transform: uppercase; font-weight: bold; letter-spacing: 0.05em;">Plano Ativo Liberado</p>
-          <span class="plan-badge">${selectedPlan}</span>
-        </div>
-
-        <div class="features">
-          <p style="font-weight: bold; color: #ffffff; font-size: 15px; margin-bottom: 12px;">Tudo o que está liberado para você:</p>
-          
-          <div class="feature-item">
-            <strong style="color: #cbd5e1; display: block; margin-bottom: 3px;">✓ Planilhas Semanais Inteligentes:</strong> 
-            Treinos planejados de forma personalizada controlando sua carga por potência, batimentos cardíacos ou percepção de esforço.
-          </div>
-          
-          <div class="feature-item">
-            <strong style="color: #cbd5e1; display: block; margin-bottom: 3px;">✓ Histórico & Gráficos Fisiológicos:</strong> 
-            Acompanhamento detalhado do seu volume de treino semanal, calorias, e evolução sistemática do seu desempenho.
-          </div>
-          
-          <div class="feature-item">
-            <strong style="color: #cbd5e1; display: block; margin-bottom: 3px;">✓ Suporte com Treinador IA 24 horas:</strong> 
-            O nosso treinador inteligente de ciclismo baseado em fisiologia está pronto no chat para tirar dúvidas de cansaço ou alterar seu giro.
-          </div>
-        </div>
-
-        <div class="button-wrapper">
-          <a href="${loginUrl}" class="button" target="_blank">Entrar no Painel do Atleta</a>
-        </div>
-
-        <div class="signature">
-          Forte abraço e ótimos giros!<br>
-          <strong>Treinador Pedro Baliza & Equipe Biker AI</strong>
-        </div>
-      </div>
-      
-      <div class="footer">
-        Dúvidas de faturamento, faturas ou fisiologia? Fale com a gente pelo e-mail oficial:<br>
-        <a href="mailto:bikeraisupport@gmail.com">bikeraisupport@gmail.com</a><br>
-        <span style="font-size: 10px; margin-top: 10px; display: block;">&copy; 2026 Biker AI. Enviado de forma segura e automatizada.</span>
-      </div>
-    </div>
-  </body>
-  </html>
-  `;
-
-  let sentStatus: "success" | "simulated" | "failed" = "simulated";
-  let errMessage: string | undefined;
-
-  // Standard SMTP credentials check
-  const smtpUser = process.env.SMTP_USER;
-  const smtpPass = process.env.SMTP_PASS;
-  const smtpHost = process.env.SMTP_HOST || "smtp.gmail.com";
-  const smtpPort = Number(process.env.SMTP_PORT) || 587;
-
-  if (smtpUser && smtpPass) {
-    try {
-      const transporter = nodemailer.createTransport({
-        host: smtpHost,
-        port: smtpPort,
-        secure: smtpPort === 465,
-        auth: {
-          user: smtpUser,
-          pass: smtpPass,
-        },
-      });
-
-      await transporter.sendMail({
-        from: `"Suporte Biker AI" <${smtpUser}>`,
-        to: recipientEmail,
-        subject: subject,
-        html: emailHtml,
-      });
-      sentStatus = "success";
-      console.log(`[Email System] Real custom notification email successfully sent via SMTP to ${recipientEmail}`);
-    } catch (e: any) {
-      console.error(`[Email System] Failed to send actual email via SMTP to ${recipientEmail}:`, e);
-      sentStatus = "failed";
-      errMessage = e.message;
-    }
-  } else {
-    console.log(`[Email System] SMTP credentials not set (SMTP_USER/SMTP_PASS). Created full, beautiful email simulation log for ${recipientEmail}.`);
-  }
-
-  // Register locally so admin has instant visual diagnostics of sent notifications
-  try {
-    const log = getSentEmailsLog();
-    const newRecord: SentEmailRecord = {
-      id: "mail_" + Math.random().toString(36).substring(2, 11),
-      recipient: recipientEmail,
-      subject: subject,
-      body: emailHtml,
-      sentAt: new Date().toISOString(),
-      status: sentStatus,
-      error: errMessage,
-      plan: selectedPlan,
-      athleteName: athleteName
-    };
-    log.unshift(newRecord);
-    saveSentEmailLog(log.slice(0, 50));
-  } catch (logErr) {
-    console.warn("Failed to write to local email sent logs:", logErr);
-  }
-
-  return { success: sentStatus !== "failed", status: sentStatus, error: errMessage };
-}
 
 // -------------------------------------------------------------
 // USER SIGNUP, SIGNIN & CLOUD SYNCHRONIZATION ENDPOINTS
@@ -559,7 +233,7 @@ app.post("/api/auth/register", async (req, res) => {
       return res.status(400).json({ error: "Dados inválidos de cadastro." });
     }
 
-    const db = await getDatabase(true);
+    const db = await getDatabase();
     const emailKey = email.trim().toLowerCase();
 
     if (db[emailKey]) {
@@ -583,8 +257,8 @@ app.post("/api/auth/register", async (req, res) => {
       limitations: "",
       recentActivity: "",
       onboardingStep: 1,
-      subscriptionStatus: "pending_payment",
-      subscriptionPlan: "Mensal Premium",
+      subscriptionStatus: "active",
+      subscriptionPlan: "Bronze (Mensal)",
       subscriptionExpiresAt: "2026-12-31",
       role: isCoachEmail ? "coach" : "athlete"
     };
@@ -624,7 +298,7 @@ app.post("/api/auth/login", async (req, res) => {
       return res.status(400).json({ error: "E-mail e senha são obrigatórios." });
     }
 
-    const db = await getDatabase(true);
+    const db = await getDatabase();
     const emailKey = email.trim().toLowerCase();
     const user = db[emailKey];
 
@@ -681,11 +355,30 @@ app.post("/api/auth/save-user", async (req, res) => {
   }
 });
 
+// Fetch user account session data directly by email
+app.post("/api/auth/session", async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ error: "E-mail é obrigatório." });
+    }
+    const db = await getDatabase();
+    const emailKey = email.trim().toLowerCase();
+    const user = db[emailKey];
+    if (!user) {
+      return res.status(404).json({ error: "Usuário não encontrado." });
+    }
+    res.json({ success: true, user });
+  } catch (error: any) {
+    console.error("Error in server session retrieval:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 const PORT = 3000;
 
 // Initialize Gemini client lazily on the server
 let aiClient: GoogleGenAI | null = null;
-let currentCachedKey = "";
 
 const getAiClient = (): GoogleGenAI => {
   let key = process.env.GEMINI_API_KEY || "";
@@ -701,8 +394,7 @@ const getAiClient = (): GoogleGenAI => {
     throw new Error("GEMINI_API_KEY is not configured in the environment variables.");
   }
 
-  if (!aiClient || currentCachedKey !== key) {
-    currentCachedKey = key;
+  if (!aiClient) {
     aiClient = new GoogleGenAI({
       apiKey: key,
       httpOptions: {
@@ -752,445 +444,22 @@ const checkApiKey = () => {
 };
 
 // Helper to implement a fast, client-side safety ceiling to avoid Vercel Serverless 10s execution timeout
-const sanitizeLogMessage = (err: any): string => {
-  const msg = err?.message || String(err);
-  if (msg.includes("503") || msg.includes("UNAVAILABLE") || msg.includes("high demand")) {
-    return "Google Gemini API Temporarily Unavailable (503 High Demand)";
-  }
-  if (msg.includes("429") || msg.includes("RESOURCE_EXHAUSTED")) {
-    return "Google Gemini API Rate Limited (429)";
-  }
-  if (msg.trim().startsWith("{")) {
-    try {
-      const parsed = JSON.parse(msg);
-      const innerMsg = parsed?.error?.message || parsed?.message || "Unknown API error";
-      const status = parsed?.error?.status || "API Error";
-      return `Gemini API returned status: ${status} - ${innerMsg}`;
-    } catch (e) {
-      // ignore
-    }
-  }
-  return msg.substring(0, 150);
-};
-
 const withTimeout = <T>(promise: Promise<T>, ms: number, errorMessage = "Timeout exceeding limit"): Promise<T> => {
   let timeoutId: NodeJS.Timeout;
-  let timedOut = false;
-  
   const timeoutPromise = new Promise<never>((_, reject) => {
     timeoutId = setTimeout(() => {
-      timedOut = true;
       reject(new Error(errorMessage));
     }, ms);
   });
   
-  // Guard against unhandled promise rejections only if a timeout actually occurred
+  // Guard against unhandled promise rejections crashing Node.js serverless functions on Vercel
   promise.catch((err) => {
-    if (timedOut) {
-      console.log("[Timeout Background] Gemini call failed in background after timeout completed:", sanitizeLogMessage(err));
-    }
+    console.warn("Plano de fundo - Exceção do Gemini capturada silenciosamente para evitar crash do servidor:", err.message || err);
   });
 
   return Promise.race([promise, timeoutPromise]).finally(() => {
     clearTimeout(timeoutId);
   });
-};
-
-// Retry wrapper for Gemini calls to gracefully handle temporary Google API 503 UNAVAILABLE or 429 errors
-const withRetry = async <T>(fn: () => Promise<T>, retries = 3, delayMs = 1500): Promise<T> => {
-  try {
-    return await fn();
-  } catch (error: any) {
-    const errorStr = String(error.message || error);
-    const isTransient = 
-      errorStr.includes("503") || 
-      errorStr.includes("UNAVAILABLE") || 
-      errorStr.includes("429") || 
-      errorStr.includes("RESOURCE_EXHAUSTED") ||
-      errorStr.includes("high demand") ||
-      errorStr.includes("temp");
-
-    if (isTransient && retries > 0) {
-      console.warn(`[Gemini Retry] Erro transiente detectado (503/429/indisponível). Retentando em ${delayMs}ms... Tentativas restantes: ${retries}`);
-      await new Promise(resolve => setTimeout(resolve, delayMs));
-      return withRetry(fn, retries - 1, delayMs * 2);
-    }
-    throw error;
-  }
-};
-
-// Helper to provide human-friendly Portuguese error messages for complex or raw API errors
-const getFriendlyErrorMessage = (error: any): string => {
-  const rawMsg = error?.message || String(error);
-  
-  // Try parsing to extract actual upstream message in case it's stringified JSON:
-  let innerMsg = rawMsg;
-  try {
-    if (rawMsg.trim().startsWith('{')) {
-      const parsed = JSON.parse(rawMsg);
-      if (parsed.error && parsed.error.message) {
-        innerMsg = parsed.error.message;
-      } else if (parsed.message) {
-        innerMsg = parsed.message;
-      }
-    }
-  } catch (e) {}
-
-  const lower = innerMsg.toLowerCase();
-  if (lower.includes("unavailable") || lower.includes("503") || lower.includes("high demand") || lower.includes("temp")) {
-    return "O servidor do Google Gemini (IA) está passando por uma alta demanda temporária mundial. Por favor, aguarde alguns segundos e envie novamente sua mensagem!";
-  }
-  if (lower.includes("api_key") || lower.includes("api key") || lower.includes("key not") || lower.includes("invalid key") || lower.includes("unauthorized")) {
-    return "Falha de autenticação com a IA: Sua chave GEMINI_API_KEY está ausente ou é inválida. Por favor, verifique-a nas configurações do painel.";
-  }
-  if (lower.includes("limit") || lower.includes("429") || lower.includes("quota")) {
-    return "Limite de requisições excedido temporariamente. Por favor, aguarde um pouco antes de solicitar novos planos.";
-  }
-  return innerMsg;
-};
-
-// -------------------------------------------------------------
-// LOCAL PROCEDURAL FALLBACK SYSTEMS (AUTOMATED SAFEGUARDS)
-// -------------------------------------------------------------
-
-const fallbackOnboard = (message: string, profile: any) => {
-  const currentStep = Number(profile?.onboardingStep) || 1;
-  const parsedProfile: any = {};
-  let nextStep = currentStep + 1;
-  let reply = "";
-
-  const cleanMsg = (message || "").trim();
-
-  switch (currentStep) {
-    case 1:
-      let name = cleanMsg.replace(/^(meu nome é|me chamo|sou o|sou a|o meu nome é|nome is|meu nome e)\s+/gi, "");
-      if (!name) name = "Atleta";
-      name = name.charAt(0).toUpperCase() + name.slice(1);
-      parsedProfile.name = name;
-      reply = `Prazer em te conhecer, **${name}**! Para que eu possa estruturar melhor seus estímulos, me conta: há quanto tempo você pedala e como você se considera? (**iniciante**, **intermediário** ou **avançado**)?`;
-      break;
-    case 2:
-      let level: any = "intermediário";
-      if (/iniciante|comecei|novo|nova/i.test(cleanMsg)) level = "iniciante";
-      else if (/avançado|avancado|pro|forte|elite/i.test(cleanMsg)) level = "avançado";
-      parsedProfile.level = level;
-      reply = `Perfeito! Entendi que seu nível é **${level}**. Agora, qual é o seu objetivo de ouro no momento? (**perder peso**, **melhorar condicionamento**, **completar um evento** ou **competir**)?`;
-      break;
-    case 3:
-      let goal = "melhorar condicionamento";
-      if (/peso|emagrecer|gord/i.test(cleanMsg)) goal = "perder peso";
-      else if (/evento|gran|prova|viagem|desafio|completar/i.test(cleanMsg)) goal = "completar um evento";
-      else if (/competir|corrida|campeonato|pódio|podio|ajuda/i.test(cleanMsg)) goal = "competir";
-      parsedProfile.goal = goal;
-      reply = `Entendido! Seu foco é **${goal}**. Para encaixar os treinos na sua rotina, quantos dias por semana você consegue treinar?`;
-      break;
-    case 4:
-      const daysMatch = cleanMsg.match(/\d+/);
-      const days = daysMatch ? Math.min(7, Math.max(1, Number(daysMatch[0]))) : 3;
-      parsedProfile.daysPerWeek = days;
-      reply = `Excelente, programaremos ${days} dias de pedal. E quanto tempo você tem disponível em média por dia de treino (em minutos)?`;
-      break;
-    case 5:
-      const durMatch = cleanMsg.match(/\d+/);
-      const duration = durMatch ? Math.max(30, Number(durMatch[0])) : 60;
-      parsedProfile.durationPerSession = duration;
-      reply = `Gravado: sessões de ${duration} minutos. Você tem algum evento ou prova marcantes no horizonte com data específica? Se sim, qual é e quando será? (Se não tiver, pode digitar "Não")`;
-      break;
-    case 6:
-      const isNo = /não|nao|no\b|nenhum/i.test(cleanMsg);
-      parsedProfile.eventDate = isNo ? "Nenhum no horizonte" : cleanMsg;
-      reply = `Anotado! Agora me conte: você treina utilizando medidor de potência? Se sim, qual é o seu FTP em Watts atualmente? (Se não usar, basta responder "Não")`;
-      break;
-    case 7:
-      const hasPower = !/não|nao|no\b/i.test(cleanMsg);
-      parsedProfile.hasPowerMeter = hasPower;
-      if (hasPower) {
-        const ftpMatch = cleanMsg.match(/\d+/);
-        parsedProfile.ftp = ftpMatch ? Number(ftpMatch[0]) : 200;
-      }
-      reply = `Entendido. E você usa monitor/cinta de frequência cardíaca para registrar seus batimentos? Se sim, saberia dizer sua frequência cardíaca máxima (FCmax)? (Se não usar ou não souber, responda "Não")`;
-      break;
-    case 8:
-      const hasHR = !/não|nao|no\b/i.test(cleanMsg);
-      parsedProfile.hasHeartRate = hasHR;
-      if (hasHR) {
-        const hrMatch = cleanMsg.match(/\d+/);
-        parsedProfile.maxHeartRate = hrMatch ? Number(hrMatch[0]) : 180;
-      }
-      reply = `Ótimo! Estamos quase completando seu mapa fisiológico. Você tem alguma lesão ou limitação articular/física que eu precise levar em conta? (Se estiver 100%, digite "Não")`;
-      break;
-    case 9:
-      parsedProfile.limitations = /não|nao/i.test(cleanMsg) ? "Nenhuma limitação" : cleanMsg;
-      reply = `Perfeito. Para finalizar de forma personalizada, qual foi o seu treino ou pedal mais recente? Como foi (distância, tempo ou sensação geral)?`;
-      break;
-    case 10:
-    default:
-      parsedProfile.recentActivity = cleanMsg;
-      nextStep = 10;
-      reply = `Sensacional, ${profile?.name || "atleta"}! Coletamos com sucesso todas as características do seu perfil de treinamento. 
-
-Para confirmar seus dados e gerar sua **Planilha de Treinamento Semanal Personalizada**, basta clicar no botão azul **Confirmar Dados e Gerar Planilha** na sua tela! Estou pronto para planejar seu macrosistema de treino! 🚴‍♂️🚴‍♀️`;
-      break;
-  }
-
-  parsedProfile.onboardingStep = nextStep;
-
-  return {
-    reply,
-    parsedProfile
-  };
-};
-
-const generateLocalPlan = (profile: any) => {
-  const name = profile?.name || "Atleta";
-  const level = profile?.level || "iniciante";
-  const goal = profile?.goal || "melhorar condicionamento";
-  const daysPerWeek = Number(profile?.daysPerWeek) || 3;
-  const durationMax = Number(profile?.durationPerSession) || 60;
-  const hasPower = !!profile?.hasPowerMeter;
-  const ftp = Number(profile?.ftp) || 200;
-  const hrmax = Number(profile?.maxHeartRate) || 180;
-
-  const daysOfWeek = [
-    "Segunda-feira",
-    "Terça-feira",
-    "Quarta-feira",
-    "Quinta-feira",
-    "Sexta-feira",
-    "Sábado",
-    "Domingo"
-  ];
-
-  let activeDays = [false, true, false, true, false, true, false];
-  if (daysPerWeek === 1) activeDays = [false, false, false, false, false, true, false];
-  else if (daysPerWeek === 2) activeDays = [false, true, false, false, false, true, false];
-  else if (daysPerWeek === 4) activeDays = [false, true, false, true, true, true, false];
-  else if (daysPerWeek === 5) activeDays = [false, true, true, true, false, true, true];
-  else if (daysPerWeek === 6) activeDays = [false, true, true, true, true, true, true];
-  else if (daysPerWeek === 7) activeDays = [true, true, true, true, true, true, true];
-
-  const workouts: any[] = [];
-
-  const inicianteWorkouts = [
-    { type: "Endurance Extensivo", targetZone: "Z2 (Endurance)", rpe: 4, goal: "Construção de base aeróbica primária e adaptação cardíaca.", structure: "10min aquecimento leve + 40min Z2 constante (85-95 rpm) + 10min volta à calma" },
-    { type: "Endurance Ativo", targetZone: "Z2 (Endurance)", rpe: 4, goal: "Desenvolvimento de resistência muscular cíclica leve.", structure: "10min aquecimento leve + 35min Z2 constante + 3x 1min rotação alta (100 rpm) + 5min desaquec." },
-    { type: "Rolo Cadenciado", targetZone: "Z2/Z3 (Ritmo)", rpe: 5, goal: "Melhorar a eficiência de pedalada e coordenação motora.", structure: "10min aquecimento + 4x 5min Z3 leve com cadência alta (95 rpm) e 3min recup Z1 + 10min volta à calma" },
-    { type: "Endurance Longo", targetZone: "Z2 (Endurance)", rpe: 4, goal: "Adaptação de longo curso das articulações e queima lipídica.", structure: "15min aquecimento + 50min Z2 estável focando em postura confortável e hidratação" }
-  ];
-
-  const intermediarioWorkouts = [
-    { type: "Intervalado Sweet Spot", targetZone: "Z3/Z4 (Sweet Spot)", rpe: 6, goal: "Aumento do limiar de lactato com acúmulo tolerável de fadiga.", structure: "15min aquecimento + 2x 10min Z3 Forte (90% FTP) com 5min recuperação Z1 + 10min desaquecimento" },
-    { type: "Endurance de Base", targetZone: "Z2 (Endurance)", rpe: 4, goal: "Promoção de capilarização muscular e aumento de mitocôndrias.", structure: "10min aquec + 60min constante em Z2 (cadência confortável em 90 rpm) + 10min volta à calma" },
-    { type: "Intervalado de Limiar", targetZone: "Z4 (Limiar)", rpe: 7, goal: "Elevar o FTP e melhorar a eficiência fisiológica no limiar.", structure: "15min aquec (com 3 estímulos rápidos de 30s) + 3x 6min Z4 (no FTP!) com 4min recup Z1 + 10min soltura" },
-    { type: "Subidas de Força / Torque", targetZone: "Z3 (Força)", rpe: 6, goal: "Desenvolvimento de força muscular específica nos quadríceps.", structure: "15min aquecimento + 4x 4min Z3 com cadência baixa (55-65 rpm) em subida leve + 5min recup + 10min soltura" }
-  ];
-
-  const avancadoWorkouts = [
-    { type: "Microintervalado VO2 Max", targetZone: "Z5 (VO2 Max)", rpe: 8, goal: "Ampliar o consumo máximo de oxigênio e capacidade anaeróbica.", structure: "15min aquecimento progressivo + 2 blocos de 8x (30s Z5 + 30s recuperação Z1) com 8min recup entre blocos + 15min soltura" },
-    { type: "Intervalado de Threshold", targetZone: "Z4 (Limiar)", rpe: 7, goal: "Aumentar a tolerância ao lactato em ritmo de corrida sustentado.", structure: "15min aquec + 2x 15min Z4 (Forte, 100% FTP) com cadência em 92 rpm e 7min recuperação Z1 + 10min volta à calma" },
-    { type: "Endurance Intenso", targetZone: "Z2/Z3 (Misto)", rpe: 5, goal: "Construção de resistência aeróbica densa sob fadiga moderada.", structure: "15min aquec + 90min em Z2 (incluindo surtos curtos de 20s a cada 15min) + 10min desaquecimento" },
-    { type: "Sprints de Torque Neuromuscular", targetZone: "Z6/Z7 (Sprints)", rpe: 9, goal: "Aumento do recrutamento de fibras do tipo IIb de contração rápida.", structure: "15min aquec + 6x 15s SPRINT MÁXIMO da imobilidade (marcha pesada) com 4min recup total em Z1 + 15min soltou" }
-  ];
-
-  const pool = level === "iniciante" ? inicianteWorkouts : level === "avançado" ? avancadoWorkouts : intermediarioWorkouts;
-  let poolIdx = 0;
-
-  for (let i = 0; i < 7; i++) {
-    const day = daysOfWeek[i];
-    const isActive = activeDays[i];
-
-    if (isActive) {
-      const template = pool[poolIdx % pool.length];
-      poolIdx++;
-
-      let dur = durationMax;
-      if (template.type.includes("Longo") || template.type.includes("Intenso")) {
-        dur = Math.round(durationMax * 1.3);
-      } else if (template.type.includes("Sprint") || template.type.includes("Regenerativo")) {
-        dur = Math.round(durationMax * 0.8);
-      }
-
-      workouts.push({
-        day,
-        type: template.type,
-        duration: dur,
-        goal: template.goal,
-        structure: template.structure,
-        targetZone: template.targetZone,
-        rpe: template.rpe,
-        tip: `Mantenha a cadência uniforme. Lembre-se que constância é o segredo evolutivo no ciclismo!`,
-        completed: false
-      });
-    } else {
-      workouts.push({
-        day,
-        type: "Folga / Descanso",
-        duration: 0,
-        goal: "Permitir a supercompensação muscular e regeneração das fibras.",
-        structure: "Descanso total livre de atividades físicas vigorosas. Hidratação reforçada.",
-        targetZone: "Nenhuma (Recuperação)",
-        rpe: 1,
-        tip: "A recuperação faz parte integral da planilha. É no descanso que o músculo se reconstrói mais forte!",
-        completed: false
-      });
-    }
-  }
-
-  const volHours = Math.round(workouts.reduce((acc, w) => acc + w.duration, 0) / 60 * 10) / 10;
-
-  return {
-    workouts,
-    summary: `Volume total planejado: ~${volHours} horas. Foco no desenvolvimento de endurance aeróbico e estabilização de fôlego baseado nas suas características fisiológicas locais.`,
-    observations: "Atenção redobrada à hidratação contínua (mínimo de 500ml de água por hora de pedal) e ao sono reparador (7h a 8h por noite). As pernas se reconstroem no descanso.",
-    evaluation: "Avalie suas sensações físicas ao final de cada sessão. Se sentir cansaço extremo ou dores articulares, reduza a intensidade imediatamente para o patamar Leve."
-  };
-};
-
-const generateLocalNextWeek = (currentPlan: any, athleteFeedback: string, nextWeekNumber: number, profile: any) => {
-  const totalWorkouts = currentPlan?.workouts?.length || 0;
-  const completedWorkouts = currentPlan?.workouts?.filter((w: any) => w.completed)?.length || 0;
-  const completedPercent = totalWorkouts > 0 ? Math.round((completedWorkouts / totalWorkouts) * 100) : 0;
-
-  const isHighCompletion = completedPercent >= 75;
-  const isFatigued = /dor|cansado|exausto|lesão|lesao|articular|fadiga/i.test(athleteFeedback || "");
-
-  let coachMessage = "";
-  const workouts = (currentPlan?.workouts || []).map((w: any) => {
-    const newW = { ...w, completed: false };
-    
-    if (w.duration > 0) {
-      if (isHighCompletion && !isFatigued) {
-        newW.duration = Math.round(w.duration * 1.08);
-        newW.goal = `[Progressão] ` + w.goal;
-        newW.tip = `Evolução para a Semana ${nextWeekNumber}: Aumentamos levemente o volume para consolidar o ganho de endurance. Mantenha os ritmos prescritos!`;
-      } else {
-        newW.duration = Math.round(w.duration * 0.9);
-        newW.goal = `[Recuperação] ` + w.goal;
-        newW.tip = `Foco em restabelecimento metabólico seguro para a Semana ${nextWeekNumber}. Preze pela soltura e conforto muscular!`;
-      }
-    }
-    return newW;
-  });
-
-  if (isHighCompletion && !isFatigued) {
-    coachMessage = `🚴‍♂️ **Parabéns pela constância de ouro na semana passada!** Com uma taxa de conclusão de **${completedPercent}%**, seu corpo superou os estímulos. Introduzi um incremento sutil de volume nesta **Semana ${nextWeekNumber}** para estimular a biogênese mitocondrial e aumentar a densidade dos seus capilares corporais. Excelente constância!`;
-  } else {
-    coachMessage = `Acolho você com carinho neste momento de recuperação. Com conclusão de **${completedPercent}%** ou sinais de fadiga relatados no seu feedback, estabelecemos para a **Semana ${nextWeekNumber}** um bloco focado em regeneração ativa. Reduzi ligeiramente os volumes para dar sobrevida às suas fibras musculares e restaurar seu sistema nervoso central. O descanso reconstrói campeões! Let's ride leve!`;
-  }
-
-  const volHours = Math.round(workouts.reduce((acc, w) => acc + w.duration, 0) / 60 * 10) / 10;
-
-  return {
-    workouts,
-    summary: `Volume reajustado para a Semana ${nextWeekNumber}: ~${volHours} horas. Foco voltado para ${isHighCompletion && !isFatigued ? "progressão segura de carga aeróbica" : "recuperação ativa e repouso celular"}.`,
-    observations: "Monitore suas sensações de acordar. Se o cansaço persistir ou as pernas continuarem bloqueadas, priorize o repouso ativo ou folga absoluta.",
-    evaluation: "Avalie suas sensações ao final da semana. O bem-estar físico e energia restabelecida são as principais métricas do sucesso deste microciclo.",
-    weekNumber: nextWeekNumber,
-    coachMessage
-  };
-};
-
-const evaluateLocalWorkout = (profile: any, workout: any) => {
-  const actualDuration = Number(workout?.actualDuration || workout?.duration) || 60;
-  const actualRpe = Number(workout?.actualRpe) || 5;
-  const actualHr = Number(workout?.actualHr) || 0;
-  const actualPower = Number(workout?.actualPower) || 0;
-  const distance = Number(workout?.actualDistance) || 0;
-  const speed = Number(workout?.actualAvgSpeed) || 0;
-  const elevation = Number(workout?.actualElevation) || 0;
-  const calories = Number(workout?.actualCalories) || 0;
-  const athleteNotes = workout?.athleteNotes || "";
-
-  const name = profile?.name || "Atleta";
-  const targetZone = workout?.targetZone || "Z2";
-
-  let feedback = `### 🚴‍♂️ Avaliação de Treino – Motor Resiliente Local\n\n`;
-  feedback += `Olá, **${name}**! Analisei detalhadamente os dados reais do seu pedal e fiz o levantamento fisiológico dos seus números:\n\n`;
-
-  feedback += `- **Volume Registrado**: Concluiu **${actualDuration} minutos** de treino (o planejado era **${workout?.duration || 60} minutos**).\n`;
-  if (distance > 0) feedback += `- **GPS & Strava**: Percorreu um volume completo de **${distance} km** a uma velocidade média de **${speed} km/h**.\n`;
-  if (elevation > 0) feedback += `- **Ganho de Altimetria**: Superou **${elevation} metros** de variação altimétrica acumulada. Ótimo trabalho de força neuromuscular!\n`;
-  if (calories > 0) feedback += `- **Gasto Calórico**: O metabolismo gastou aproximadamente **${calories} kcal**. Recomendamos recarregar seus estoques de glicogênio muscular com uma refeição de carboidratos nas próximas 2 horas!\n\n`;
-
-  feedback += `#### 🔬 Resumo da Análise Fisiológica:\n`;
-  if (targetZone.includes("1") || targetZone.includes("2")) {
-    if (actualRpe >= 7) {
-      feedback += `Você executou um treino voltado para base aeróbica primária ou recuperação ativa em **${targetZone}**, porém registrou sensação de esforço alta de **${actualRpe}/10**. Cuidado: evite forçar demais em dias leves ou regenerativos. O erro clássico de correr forte nas solturas atrasa a supercompensação muscular.\n\n`;
-    } else {
-      feedback += `Excelente disciplina! Manteve a rodagem aeróbica de base em **${targetZone}** sob total controle motor, com esforço de **${actualRpe}/10** de forma extremamente limpa. Essa regularidade amplia os capilares sanguíneos nas pernas e melhora seu fôlego de longo prazo.\n\n`;
-    }
-  } else {
-    feedback += `Belo cumprimento de metas! Entregar trabalho denso na zona alvo **${targetZone}** com percepção de esforço de **${actualRpe}/10** ativa os mecanismos moleculares de VO2max, recrutando fibras de contração intermediárias e estimulando a complacência do miocárdio.\n\n`;
-  }
-
-  if (actualPower > 0) {
-    feedback += `Sua potência de **${actualPower} Watts** em relação ao seu FTP demonstrado de **${profile?.ftp || 200}W** indica que você entregou exatamente a carga programada.\n\n`;
-  }
-  if (actualHr > 0) {
-    feedback += `Sua frequência cardíaca média de **${actualHr} bpm** indica resposta cardiovascular normal dentro do esperado.\n\n`;
-  }
-
-  if (athleteNotes) {
-    feedback += `**Comentário do Atleta**: *"${athleteNotes}"*\n*Análise do Coach*: Acolhi seu comentário e incluí seu estado no macrociclo acumulado. Continue me atualizando sobre essas sensações sensoriais.\n\n`;
-  }
-
-  feedback += `#### 🛡️ Recomendações de Recuperação nas próximas 24 horas:\n`;
-  feedback += `1. **Nutrição de Base**: Priorize proteínas de alta absorção para repor a degradação muscular e carboidratos complexos.\n`;
-  feedback += `2. **Alongamento Suave**: Soltura da região lombar e quadríceps por 10 minutos antes de dormir ajuda a restabelecer a postura do selim.\n`;
-  feedback += `3. **Sono reparador**: Noites com no mínimo 7h a 8h de sono mantêm ativos os hormônios naturais reconstrutores. Abraço do treinador e nos vemos amanhã!`;
-
-  return { aiFeedback: feedback };
-};
-
-const fallbackChat = (message: string, profile: any, currentPlan: any) => {
-  const name = profile?.name || "Atleta";
-  const goal = profile?.goal || "seus objetivos de ciclismo";
-  const level = profile?.level || "iniciante";
-  const cleanMsg = (message || "").trim().toLowerCase();
-
-  let reply = "";
-
-  if (cleanMsg.includes("olá") || cleanMsg.includes("ola") || cleanMsg.includes("opa") || cleanMsg.includes("bom dia") || cleanMsg.includes("boa tarde")) {
-    reply = `Olá, **${name}**! Tudo ótimo de cima do selim? Estou aqui como seu treinador de confiança para te ajudar na sua jornada rumo a **${goal}**. Quer falar sobre algum treino específico ou quer que eu te dê dicas de alimentação, cadência, potência ou subida?`;
-  } else if (cleanMsg.includes("cansa") || cleanMsg.includes("fadiga") || cleanMsg.includes("dor") || cleanMsg.includes("les") || cleanMsg.includes("exausto") || cleanMsg.includes("quebrado")) {
-    reply = `Opa, ${name}. Fliquei muito atento ao seu relato sobre cansaço ou dores corporais. 
-
-O ciclismo exige de nós uma paciência biológica incrível: 
-- **O músculo se reconstrói no descanso, não em cima do selim.**
-- Se as dores forem nas articulações (joelhos, costas), recomendo repouso absoluto hoje ou um treino regenerativo curtíssimo (soltura de 30 minutos em Z1 bem leve).
-- Beba muita água e preze pela alimentação rica em micronutrientes pós-treino.
-
-Se você precisar ajustar hoje ou colocar uma folga na planilha, sinta-se à vontade para gerenciar seus treinos na tela! Continue se cuidando.`;
-  } else if (cleanMsg.includes("zona") || cleanMsg.includes("potencia") || cleanMsg.includes("fc") || cleanMsg.includes("batimento") || cleanMsg.includes("ftp") || cleanMsg.includes("watts")) {
-    reply = `Excelente dúvida sobre zonas de treino, ${name}! 
-
-Nossa planilha se divide assim nas zonas de trabalho:
-- **Z1 (Recuperação)**: Soltura ativa muito leve, pedalando e conversando com extrema facilidade.
-- **Z2 (Endurance/Base)**: 56% a 75% do seu FTP. É o coração do nosso motor aeróbico, estimulando a queima de gorduras e capilarização muscular.
-- **Z3 (Ritmo)**: Ritmo mais denso, respiração profunda, excelente para eventos de longa duração.
-- **Z4 (Limiar de Lactato)**: Esforço forte sustentável, no limite da queimação de ácido lático muscular.
-- **Z5 (VO2 Max)**: Estímulos curtos e doloridos para subir e suportar ataques.
-
-Quer saber mais sobre alguma zona específica do seu treino de hoje?`;
-  } else if (cleanMsg.includes("mudar") || cleanMsg.includes("alterar") || cleanMsg.includes("ajustar") || cleanMsg.includes("descanso") || cleanMsg.includes("folga") || cleanMsg.includes("muda")) {
-    reply = `Claro, **${name}**! Posso te ajudar a planejar reajustes na planilha. Caso queira registrar descanso ou folga para hoje, clique diretamente no card do dia correspondente para editar os status do pedal no seu aplicativo! Se tiver alguma alteração de prioridades a longo prazo (como aumentar os dias disponíveis), faça a modificação e regere os treinos para termos uma nova base.`;
-  } else {
-    reply = `Excelente observação, **${name}**! Como seu treinador dedicado a **${goal}**, seu rumo está sempre planejado.
-
-Fisiologicamente, para seu nível **${level}**, recomendo focar na **regularidade** e na **disciplina do volume**. É fundamental respeitar o dia fácil (Z1/Z2) para conseguir entregar 100% no dia forte!
-
-Três dicas rápidas do treinador:
-1. **Regularidade é tudo**: É melhor fazer 3 pedaladas constantes toda semana do que um giro longo de 5 horas e sumir por duas semanas.
-2. **Cadência ágil**: Busque manter giros entre 85-95 rpm para poupar a patela do seu joelho.
-3. **Nutrição pós-treino**: Nas próximas 2 horas após pedalar forte, garanta carboidratos de absorção rápida e proteínas para supercompensação.
-
-Como estão as pernas hoje e qual o objetivo do seu próximo pedal?`;
-  }
-
-  return {
-    reply,
-    updatedPlan: null
-  };
 };
 
 // Safe JSON parser block that strips away any markdown fences
@@ -1356,6 +625,207 @@ const fallbackOnboarding = (message: string, profile: any): any => {
   }
 };
 
+const fallbackGeneratePlan = (profile: any, nextWeekNum: number = 1): any => {
+  const level = profile?.level || "iniciante";
+  const daysVal = typeof profile?.daysPerWeek === "number" ? profile.daysPerWeek : parseInt(profile?.daysPerWeek || "3", 10) || 3;
+  const durationVal = typeof profile?.durationPerSession === "number" ? profile.durationPerSession : parseInt(profile?.durationPerSession || "60", 10) || 60;
+  
+  const daysOfWeek = ["Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado", "Domingo"];
+  const workouts: any[] = [];
+
+  const trainingDaysIndex: number[] = [];
+  if (daysVal <= 2) {
+    trainingDaysIndex.push(5, 6);
+  } else if (daysVal === 3) {
+    trainingDaysIndex.push(1, 4, 6);
+  } else if (daysVal === 4) {
+    trainingDaysIndex.push(1, 3, 5, 6);
+  } else if (daysVal === 5) {
+    trainingDaysIndex.push(1, 2, 4, 5, 6);
+  } else {
+    trainingDaysIndex.push(1, 2, 3, 4, 5, 6);
+  }
+
+  daysOfWeek.forEach((dayName, idx) => {
+    const isTraining = trainingDaysIndex.includes(idx);
+    if (!isTraining) {
+      workouts.push({
+        day: dayName,
+        type: "Folga",
+        duration: 0,
+        goal: "Descanso Total e Supercompensação fisiológica.",
+        structure: "Dia de repouso completo. Coloque as pernas para o alto e deite cedo.",
+        targetZone: "Z1 (Recuperação)",
+        rpe: 1,
+        tip: "Lembre-se: o verdadeiro ganho de condicionamento acontece durante o seu descanso!"
+      });
+    } else {
+      let workoutType = "Endurance Extensivo";
+      let workoutGoal = "Melhorar a eficiência aeróbica celular e capilarização muscular.";
+      let workoutStructure = `10min de aquecimento livre em Z1 + ${durationVal - 15}min contínuos bem constantes em Z2 + 5min de volta à calma em Z1`;
+      let workoutZone = "Z2 (Endurance)";
+      let rpe = 3;
+      let tip = "Mantenha a cadência uniforme e confortável entre 85-95 RPM.";
+
+      if (idx === 1) {
+        if (level === "iniciante") {
+          workoutType = "Intervalado de Ritmo";
+          workoutGoal = "Elevar a capacidade de suportar ritmos moderados sustentados.";
+          workoutStructure = `10min aquec Z1-Z2 + 3 blocos de 5min em Z3 com 3min de recuperação ativa Z1 + 5min de soltura`;
+          workoutZone = "Z3 (Tempo/Ritmo)";
+          rpe = 5;
+          tip = "Controle o fôlego e a postura na bicicleta. O esforço é moderado.";
+        } else {
+          workoutType = "Intervalado de Limiar (Sweet Spot)";
+          workoutGoal = "Elevar o limiar de lactato (FTP) com alta eficiência de tempo.";
+          workoutStructure = `12min aquec + 2 blocos de 12min em Sweet Spot (88-93% FTP) com 6min recuperação active Z1 + 8min volta à calma`;
+          workoutZone = "Z4 (Limiar de Lactato)";
+          rpe = 7;
+          tip = "Mantenha a firmeza nas pernas e a concentração mental alta nos minutos finais.";
+        }
+      } else if (idx === 3) {
+        if (level === "avançado") {
+          workoutType = "VO2 Max Intervalado";
+          workoutGoal = "Aprimorar consumo máximo de oxigênio e potência aeróbica máxima.";
+          workoutStructure = `15min aquec progressivo + 5 tiros de 3min em Z5 com 3min de recuperação ativa Z1 + 10min soltura das pernas`;
+          workoutZone = "Z5 (VO2 Máximo)";
+          rpe = 9;
+          tip = "Esforço forte e intenso. Pressione nos tiros de 3 minutos para abrir suas vias pulmonares.";
+        } else {
+          workoutType = "Giro Regenerativo";
+          workoutGoal = "Oxigenar a musculatura das pernas sem gerar estresse inflamatório.";
+          workoutStructure = `30-45min de giro leve contínuo e sem carga sobre a bike (Z1), cadência 90-95 RPM.`;
+          workoutZone = "Z1 (Recuperação)";
+          rpe = 2;
+          tip = "Dia light. Marcha bem leve na bicicleta, hoje é só para soltar a musculatura.";
+        }
+      } else if (idx === 6) {
+        workoutType = "Endurance Longo";
+        workoutGoal = "Estimular adaptações musculares duradouras e o metabolismo de ácidos graxos.";
+        const longDuration = Math.round(durationVal * 1.5);
+        workoutStructure = `15min aquec + ${longDuration - 20}min em ritmo aeróbico Z2 constante + 5min de desaquecimento`;
+        workoutZone = "Z2 (Endurance)";
+        rpe = 4;
+        tip = "Hidrate-se abundantemente e coma pequenos pedaços de carboidrato a cada 45 minutos de pedal.";
+      }
+
+      workouts.push({
+        day: dayName,
+        type: workoutType,
+        duration: durationVal,
+        goal: workoutGoal,
+        structure: workoutStructure,
+        targetZone: workoutZone,
+        rpe: rpe,
+        tip: tip
+      });
+    }
+  });
+
+  const totalHrs = Math.round((workouts.reduce((acc, w) => acc + w.duration, 0) / 60) * 10) / 10;
+
+  return {
+    workouts: workouts,
+    summary: `Planilha de Treinamento - Semana ${nextWeekNum}. Volume estimado de ${totalHrs} horas focando no seu objetivo.`,
+    observations: "Foque na consistência dos treinos fundamentais em Z2 e preserve os dias de descanso total.",
+    evaluation: "Julgue seu treino pelo fôlego, esforço moderado e pela facilidade em manter as zonas de intensidade.",
+    weekNumber: nextWeekNum,
+    coachMessage: `Seja muito bem-vindo à Semana ${nextWeekNum}! Gerei esta distribuição aeróbica bem balanceada baseada na fisiologia esportiva clássica. Siga os treinos e registre suas notas e dores após cada pedalada para progredirmos com segurança na próxima semana!`
+  };
+};
+
+const fallbackEvaluateWorkout = (workout: any, profile: any): any => {
+  const durationText = workout.actualDuration ? `${workout.actualDuration} minutos` : `${workout.duration} minutos`;
+  
+  let stravaStatsText = "";
+  if (workout.actualDistance) {
+    stravaStatsText += `- **Distância Total:** ${workout.actualDistance} km\n`;
+  }
+  if (workout.actualAvgSpeed) {
+    stravaStatsText += `- **Velocidade Média:** ${workout.actualAvgSpeed} km/h\n`;
+  }
+  if (workout.actualElevation) {
+    stravaStatsText += `- **Ganho de Altimetria:** ${workout.actualElevation} m\n`;
+  }
+  if (workout.actualCalories) {
+    stravaStatsText += `- **Gasto Calórico Estimado:** ${workout.actualCalories} kcal\n`;
+  }
+  if (workout.actualStravaLink) {
+    stravaStatsText += `- **Link da Sessão:** [Ver atividade carregada no Strava](${workout.actualStravaLink})\n`;
+  }
+
+  const feedbackMarkdown = `### Avaliação do Coach para o Treino do dia 🚴
+
+Parabéns pelo registro do seu treino, **atleta**! Ter constância é o pilar número um da evolução no ciclismo de alta performance. 
+
+Analisando a sua atividade:
+- **Treino Prescrito:** ${workout.type} (${workout.targetZone}) planejado para ${workout.duration} min com esforço sugerido de ${workout.rpe}/10.
+- **Treino Realizado:** Finalizado em ${durationText} com sensação de esforço de ${workout.actualRpe || 5}/10.
+${workout.actualHr ? `- **Frequência Cardíaca Média:** ${workout.actualHr} bpm (Sua FCmax cadastrada é ${profile?.maxHeartRate || "não definida"} bpm).\n` : ""}${workout.actualPower ? `- **Potência Média:** ${workout.actualPower} Watts (Seu FTP cadastrado é ${profile?.ftp || "não definido"}W).\n` : ""}${stravaStatsText}
+**Análise Fisiológica das Sensações:**
+Sua percepção de esforço relatada (${workout.actualRpe || 5}/10) em relação à zona alvo **"${workout.targetZone}"** indica que o treino atingiu os estímulos hormonais e mitocondriais planejados. 
+
+${workout.athleteNotes ? `**Sobre suas impressões:** *"\n${workout.athleteNotes}\n"*` : ""}
+
+**Recomendações Práticas para as Próximas 24 horas:**
+1. **Regeneração Energética:** Consuma uma refeição rica em carboidratos complexos e proteínas dentro da janela de ouro de recuperação nas próximas 2 horas para repor os estoques de glicogênio muscular.
+2. **Hidratação:** Beba no mínimo 500ml de água com eletrólitos adicionais para equilibrar os sais perdidos na transpiração.
+3. **Descanso:** Respeite a noite de sono para que o hormônio do crescimento (GH) auxilie na regeneração das microlesões musculares induzidas pelo exercício.
+
+Continue firme registrando seus treinos e nos vemos no próximo!`;
+
+  return {
+    aiFeedback: feedbackMarkdown
+  };
+};
+
+const fallbackChat = (message: string, profile: any, currentPlan: any): any => {
+  const normalized = (message || "").toLowerCase();
+  let reply = "";
+
+  if (normalized.includes("mude") || normalized.includes("altera") || normalized.includes("mudar") || normalized.includes("ajusta")) {
+    reply = `Como seu treinador virtual, eu posso ajustar a sua planilha para você! Diga-me qual dia você quer alterar (por exemplo: "mude terça para folga" ou "mude o treino de domingo para endurance") e posso realizar as modificações diretamente no seu histórico.`;
+  } else if (normalized.includes("dor") || normalized.includes("lesao") || normalized.includes("machu") || normalized.includes("joelho")) {
+    reply = `Atleta, muito cuidado! Dores no joelho, costas ou articulações no ciclismo geralmente indicam fadiga local acumulada ou necessidade de bike fit (altura do selim ou posição do carrinho).
+
+Recomendo fortemente:
+1. **Reduzir ou adiar treinos fortes** de limiar de lactato até sumir a dor.
+2. Fazer apenas giros de soltura leves na Zona 1.
+3. Aplicar compressas frias por 15-20 minutos e consultar especialista em saúde esportiva se as dores persistirem.
+
+O descanso consciente é o seu melhor aliado para evitar lesões mais complexas!`;
+  } else if (normalized.includes("alimenta") || normalized.includes("comer") || normalized.includes("comida") || normalized.includes("carb")) {
+    reply = `A alimentação correta é o segredo para ter um rendimento espetacular! Seguem as três premissas da fisiologia:
+
+- **Pré-treino (1h a 2h antes):** Pratos focados em carboidratos de absorção equilibrada (aveia, frutas, pão com geleia de morango). Evite gorduras ou excesso de fibras para não dar desconforto intestinal.
+- **No pedal (treinos com mais de 1h30):** Carboidratos práticos consumidos de forma fracionada (gel, bananinha, isotônico ou mariola). Almeje entre 40g a 80g de carbo por hora.
+- **Pós-treino (recuperação rápida):** Carboidratos para reabastecer seus reservatórios musculares de glicogênio somado a fontes limpas de proteína para reestruturar as fibras das pernas.`;
+  } else if (normalized.includes("zona") || normalized.includes("fc") || normalized.includes("ftp") || normalized.includes("potencia")) {
+    reply = `Compreender as zonas de estímulo é o divisor de águas entre pedalar aleatoriamente e treinar de forma científica!
+
+Suas zonas são divididas estruturalmente assim:
+- **Z1 (Recuperação):** Rodar super solto, sem esforço, para bombear sangue e oxigenar pernas cansadas.
+- **Z2 (Endurance):** Nosso pilar metabólico! Constrói sua base aeróbica, melhora a queima de gordura e amplia o tamanho das mitocôndrias.
+- **Z3 (Tempo/Ritmo):** Ritmo moderadamente firme, onde a respiração começa a ficar ritmada.
+- **Z4 (Limiar de Lactato):** Intensidade forte perto do FTP. É o treino focado em aumentar a sua potência sustentável em subidas e planos.
+- **Z5 (VO2 Máximo):** Tiros muito curtos e intensos com cansaço agudo, ideais para elevar seu fôlego máximo cardíaco.`;
+  } else {
+    reply = `Olá, campeão! Fico feliz em conversar sobre ciclismo e treinamento com você. 
+
+Como seu coach de ciclismo virtual, estou por aqui para te auxiliar a:
+- Ajustar ou redefinir sua planilha semanal de treinos nas suas métricas.
+- Tirar dúvidas científicas sobre zonas de intensidade por potência (FTP) ou frequência cardíaca.
+- Dar conselhos de alimentação, respiração correta e recuperação pós-pedal.
+
+Em que posso te ajudar hoje para tornar seu pedal ainda mais estruturado e eficiente?`;
+  }
+
+  return {
+    reply: reply,
+    updatedPlan: null
+  };
+};
+
 /**
  * Endpoint 1: Guided Onboarding Chat Step
  * Analyzes the latest athlete message, extracts any relevant training parameters,
@@ -1420,7 +890,7 @@ Analise a resposta, atualize o "parsedProfile" de acordo (pode preencher múltip
 Se o ciclista já respondeu a tudo, diga que o perfil está completo e que ele pode confirmar os dados na tela para gerar sua planilha semanal personalizada.`;
 
     const response = await withTimeout(
-      withRetry(() => getAiClient().models.generateContent({
+      getAiClient().models.generateContent({
         model: "gemini-3.5-flash",
         contents: updatedPrompt,
         config: {
@@ -1457,9 +927,9 @@ Se o ciclista já respondeu a tudo, diga que o perfil está completo e que ele p
             }
           }
         }
-      })),
-      25000,
-      "Tempo limite de 25s esgotado ao estruturar diálogo com o Coach."
+      }),
+      5500,
+      "Tempo limite de 5.5s esgotado ao estruturar diálogo com o Coach."
     );
 
     const resultText = response.text;
@@ -1491,13 +961,10 @@ Se o ciclista já respondeu a tudo, diga que o perfil está completo e que ele p
     console.log("[BACKEND ONBOARDING RESPONSE]", JSON.stringify(data, null, 2));
     res.json(data);
   } catch (error: any) {
-    console.warn("Fadiga aeróbica no onboarding. Ativando coach local resiliente para salvaguarda:", sanitizeLogMessage(error));
-    try {
-      const fallbackData = fallbackOnboard(message, profile);
-      res.json(fallbackData);
-    } catch (fallbackErr: any) {
-      res.status(500).json({ error: getFriendlyErrorMessage(error) });
-    }
+    console.warn("Fadiga aeróbica na chamada do Gemini para onboarding. Ativando treinador local resiliente:", error.message);
+    const data = fallbackOnboarding(message, profile);
+    data.geminiError = error.message;
+    res.json(data);
   }
 });
 
@@ -1557,7 +1024,7 @@ Limitações físicas: ${profile?.limitations || "Nenhuma"}
 Atividade recente cadastrada: ${profile?.recentActivity || "Nenhuma registrada"}`;
 
     const response = await withTimeout(
-      withRetry(() => getAiClient().models.generateContent({
+      getAiClient().models.generateContent({
         model: "gemini-3.5-flash",
         contents: userBrief,
         config: {
@@ -1590,9 +1057,9 @@ Atividade recente cadastrada: ${profile?.recentActivity || "Nenhuma registrada"}
             }
           }
         }
-      })),
-      25000,
-      "Tempo limite de 25s excedido ao tentar extrair a periodização inicial."
+      }),
+      5800,
+      "Tempo limite de 5.8s excedido ao tentar extrair a periodização inicial."
     );
 
     const resultText = response.text;
@@ -1601,13 +1068,10 @@ Atividade recente cadastrada: ${profile?.recentActivity || "Nenhuma registrada"}
     }
     res.json(cleanAndParseJson(resultText));
   } catch (error: any) {
-    console.warn("Fadiga periférica no plano. Ativando planejador fisiológico local resiliente para salvaguarda:", sanitizeLogMessage(error));
-    try {
-      const fallbackData = generateLocalPlan(profile);
-      res.json(fallbackData);
-    } catch (fallbackErr: any) {
-      res.status(500).json({ error: getFriendlyErrorMessage(error) });
-    }
+    console.warn("Fadiga periférica na chamada do Gemini para plano personalizado. Ativando treinador local resiliente:", error.message);
+    const data = fallbackGeneratePlan(profile, 1);
+    data.geminiError = error.message;
+    res.json(data);
   }
 });
 
@@ -1677,7 +1141,7 @@ Planilha da Semana que passou: ${JSON.stringify(currentPlan?.workouts || [])}
 Gere o planejamento estruturado completo para a Semana ${nextWeekNumber} seguindo rigorosamente a estrutura JSON solicitada.`;
 
     const response = await withTimeout(
-      withRetry(() => getAiClient().models.generateContent({
+      getAiClient().models.generateContent({
         model: "gemini-3.5-flash",
         contents: userBrief,
         config: {
@@ -1712,9 +1176,9 @@ Gere o planejamento estruturado completo para a Semana ${nextWeekNumber} seguind
             }
           }
         }
-      })),
-      25000,
-      "Tempo limite de 25s esgotado ao recalcular o macrociclo para a próxima semana."
+      }),
+      5800,
+      "Tempo limite de 5.8s esgotado ao recalcular o macrociclo para a próxima semana."
     );
 
     const resultText = response.text;
@@ -1723,13 +1187,10 @@ Gere o planejamento estruturado completo para a Semana ${nextWeekNumber} seguind
     }
     res.json(cleanAndParseJson(resultText));
   } catch (error: any) {
-    console.warn("Fadiga periférica na próxima semana. Ativando recalculador fisiológico local de salvaguarda:", sanitizeLogMessage(error));
-    try {
-      const fallbackData = generateLocalNextWeek(currentPlan, athleteFeedback, nextWeekNumber, profile);
-      res.json(fallbackData);
-    } catch (fallbackErr: any) {
-      res.status(500).json({ error: getFriendlyErrorMessage(error) });
-    }
+    console.warn("Fadiga periférica na chamada do Gemini para próxima semana. Ativando treinador local resiliente:", error.message);
+    const data = fallbackGeneratePlan(profile, nextWeekNumber || 2);
+    data.geminiError = error.message;
+    res.json(data);
   }
 });
 
@@ -1787,7 +1248,7 @@ TREINO REALIZADO PELO ATLETA:
 Faça uma avaliação amigável de coach de alto nível, comentando detalhadamente sobre essa performance e as métricas do pedal, e retorne o resultado em JSON.`;
 
     const response = await withTimeout(
-      withRetry(() => getAiClient().models.generateContent({
+      getAiClient().models.generateContent({
         model: "gemini-3.5-flash",
         contents: prompt,
         config: {
@@ -1801,9 +1262,9 @@ Faça uma avaliação amigável de coach de alto nível, comentando detalhadamen
             }
           }
         }
-      })),
-      25000,
-      "Tempo limite de 25s excedido no feedback fisiológico do selim."
+      }),
+      5500,
+      "Tempo limite de 5.5s excedido no feedback fisiológico do selim."
     );
 
     const resultText = response.text;
@@ -1812,13 +1273,9 @@ Faça uma avaliação amigável de coach de alto nível, comentando detalhadamen
     }
     res.json(cleanAndParseJson(resultText));
   } catch (error: any) {
-    console.warn("Fadiga sistêmica na avaliação do treino. Ativando avaliador fisiológico local de salvaguarda:", sanitizeLogMessage(error));
-    try {
-      const fallbackData = evaluateLocalWorkout(profile, workout);
-      res.json(fallbackData);
-    } catch (fallbackErr: any) {
-      res.status(500).json({ error: getFriendlyErrorMessage(error) });
-    }
+    console.warn("Fadiga sistêmica na chamada do Gemini para avaliação do treino. Ativando treinador local resiliente:", error.message);
+    const data = fallbackEvaluateWorkout(workout, profile);
+    res.json(data);
   }
 });
 
@@ -1928,7 +1385,7 @@ PERFIL DO ATLETA:
 Por favor, gere e retorne o JSON estruturado com os dados reais e sensações extraídos desta pedalada.`;
 
     const response = await withTimeout(
-      withRetry(() => getAiClient().models.generateContent({
+      getAiClient().models.generateContent({
         model: "gemini-3.5-flash",
         contents: prompt,
         config: {
@@ -1960,8 +1417,8 @@ Por favor, gere e retorne o JSON estruturado com os dados reais e sensações ex
             }
           }
         }
-      })),
-      25000,
+      }),
+      5500,
       "Tempo limite de processamento de dados do Strava excedido."
     );
 
@@ -1971,13 +1428,9 @@ Por favor, gere e retorne o JSON estruturado com os dados reais e sensações ex
     }
     res.json(cleanAndParseJson(resultText));
   } catch (error: any) {
-    console.warn("Fadiga periférica no Strava. Ativando parser local resiliente de salvaguarda:", sanitizeLogMessage(error));
-    try {
-      const fallbackData = fallbackParseStrava(stravaLink, workout, profile);
-      res.json(fallbackData);
-    } catch (fallbackError: any) {
-      res.status(500).json({ error: getFriendlyErrorMessage(error) });
-    }
+    console.warn("Utilizando motor de física ciclista resiliente para dados do Strava:", error.message);
+    const data = fallbackParseStrava(stravaLink, workout, profile);
+    res.json(data);
   }
 });
 
@@ -2014,7 +1467,7 @@ Histórico Recente: ${JSON.stringify(messageHistory?.slice(-10) || [])}
 Última Mensagem do Atleta: "${message || ""}"`;
 
     const response = await withTimeout(
-      withRetry(() => getAiClient().models.generateContent({
+      getAiClient().models.generateContent({
         model: "gemini-3.5-flash",
         contents: userBrief,
         config: {
@@ -2053,9 +1506,9 @@ Histórico Recente: ${JSON.stringify(messageHistory?.slice(-10) || [])}
             }
           }
         }
-      })),
-      25000,
-      "Tempo limite de 25s atingido no acompanhamento do Coach."
+      }),
+      5500,
+      "Tempo limite de 5.5s atingido no acompanhamento do Coach."
     );
 
     const resultText = response.text;
@@ -2064,13 +1517,10 @@ Histórico Recente: ${JSON.stringify(messageHistory?.slice(-10) || [])}
     }
     res.json(cleanAndParseJson(resultText));
   } catch (error: any) {
-    console.warn("Fadiga central na chamada do Gemini para chat personalizado. Ativando treinador local resiliente de salvaguarda:", sanitizeLogMessage(error));
-    try {
-      const fallbackData = fallbackChat(message, profile, currentPlan);
-      res.json(fallbackData);
-    } catch (fallbackError: any) {
-      res.status(500).json({ error: getFriendlyErrorMessage(error) });
-    }
+    console.warn("Fadiga central na chamada do Gemini para chat personalizado. Ativando treinador local resiliente:", error.message);
+    const data = fallbackChat(message, profile, currentPlan);
+    data.geminiError = error.message;
+    res.json(data);
   }
 });
 
@@ -2081,7 +1531,7 @@ Histórico Recente: ${JSON.stringify(messageHistory?.slice(-10) || [])}
 // Fetch all registered users in the database
 app.get("/api/admin/users", async (req, res) => {
   try {
-    const db = await getDatabase(true);
+    const db = await getDatabase();
     // Return all users metadata (omitting passwords)
     const userList = Object.keys(db).map((key) => {
       const user = db[key];
@@ -2115,15 +1565,13 @@ app.post("/api/admin/update-user-status", async (req, res) => {
       return res.status(400).json({ error: "E-mail do usuário é obrigatório." });
     }
 
-    const db = await getDatabase(true);
+    const db = await getDatabase();
     const emailKey = email.trim().toLowerCase();
     const user = db[emailKey];
 
     if (!user) {
       return res.status(404).json({ error: "Usuário não encontrado." });
     }
-
-    const oldStatus = user.profile ? user.profile.subscriptionStatus : undefined;
 
     // Update profile fields
     user.profile = {
@@ -2144,35 +1592,9 @@ app.post("/api/admin/update-user-status", async (req, res) => {
     db[emailKey] = user;
     await saveDatabase(db);
 
-    // Send personalized custom activation notification email if status transitions to active
-    let emailResponse = null;
-    if (user.profile.subscriptionStatus === "active" && oldStatus !== "active") {
-      const originUrl = req.headers.referer || req.headers.origin || "";
-      try {
-        emailResponse = await sendActivationEmail(
-          user.profile.name || "Ciclista",
-          emailKey,
-          user.profile.subscriptionPlan || "Bronze (Mensal)",
-          originUrl
-        );
-      } catch (errEmail) {
-        console.error("Erro interno no disparo de email de ativação:", errEmail);
-      }
-    }
-
-    res.json({ success: true, user, emailNotificationSent: !!emailResponse, emailResponse });
+    res.json({ success: true, user });
   } catch (error: any) {
     console.error("Error updating user status in server:", error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// GET list of simulated or sent email logs for diagnostic audit in the admin panel
-app.get("/api/admin/sent-emails", async (req, res) => {
-  try {
-    const emails = getSentEmailsLog();
-    res.json({ success: true, emails });
-  } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
 });
@@ -2293,12 +1715,12 @@ app.post("/api/mercadopago/create-preference", async (req, res) => {
     const accessToken = process.env.MERCADO_PAGO_ACCESS_TOKEN;
 
     if (!accessToken) {
-      console.log("[Mercado Pago] Nenhuma credencial oficial no server. Usando link de pagamento oficial configurado.");
+      console.log("[Mercado Pago] Nenhuma credencial oficial no server. Usando container de simulação integrada.");
       return res.json({
         success: true,
         isSimulated: true,
-        init_point: "https://mpago.la/24PgikU",
-        sandbox_init_point: "https://mpago.la/24PgikU",
+        init_point: "#simular-checkout",
+        sandbox_init_point: "#simular-checkout",
         preferenceId: "simulated-pref-id-123456"
       });
     }
@@ -2320,7 +1742,7 @@ app.post("/api/mercadopago/create-preference", async (req, res) => {
             id: "premium-monthly",
             title: "Assinatura Mensal Premium - CycleCoach AI",
             quantity: 1,
-            unit_price: 19.89,
+            unit_price: 29.90,
             currency_id: "BRL"
           }
         ],
@@ -2367,7 +1789,7 @@ app.post("/api/mercadopago/create-pix", async (req, res) => {
       return res.json({
         success: true,
         isSimulated: true,
-        qr_code: "00020101021226870014BR.GOV.BCB.PIX2565bikerai-mp-mercadopago-pedrobramos-19.89-6009SAOPAULO62070503MVP",
+        qr_code: "00020101021226870014BR.GOV.BCB.PIX2565bikerai-mp-mercadopago-pedrobramos-29.90-6009SAOPAULO62070503MVP",
         qr_code_base64: ""
       });
     }
@@ -2383,7 +1805,7 @@ app.post("/api/mercadopago/create-pix", async (req, res) => {
         "X-Idempotency-Key": idempotencyKey
       },
       body: JSON.stringify({
-        transaction_amount: 19.89,
+        transaction_amount: 29.90,
         description: "Assinatura CycleCoach AI Premium",
         payment_method_id: "pix",
         payer: {

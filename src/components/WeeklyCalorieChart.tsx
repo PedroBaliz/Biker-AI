@@ -276,14 +276,12 @@ export default function WeeklyCalorieChart({ profile, plan }: WeeklyCalorieChart
                 fill="#cbd5e1"
                 radius={[4, 4, 0, 0]}
                 maxBarSize={18}
-                isAnimationActive={false}
               />
               <Bar 
                 name="Realizado"
                 dataKey="completedCalories" 
                 radius={[4, 4, 0, 0]}
                 maxBarSize={18}
-                isAnimationActive={false}
               >
                 {chartData.map((entry, index) => {
                   let barColor = "#e2e8f0"; // fallback

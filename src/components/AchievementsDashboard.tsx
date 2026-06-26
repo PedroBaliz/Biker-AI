@@ -439,8 +439,8 @@ export default function AchievementsDashboard({ profile, plan }: AchievementsDas
                       return null;
                     }}
                   />
-                  <Bar dataKey="plannedMinutes" name="Planejado" fill="#cbd5e1" radius={[4, 4, 0, 0]} maxBarSize={32} isAnimationActive={false} />
-                  <Bar dataKey="completedMinutes" name="Pedal Realizado" fill="#84cc16" radius={[4, 4, 0, 0]} maxBarSize={32} isAnimationActive={false} />
+                  <Bar dataKey="plannedMinutes" name="Planejado" fill="#cbd5e1" radius={[4, 4, 0, 0]} maxBarSize={32} />
+                  <Bar dataKey="completedMinutes" name="Pedal Realizado" fill="#84cc16" radius={[4, 4, 0, 0]} maxBarSize={32} />
                 </BarChart>
               </ResponsiveContainer>
             ) : (
@@ -483,7 +483,6 @@ export default function AchievementsDashboard({ profile, plan }: AchievementsDas
                     outerRadius={65}
                     paddingAngle={3}
                     dataKey="value"
-                    isAnimationActive={false}
                   >
                     {zoneDistributionData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={ZONE_COLORS[index % ZONE_COLORS.length]} />

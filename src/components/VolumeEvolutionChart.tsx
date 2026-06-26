@@ -337,7 +337,6 @@ export default function VolumeEvolutionChart({ profile, plan }: VolumeEvolutionC
                   fillOpacity={1} 
                   fill="url(#colorPlanned)" 
                   activeDot={{ r: 4 }}
-                  isAnimationActive={false}
                 />
                 <Area 
                   name="Realizado"
@@ -348,7 +347,6 @@ export default function VolumeEvolutionChart({ profile, plan }: VolumeEvolutionC
                   fillOpacity={1} 
                   fill="url(#colorTime)" 
                   activeDot={{ r: 6, strokeWidth: 0, fill: "#10b981" }}
-                  isAnimationActive={false}
                 />
               </AreaChart>
             ) : (
@@ -385,7 +383,6 @@ export default function VolumeEvolutionChart({ profile, plan }: VolumeEvolutionC
                   fill="#cbd5e1" 
                   radius={[4, 4, 0, 0]}
                   maxBarSize={15}
-                  isAnimationActive={false}
                 />
                 <Bar 
                   name="Sessões Concluídas"
@@ -393,7 +390,6 @@ export default function VolumeEvolutionChart({ profile, plan }: VolumeEvolutionC
                   fill="#0ea5e9" 
                   radius={[4, 4, 0, 0]}
                   maxBarSize={15}
-                  isAnimationActive={false}
                 />
               </BarChart>
             )}

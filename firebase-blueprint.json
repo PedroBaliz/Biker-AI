@@ -1,42 +1,18 @@
 {
-  "entities": {
-    "user": {
-      "title": "User Account",
-      "description": "User profile, weekly plan, chat history and training sessions data",
-      "type": "object",
-      "properties": {
+  "collections": {
+    "users": {
+      "description": "User accounts, athlete profiles, coaching plan details, and historical data.",
+      "documents": {
         "email": {
-          "type": "string",
-          "description": "The email address of the user"
-        },
-        "profile": {
-          "type": "object",
-          "description": "User details like name, role, subscription status, target events, etc."
-        },
-        "chatHistory": {
-          "type": "array",
-          "description": "Conversations between the user and the coach virtual"
-        },
-        "trainingSessions": {
-          "type": "array",
-          "description": "Completed or scheduled cycling training sessions"
-        },
-        "weeklyPlan": {
-          "type": "object",
-          "description": "Current weekly planning details"
-        },
-        "achievements": {
-          "type": "array",
-          "description": "Unlocked cycling badges or achievements"
+          "fields": {
+            "email": { "type": "string", "required": true },
+            "password": { "type": "string", "required": false },
+            "profile": { "type": "map", "required": true },
+            "chatHistory": { "type": "array", "required": false },
+            "plan": { "type": "map", "required": false }
+          }
         }
-      },
-      "required": ["email"]
-    }
-  },
-  "firestore": {
-    "/users/{email}": {
-      "schema": "user",
-      "description": "User documents containing their cycling profile and training logs, keyed by email"
+      }
     }
   }
 }

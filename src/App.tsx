@@ -4,6 +4,8 @@ import confetti from "canvas-confetti";
 // @ts-ignore
 import cyclingActionImg from "./assets/images/cycling_action_1780860242304.png";
 import { UserProfile, ChatMessage, TrainingPlan, UserAccount, Workout, isRestDay } from "./types";
+import { onAuthStateChanged, signOut } from "firebase/auth";
+import { auth } from "./firebase";
 import WorkoutCard from "./components/WorkoutCard";
 import ZoneCalculator from "./components/ZoneCalculator";
 import LoginScreen from "./components/LoginScreen";
@@ -99,43 +101,25 @@ export default function App() {
     }
   };
 
-  const [currentUser, setCurrentUser] = useState<UserAccount | null>(() => {
-    const saved = localStorage.getItem("current_coach_user");
-    if (saved) {
-      try { return JSON.parse(saved); } catch (e) { }
-    }
-    return null;
-  });
+  const [currentUser, setCurrentUser] = useState<UserAccount | null>(null);
 
-  const [profile, setProfile] = useState<UserProfile>(() => {
-    if (currentUser) return currentUser.profile;
-    const saved = localStorage.getItem("athlete_profile");
-    if (saved) {
-      try { return JSON.parse(saved); } catch (e) { /* use default */ }
-    }
-    return {
-      name: "",
-      level: "",
-      goal: "",
-      daysPerWeek: null,
-      durationPerSession: null,
-      eventDate: "",
-      hasPowerMeter: null,
-      ftp: null,
-      hasHeartRate: null,
-      maxHeartRate: null,
-      limitations: "",
-      recentActivity: "",
-      onboardingStep: 0
-    };
+  const [profile, setProfile] = useState<UserProfile>({
+    name: "",
+    level: "",
+    goal: "",
+    daysPerWeek: null,
+    durationPerSession: null,
+    eventDate: "",
+    hasPowerMeter: null,
+    ftp: null,
+    hasHeartRate: null,
+    maxHeartRate: null,
+    limitations: "",
+    recentActivity: "",
+    onboardingStep: 0
   });
 
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>(() => {
-    if (currentUser) return currentUser.chatHistory;
-    const saved = localStorage.getItem("coach_chat_history");
-    if (saved) {
-      try { return JSON.parse(saved); } catch (e) { /* use default */ }
-    }
     const initialMsg: ChatMessage = {
       id: "welcome",
       sender: "treinador",
@@ -149,7 +133,7 @@ export default function App() {
   const [isTyping, setIsTyping] = useState(false);
   
   // Dashboard Tabs
-  const [activeTab, setActiveTab] = useState<"planilha" | "desempenho" | "zonas" | "chat">("planilha");
+  const [activeTab, setActiveTab] = useState<"planilha" | "desempenho" | "zonas">("planilha");
   const [showMyWorkouts, setShowMyWorkouts] = useState(false);
   const [showPseExplanation, setShowPseExplanation] = useState(false);
 
@@ -206,17 +190,9 @@ export default function App() {
   };
   
   // Training Plan State
-  const [plan, setPlan] = useState<TrainingPlan | null>(() => {
-    if (currentUser) return currentUser.plan;
-    const saved = localStorage.getItem("athlete_training_plan");
-    if (saved) {
-      try { return JSON.parse(saved); } catch (e) { }
-    }
-    return null;
-  });
+  const [plan, setPlan] = useState<TrainingPlan | null>(null);
 
   const [isGeneratingPlan, setIsGeneratingPlan] = useState(false);
-  const [physiologyChangedPending, setPhysiologyChangedPending] = useState(false);
 
   // Derived training metrics (excluding rest/off sessions from training counts)
   const derivedMetrics = useMemo(() => {
@@ -228,34 +204,6 @@ export default function App() {
   }, [plan?.workouts]);
 
   const { totalW, completedW, pctW } = derivedMetrics;
-
-  const [activePushToast, setActivePushToast] = useState<{ title: string; body: string; id: number } | null>(null);
-
-  useEffect(() => {
-    const handlePushEvent = (e: Event) => {
-      const customEv = e as CustomEvent;
-      if (customEv && customEv.detail) {
-        setActivePushToast({
-          title: customEv.detail.title || "Notificação Biker AI",
-          body: customEv.detail.body || "",
-          id: Date.now()
-        });
-      }
-    };
-    window.addEventListener("biker_ai_simulated_push", handlePushEvent);
-    return () => {
-      window.removeEventListener("biker_ai_simulated_push", handlePushEvent);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (activePushToast) {
-      const timer = setTimeout(() => {
-        setActivePushToast(null);
-      }, 7000);
-      return () => clearTimeout(timer);
-    }
-  }, [activePushToast]);
 
   const handleUpdateWorkout = useCallback((index: number, updatedWorkout: Workout) => {
     if (!plan) return;
@@ -269,7 +217,6 @@ export default function App() {
       workouts: updatedWorkouts
     };
     setPlan(updatedPlan);
-    localStorage.setItem("athlete_training_plan", JSON.stringify(updatedPlan));
 
     if (isNowCompleted) {
       try {
@@ -280,52 +227,6 @@ export default function App() {
         });
       } catch (err) {
         console.error("Erro ao rodar animação de confetes:", err);
-      }
-
-      // Play audio and show push alert!
-      try {
-        const notifConfig = JSON.parse(localStorage.getItem("biker_ai_notif_config") || "{}");
-        if (notifConfig.sessionConfirmations !== false) {
-          const volumeOn = notifConfig.systemVolume !== false;
-          if (volumeOn) {
-            const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-            if (AudioContext) {
-              const ctx = new AudioContext();
-              const notes = [261.63, 329.63, 392.00, 523.25]; // C4, E4, G4, C5
-              notes.forEach((freq, idx) => {
-                const osc = ctx.createOscillator();
-                const gain = ctx.createGain();
-                osc.type = "sine";
-                osc.frequency.setValueAtTime(freq, ctx.currentTime + idx * 0.08);
-                gain.gain.setValueAtTime(0, ctx.currentTime);
-                gain.gain.linearRampToValueAtTime(0.08, ctx.currentTime + idx * 0.08 + 0.02);
-                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + idx * 0.08 + 0.25);
-                osc.connect(gain);
-                gain.connect(ctx.destination);
-                osc.start(ctx.currentTime + idx * 0.08);
-                osc.stop(ctx.currentTime + idx * 0.08 + 0.3);
-              });
-            }
-          }
-
-          const title = "Treino Concluído! 🏆🚴";
-          const body = `Excelente pedal! Sua sessão de "${updatedWorkout.type || "Treino"}" foi salva com sucesso. O Coach Biker AI já está analisando seu rendimento!`;
-          
-          let sentNative = false;
-          if (typeof Notification !== "undefined" && Notification.permission === "granted") {
-            try {
-              new Notification(title, { body });
-              sentNative = true;
-            } catch (err) {}
-          }
-          
-          const customEvent = new CustomEvent("biker_ai_simulated_push", {
-            detail: { title, body, native: sentNative }
-          });
-          window.dispatchEvent(customEvent);
-        }
-      } catch (e) {
-        console.error("Erro ao emitir aviso de conclusão:", e);
       }
     }
   }, [plan]);
@@ -348,7 +249,6 @@ export default function App() {
       workouts: [...plan.workouts, newWorkout]
     };
     setPlan(updatedPlan);
-    localStorage.setItem("athlete_training_plan", JSON.stringify(updatedPlan));
   }, [plan]);
 
   const handleDeleteWorkout = useCallback((index: number) => {
@@ -360,7 +260,6 @@ export default function App() {
       workouts: updatedWorkouts
     };
     setPlan(updatedPlan);
-    localStorage.setItem("athlete_training_plan", JSON.stringify(updatedPlan));
   }, [plan]);
 
   const handleClearPendingExtras = useCallback(() => {
@@ -377,7 +276,6 @@ export default function App() {
         workouts: updatedWorkouts
       };
       setPlan(updatedPlan);
-      localStorage.setItem("athlete_training_plan", JSON.stringify(updatedPlan));
     }
   }, [plan]);
 
@@ -657,20 +555,8 @@ export default function App() {
         throw new Error(errorDetails || `Erro do servidor (Status ${response.status})`);
       }
 
-      // Guardar a semana atual no histórico para visualização de volume antes de carregar a nova
-      const savedHistoryStr = localStorage.getItem("athlete_plan_history");
-      let historyList: TrainingPlan[] = [];
-      if (savedHistoryStr) {
-        try { historyList = JSON.parse(savedHistoryStr); } catch (e) {}
-      }
-      if (!historyList.some(p => p.weekNumber === plan.weekNumber)) {
-        historyList.push(plan);
-        localStorage.setItem("athlete_plan_history", JSON.stringify(historyList));
-      }
-
       const data: TrainingPlan = await response.json();
       setPlan(data);
-      localStorage.setItem("athlete_training_plan", JSON.stringify(data));
 
       setShowNextWeekForm(false);
       setTextFeedback("");
@@ -678,12 +564,21 @@ export default function App() {
 
       // Adcciona mensagem ao histórico do chat do treinador
       setChatHistory(prev => {
-        return [...prev, {
+        const history = [...prev, {
           id: `gen-week-${Date.now()}`,
           sender: "treinador",
           text: `🚀 **Sua Semana ${nextWeek} de Treinos Iniciou!**\n\n${data.coachMessage || "Preparei estímulos novos na planilha baseando-me nas suas sensações, cargas anteriores e nas conclusões!"}`,
           timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
         }];
+        if (data.geminiError) {
+          history.push({
+            id: `system-warn-${Date.now()}`,
+            sender: "treinador",
+            text: `⚠️ **Modo de Segurança Ativado (Treinador Local)**\n\nSua nova semana foi evoluída utilizando as regras de periodização embarcada para progressão de carga (supercompensação clássica) por conta de um erro técnico na IA.\n\n**Causa do erro:** \`${data.geminiError}\`\n\n*Para obter comentários analíticos profundos de IA integrada, configure uma chave de acesso GEMINI_API_KEY válida em seu painel.*`,
+            timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+          });
+        }
+        return history;
       });
 
     } catch (err: any) {
@@ -701,52 +596,118 @@ export default function App() {
   const [adminPasswordInput, setAdminPasswordInput] = useState("");
   const [adminPasswordError, setAdminPasswordError] = useState("");
 
-  // Background migration of legacy local-only accounts to the server on startup
-  useEffect(() => {
-    const savedUsers = localStorage.getItem("coach_users");
-    if (savedUsers) {
+  // Helper to migrate legacy offline data from localStorage to Firebase Firestore
+  const migrateLocalStorageToFirebase = async (email: string) => {
+    const legacyProfile = localStorage.getItem("athlete_profile");
+    const legacyPlan = localStorage.getItem("athlete_training_plan");
+    const legacyChat = localStorage.getItem("coach_chat_history");
+    const legacyUser = localStorage.getItem("current_coach_user");
+
+    if (legacyProfile || legacyPlan || legacyChat || legacyUser) {
+      console.log("[Migration] Legacy localStorage data found. Transferring to Firebase...");
       try {
-        const usersMap = JSON.parse(savedUsers);
-        Object.keys(usersMap).forEach((emailKey) => {
-          const userEntry = usersMap[emailKey];
-          if (userEntry && userEntry.email) {
-            fetch("/api/auth/save-user", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                email: userEntry.email,
-                userAccount: {
-                  email: userEntry.email,
-                  profile: userEntry.profile,
-                  chatHistory: userEntry.chatHistory,
-                  plan: userEntry.plan
-                },
-                password: userEntry.password
-              })
-            })
-            .then(res => {
-              if (res.ok) {
-                console.log(`Conta local migrante sincronizada no servidor: ${userEntry.email}`);
-              } else {
-                console.warn(`Sinal de erro ao migrar conta ${userEntry.email}`);
-              }
-            })
-            .catch((err) => {
-              console.warn(`Erro de rede ao conectar para migrar conta local:`, err);
-            });
-          }
+        let profileVal = legacyProfile ? JSON.parse(legacyProfile) : null;
+        let planVal = legacyPlan ? JSON.parse(legacyPlan) : null;
+        let chatVal = legacyChat ? JSON.parse(legacyChat) : null;
+
+        if (legacyUser) {
+          try {
+            const userObj = JSON.parse(legacyUser);
+            if (!profileVal) profileVal = userObj.profile;
+            if (!planVal) planVal = userObj.plan;
+            if (!chatVal) chatVal = userObj.chatHistory;
+          } catch (e) {}
+        }
+
+        // Fetch existing user from database to merge or create
+        const sessionRes = await fetch("/api/auth/session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email })
         });
-      } catch (err) {
-        console.error("Falha ao analisar banco de dados local para migração:", err);
+
+        let mergedUser: any = { email };
+        let passwordToPreserve = "123456";
+        if (sessionRes.ok) {
+          const sessionData = await sessionRes.json();
+          mergedUser = { ...sessionData.user };
+          passwordToPreserve = sessionData.user.password || passwordToPreserve;
+        }
+
+        if (profileVal) mergedUser.profile = { ...profileVal, ...mergedUser.profile };
+        if (planVal && !mergedUser.plan) mergedUser.plan = planVal;
+        if (chatVal && (!mergedUser.chatHistory || mergedUser.chatHistory.length <= 1)) mergedUser.chatHistory = chatVal;
+
+        // Save to Firebase Firestore via server
+        await fetch("/api/auth/save-user", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, userAccount: mergedUser, password: passwordToPreserve })
+        });
+
+        console.log("[Migration] Migration to Firebase complete. Removing localStorage keys.");
+      } catch (e) {
+        console.error("[Migration] Error transferring data to Firebase:", e);
+      } finally {
+        // Clear all legacy storage keys to guarantee they are no longer in localStorage
+        localStorage.removeItem("athlete_profile");
+        localStorage.removeItem("athlete_training_plan");
+        localStorage.removeItem("coach_chat_history");
+        localStorage.removeItem("current_coach_user");
+        localStorage.removeItem("coach_users");
+        localStorage.removeItem("athlete_plan_history");
       }
     }
+  };
+
+  // Firebase Auth listener to automatically load/sync session
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser && firebaseUser.email) {
+        const emailKey = firebaseUser.email.toLowerCase();
+        try {
+          // Trigger localStorage migration to Firestore if legacy data exists
+          await migrateLocalStorageToFirebase(emailKey);
+
+          const response = await fetch("/api/auth/session", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: emailKey })
+          });
+          if (response.ok) {
+            const data = await response.json();
+            if (data.user) {
+              setCurrentUser(data.user);
+              setProfile(data.user.profile);
+              setChatHistory(data.user.chatHistory || []);
+              setPlan(data.user.plan || null);
+            }
+          }
+        } catch (err) {
+          console.error("Erro ao sincronizar sessão do Firebase:", err);
+        }
+      } else {
+        setCurrentUser(null);
+      }
+    });
+
+    // Also run immediate check for legacy data migration even if not logged in to clear unneeded localStorage
+    const legacyUser = localStorage.getItem("current_coach_user");
+    if (legacyUser) {
+      try {
+        const parsed = JSON.parse(legacyUser);
+        if (parsed && parsed.email) {
+          migrateLocalStorageToFirebase(parsed.email.toLowerCase());
+        }
+      } catch (e) {}
+    }
+
+    return () => unsubscribe();
   }, []);
 
-  // Real-time synchronization back to session registry & database map & central server
+  // Real-time synchronization back to central server
   useEffect(() => {
     if (!currentUser) {
-      localStorage.setItem("athlete_profile", JSON.stringify(profile));
-      localStorage.setItem("coach_chat_history", JSON.stringify(chatHistory));
       return;
     }
 
@@ -757,21 +718,9 @@ export default function App() {
       plan
     };
 
-    localStorage.setItem("current_coach_user", JSON.stringify(updatedUser));
-
-    const savedUsers = localStorage.getItem("coach_users");
-    let usersMap: Record<string, any> = {};
-    if (savedUsers) {
-      try { usersMap = JSON.parse(savedUsers); } catch (e) { }
-    }
     const emailKey = currentUser.email.toLowerCase();
     const fallbackPassword = emailKey === "pedro.bramos@sempreceub.com" ? "Pedro23072007" : "123456";
-    const existingEntry = usersMap[emailKey];
-    usersMap[emailKey] = {
-      ...updatedUser,
-      password: existingEntry?.password || currentUser.password || fallbackPassword // fallbacks/preserves
-    };
-    localStorage.setItem("coach_users", JSON.stringify(usersMap));
+    const preservedPassword = currentUser.password || fallbackPassword;
 
     // Update React state safely if they are deeply different to keep other views unified
     if (
@@ -781,7 +730,7 @@ export default function App() {
     ) {
       setCurrentUser({
         ...updatedUser,
-        password: existingEntry?.password || currentUser.password || fallbackPassword
+        password: preservedPassword
       });
     }
 
@@ -792,7 +741,7 @@ export default function App() {
       body: JSON.stringify({
         email: currentUser.email,
         userAccount: updatedUser,
-        password: existingEntry?.password || currentUser.password || fallbackPassword
+        password: preservedPassword
       })
     })
     .then(res => {
@@ -878,53 +827,18 @@ export default function App() {
         timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
       };
 
-      setChatHistory(prev => [...prev, coachMsg]);
-
-      // Trigger coach reply notification
-      try {
-        const notifConfig = JSON.parse(localStorage.getItem("biker_ai_notif_config") || "{}");
-        if (notifConfig.coachReplies !== false) {
-          const volumeOn = notifConfig.systemVolume !== false;
-          if (volumeOn) {
-            const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-            if (AudioContext) {
-              const ctx = new AudioContext();
-              const osc = ctx.createOscillator();
-              const gain = ctx.createGain();
-              osc.type = "sine";
-              osc.frequency.setValueAtTime(659.25, ctx.currentTime); // E5
-              osc.frequency.exponentialRampToValueAtTime(987.77, ctx.currentTime + 0.12); // B5
-              gain.gain.setValueAtTime(0.12, ctx.currentTime);
-              gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.25);
-              osc.connect(gain);
-              gain.connect(ctx.destination);
-              osc.start();
-              osc.stop(ctx.currentTime + 0.3);
-            }
-          }
-
-          const title = "Conselho do Coach Virtual - Biker AI 🚴🏆";
-          let bodyText = data.reply || "";
-          if (bodyText.length > 120) {
-            bodyText = bodyText.substring(0, 117) + "...";
-          }
-
-          let sentNative = false;
-          if (typeof Notification !== "undefined" && Notification.permission === "granted") {
-            try {
-              new Notification(title, { body: bodyText });
-              sentNative = true;
-            } catch (err) {}
-          }
-
-          const customEvent = new CustomEvent("biker_ai_simulated_push", {
-            detail: { title, body: bodyText, native: sentNative }
+      setChatHistory(prev => {
+        const history = [...prev, coachMsg];
+        if (data && data.geminiError) {
+          history.push({
+            id: `system-warn-${Date.now()}`,
+            sender: "treinador",
+            text: `⚠️ **Aviso de Chamada Off-line**\n\nO coach respondeu usando respostas dinâmicas embarcadas de salvaguarda, pois a busca avançada por IA personalizada falhou.\n\n**Causa do erro:** \`${data.geminiError}\``,
+            timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
           });
-          window.dispatchEvent(customEvent);
         }
-      } catch (e) {
-        console.error("Erro ao notificar feedback do coach:", e);
-      }
+        return history;
+      });
 
       // If in onboarding, update parsed fields
       if (isOnboarding && data.parsedProfile) {
@@ -1000,12 +914,21 @@ export default function App() {
 
       // Add coach announcement to chat
       setChatHistory(prev => {
-        return [...prev, {
+        const history = [...prev, {
           id: `gen-${Date.now()}`,
           sender: "treinador",
           text: `✨ **Planilha Semanal Gerada com Sucesso!**\n\n${profile.name || "Atleta"}, montei uma planilha de treinos sob medida baseada no seu nível (**${profile.level}**) e seu objetivo de **${profile.goal}**. Confira a aba de planilha para ver os passos e dicas de cada dia! Let's ride! 🚴‍♂️‍♂️💨`,
           timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
         }];
+        if (data.geminiError) {
+          history.push({
+            id: `system-warn-${Date.now()}`,
+            sender: "treinador",
+            text: `⚠️ **Modo de Segurança Ativado (Treinador Local)**\n\nSeus treinos foram calculados utilizando nosso motor fisiológico embarcado com base profissional na grade dos 80/20, pois a chamada para a inteligência de IA personalizada retornou um erro.\n\n**Causa do erro:** \`${data.geminiError}\`\n\n*Geralmente isso ocorre por uma chave do Gemini que expirou ou foi bloqueada pelo Google como vazada (como a chave de demonstração padrão do projeto). Para utilizar a inteligência de IA personalizada completa, atualize a chave **GEMINI_API_KEY** no seu painel de Segredos/Configurações.*`,
+            timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+          });
+        }
+        return history;
       });
 
     } catch (err: any) {
@@ -1030,71 +953,22 @@ export default function App() {
   const handleUpdateAccount = (updatedUser: UserAccount, newPassword?: string): boolean => {
     if (!currentUser) return false;
 
-    const savedUsers = localStorage.getItem("coach_users");
-    let usersMap: Record<string, any> = {};
-    if (savedUsers) {
-      try {
-        usersMap = JSON.parse(savedUsers);
-      } catch (e) {
-        usersMap = {};
-      }
-    }
-
     const currentEmailKey = currentUser.email.toLowerCase();
-    const newEmailKey = updatedUser.email.toLowerCase();
-
-    // Preserve original password unless a new one is set
     const fallbackPassword = currentEmailKey === "pedro.bramos@sempreceub.com" ? "Pedro23072007" : "123455";
-    const passwordToStore = newPassword || usersMap[currentEmailKey]?.password || fallbackPassword;
-
-    // Migrate registry if the login email address has changed
-    if (currentEmailKey !== newEmailKey) {
-      delete usersMap[currentEmailKey];
-    }
-
-    const updatedRegistryEntry = {
-      email: updatedUser.email,
-      password: passwordToStore,
-      profile: {
-        ...updatedUser.profile
-      },
-      chatHistory,
-      plan
-    };
-
-    usersMap[newEmailKey] = updatedRegistryEntry;
-    localStorage.setItem("coach_users", JSON.stringify(usersMap));
+    const passwordToStore = newPassword || currentUser.password || fallbackPassword;
 
     const finalizedSessionUser: UserAccount = {
       email: updatedUser.email,
-      profile: updatedRegistryEntry.profile,
+      profile: {
+        ...updatedUser.profile
+      },
       chatHistory,
       plan,
       password: passwordToStore
     };
 
     setCurrentUser(finalizedSessionUser);
-    localStorage.setItem("current_coach_user", JSON.stringify(finalizedSessionUser));
-    
-    // Sync React state for imediate rendering
     setProfile(updatedUser.profile);
-
-    const physFieldsChanged = 
-      updatedUser.profile.level !== currentUser.profile.level ||
-      updatedUser.profile.goal !== currentUser.profile.goal ||
-      updatedUser.profile.daysPerWeek !== currentUser.profile.daysPerWeek ||
-      updatedUser.profile.durationPerSession !== currentUser.profile.durationPerSession ||
-      updatedUser.profile.eventDate !== currentUser.profile.eventDate ||
-      updatedUser.profile.hasPowerMeter !== currentUser.profile.hasPowerMeter ||
-      updatedUser.profile.ftp !== currentUser.profile.ftp ||
-      updatedUser.profile.hasHeartRate !== currentUser.profile.hasHeartRate ||
-      updatedUser.profile.maxHeartRate !== currentUser.profile.maxHeartRate ||
-      updatedUser.profile.limitations !== currentUser.profile.limitations ||
-      updatedUser.profile.recentActivity !== currentUser.profile.recentActivity;
-
-    if (physFieldsChanged) {
-      setPhysiologyChangedPending(true);
-    }
 
     // Sync to backend immediately for instant server persistence
     fetch("/api/auth/save-user", {
@@ -1120,7 +994,7 @@ export default function App() {
 
   // Sign out of active athlete profile
   const handleSignOut = () => {
-    localStorage.removeItem("current_coach_user");
+    signOut(auth).catch((err) => console.error("Erro ao fazer logout no Firebase:", err));
     setCurrentUser(null);
     setShowAccountSettings(false);
     setProfile({
@@ -1147,30 +1021,6 @@ export default function App() {
       }
     ]);
     setPlan(null);
-  };
-
-  // Support click handler to copy email & open mailto in new tab to bypass iframe sandbox restrictions
-  const handleSupportClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    const email = "bikeraisupport@gmail.com";
-    try {
-      navigator.clipboard.writeText(email);
-    } catch (err) {
-      const textArea = document.createElement("textarea");
-      textArea.value = email;
-      document.body.appendChild(textArea);
-      textArea.select();
-      document.execCommand("copy");
-      document.body.removeChild(textArea);
-    }
-    
-    window.open(`mailto:${email}`, "_blank", "noopener,noreferrer");
-    
-    setActivePushToast({
-      title: "Suporte Técnico Biker AI 🚴",
-      body: "O e-mail de suporte (bikeraisupport@gmail.com) foi copiado! Caso o seu aplicativo de e-mail não abra automaticamente, cole o endereço no destinatário.",
-      id: Date.now()
-    });
   };
 
   // Reset App / Reset athlete specific progress
@@ -1310,18 +1160,16 @@ export default function App() {
                 </span>
               </button>
             )}
-            {currentUser && (
+            {currentUser && plan && (
               <button 
-                type="button"
-                onClick={handleSupportClick} 
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-800 bg-slate-800/50 hover:bg-slate-800 hover:text-lime-400 text-xs text-slate-300 font-bold font-heading uppercase tracking-wider transition-all cursor-pointer"
-                title="Contatar Suporte: bikeraisupport@gmail.com"
+                onClick={handleReset} 
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-800 bg-slate-800/50 hover:bg-slate-800 text-xs text-slate-300 font-bold font-heading uppercase tracking-wider transition-all cursor-pointer"
+                title="Resetar todos os dados"
               >
-                <HelpCircle className="w-3.5 h-3.5 text-lime-450 shrink-0" />
-                <span>Suporte</span>
+                <RotateCcw className="w-3.5 h-3.5 text-rose-500" />
+                <span className="hidden xs:inline">Resetar</span>
               </button>
             )}
-
             {currentUser && (
               <button 
                 onClick={handleSignOut} 
@@ -1436,7 +1284,6 @@ export default function App() {
                   profile: updatedProfile
                 };
                 setCurrentUser(refreshed);
-                localStorage.setItem("current_coach_user", JSON.stringify(refreshed));
               }
             }}
           />
@@ -1879,44 +1726,6 @@ export default function App() {
                     transition={{ duration: 0.2 }}
                     className="space-y-8"
                   >
-                    {physiologyChangedPending && (
-                      <motion.div
-                        initial={{ opacity: 0, y: -20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm"
-                      >
-                        <div className="flex gap-3 items-start">
-                          <span className="text-2xl mt-0.5">⚙️</span>
-                          <div>
-                            <h4 className="font-heading font-extrabold text-amber-850 text-sm">Dados de Fisiologia/Treino Alterados!</h4>
-                            <p className="text-xs font-sans text-amber-700 leading-relaxed mt-1">
-                              Detectamos novas configurações no seu perfil de atleta. Você quer que o Treinador AI refaça e substitua seus treinos atuais de acordo com as novas métricas?
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
-                          <button
-                            type="button"
-                            onClick={() => setPhysiologyChangedPending(false)}
-                            className="px-3.5 py-2 rounded-xl text-xs font-bold text-slate-500 hover:bg-slate-100 transition-all cursor-pointer"
-                          >
-                            Manter Atuais
-                          </button>
-                          <button
-                            type="button"
-                            disabled={isGeneratingPlan}
-                            onClick={async () => {
-                              await generateTrainingPlan();
-                              setPhysiologyChangedPending(false);
-                            }}
-                            className="bg-slate-900 text-lime-400 border border-slate-800 hover:bg-slate-800 px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
-                          >
-                            {isGeneratingPlan ? "Refazendo..." : "Substituir Treinos Atuais"}
-                          </button>
-                        </div>
-                      </motion.div>
-                    )}
-
                     {plan?.coachMessage && (
                       <motion.div 
                         initial={{ opacity: 0, y: 20 }}
@@ -2020,6 +1829,17 @@ export default function App() {
 
                     </div>
 
+                    {/* Calendário Mensal Resumido Interativo */}
+                    <MonthlyCalendar 
+                      profile={profile}
+                      plan={plan}
+                      onUpdateWorkoutState={(updatedPlan) => {
+                        if (updatedPlan) {
+                          setPlan(updatedPlan);
+                        }
+                      }}
+                    />
+
                     {/* Progress Tracker Panel & Worksheet Actions */}
                     {plan && plan.workouts && (
                       (() => {
@@ -2073,7 +1893,6 @@ export default function App() {
                                         const updatedWorkouts = plan.workouts.map(w => ({ ...w, completed: false }));
                                         const updatedPlan = { ...plan, workouts: updatedWorkouts };
                                         setPlan(updatedPlan);
-                                        localStorage.setItem("athlete_training_plan", JSON.stringify(updatedPlan));
                                       }
                                     }}
                                     className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
@@ -2556,7 +2375,7 @@ export default function App() {
                             </li>
                           </ul>
                           <div className="pt-2 text-[10px] text-slate-500 italic leading-snug">
-                            Se houver fadiga anormal ou sintomas, avise seu treinador no chat de suporte para recalcular sua planilha semanal para repouso ativo.
+                            Se houver fadiga anormal ou sintomas, priorize o repouso ativo e evite treinos intensivos.
                           </div>
                         </div>
 
@@ -2589,102 +2408,6 @@ export default function App() {
                     <ZoneCalculator profile={profile} />
                   </motion.div>
                 )}
-
-                {activeTab === "chat" && (
-                  <motion.div 
-                    key="tab-coachchat" 
-                    initial={{ opacity: 0, scale: 0.98 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.98 }}
-                    transition={{ duration: 0.2 }}
-                    className="flex flex-col bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden h-[600px] max-w-3xl mx-auto"
-                  >
-                    {/* Chat Header */}
-                    <div className="bg-slate-900 text-white px-5 py-4 flex items-center justify-between border-b border-slate-800 shrink-0">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-lime-500 flex items-center justify-center font-bold text-slate-950 font-heading shrink-0 shadow-sm relative animate-pulse">
-                          AI
-                        </div>
-                        <div>
-                          <h3 className="font-heading font-bold text-sm">Central de Dúvidas do Treinador</h3>
-                          <p className="text-[10px] text-lime-400 font-sans">Tire dúvidas sobre os treinos, hidratação, alimentação ou peça mudanças no seu plano</p>
-                        </div>
-                      </div>
-                      
-                      {/* Regeneration button */}
-                      <button 
-                        onClick={generateTrainingPlan}
-                        disabled={isGeneratingPlan}
-                        className="flex items-center gap-1 bg-slate-800 hover:bg-slate-750 border border-slate-700 text-lime-400 font-heading font-bold py-1.5 px-3 rounded-lg text-[10px] uppercase transition-all disabled:opacity-50"
-                      >
-                        {isGeneratingPlan ? <RefreshCw className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
-                        <span>Recriar Planilha</span>
-                      </button>
-                    </div>
-
-                    {/* Messages Panel */}
-                    <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 bg-slate-50/50">
-                      {chatHistory.map((msg) => (
-                        <div 
-                          key={msg.id} 
-                          className={`flex gap-3 max-w-[85%] ${msg.sender === "atleta" ? "ml-auto flex-row-reverse" : "mr-auto"}`}
-                        >
-                          <div className={`w-8 h-8 rounded-full shrink-0 flex items-center justify-center text-xs font-bold leading-none ${
-                            msg.sender === "atleta" ? "bg-slate-200 text-slate-700" : "bg-slate-900 text-lime-400"
-                          }`}>
-                            {msg.sender === "atleta" ? <User className="w-4 h-4" /> : "TR"}
-                          </div>
-                          
-                          <div className="space-y-1">
-                            <div className={`rounded-2xl p-3 text-xs leading-relaxed font-sans shadow-xs whitespace-pre-wrap ${
-                              msg.sender === "atleta" 
-                                ? "bg-slate-900 text-white rounded-tr-none" 
-                                : "bg-white text-slate-800 rounded-tl-none border border-slate-100"
-                            }`}>
-                              {msg.text}
-                            </div>
-                            <span className="text-[9px] text-slate-400 font-mono tracking-wider block">
-                              {msg.timestamp}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                      
-                      {isTyping && (
-                        <div className="flex gap-3 mr-auto">
-                          <div className="w-8 h-8 rounded-full bg-slate-900 text-lime-400 flex items-center justify-center text-xs font-bold shrink-0">
-                            TR
-                          </div>
-                          <div className="bg-white px-4 py-3 rounded-2xl rounded-tl-none border border-slate-100 flex items-center gap-1 shrink-0">
-                            <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce"></span>
-                            <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce [animation-delay:0.2s]"></span>
-                            <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce [animation-delay:0.4s]"></span>
-                          </div>
-                        </div>
-                      )}
-                      <div ref={chatEndRef} />
-                    </div>
-
-                    {/* Chat Form */}
-                    <form onSubmit={handleSendMessage} className="p-4 bg-white border-t border-slate-100 shrink-0 flex gap-2">
-                      <input 
-                        type="text" 
-                        value={inputMessage}
-                        onChange={(e) => setInputMessage(e.target.value)}
-                        disabled={isTyping}
-                        placeholder='Pergunte ou comente: ex: "Como faço para render mais na subida?" ou "Retire a atividade de quinta."'
-                        className="flex-1 bg-slate-100 focus:bg-white text-xs text-slate-800 rounded-xl px-4 py-3 outline-hidden border border-slate-100 focus:border-slate-300 focus:ring-1 focus:ring-slate-300 font-sans transition-all disabled:opacity-50"
-                      />
-                      <button 
-                        type="submit"
-                        disabled={!inputMessage.trim() || isTyping}
-                        className="bg-slate-900 hover:bg-slate-800 text-lime-400 disabled:bg-slate-100 disabled:text-slate-400 rounded-xl px-4 flex items-center justify-center font-bold tracking-wide transition-all shrink-0"
-                      >
-                        <Send className="w-4 h-4" />
-                      </button>
-                    </form>
-                  </motion.div>
-                )}
               </AnimatePresence>
 
             </motion.div>
@@ -2701,9 +2424,7 @@ export default function App() {
             <Bike className="w-5 h-5 text-lime-400" />
             <span>&copy; 2026 Biker AI. Todos os direitos reservados.</span>
           </div>
-          <div className="flex items-center gap-4 flex-wrap justify-center font-medium">
-            <span>Suporte: <button type="button" onClick={handleSupportClick} className="text-lime-400 hover:underline cursor-pointer bg-transparent border-none p-0 font-medium">bikeraisupport@gmail.com</button></span>
-            <span>•</span>
+          <div className="flex items-center gap-4">
             <span>Treino Equilibrado</span>
             <span>•</span>
             <span>Controle de Esforço</span>
@@ -2886,55 +2607,6 @@ export default function App() {
           </div>
         )}
       </AnimatePresence>
-
-      {/* Visual Push Notification Toast Overlay */}
-      <AnimatePresence>
-        {activePushToast && (
-          <motion.div
-            initial={{ opacity: 0, y: -50, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.9, y: -20 }}
-            className="fixed top-4 right-4 left-4 sm:left-auto sm:max-w-md z-[60] bg-slate-900/95 border border-lime-400/30 rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.5)] p-4 text-white flex items-start gap-3.5 backdrop-blur-md"
-          >
-            {/* Notification Bell ring indicator */}
-            <div className="p-2.5 bg-lime-500/15 border border-lime-500/30 rounded-xl text-lime-400 shrink-0">
-              <span className="relative flex h-4 w-4">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-lime-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-4 w-4 text-lime-400">
-                  <Bike className="w-4 h-4" />
-                </span>
-              </span>
-            </div>
-
-            {/* Notification Message content */}
-            <div className="flex-1 space-y-0.5 text-left font-sans">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-black uppercase text-lime-400 tracking-wider">
-                  {activePushToast.title}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setActivePushToast(null)}
-                  className="text-slate-400 hover:text-white text-xs font-bold leading-none p-1 rounded-sm hover:bg-slate-800 transition-all cursor-pointer"
-                >
-                  ✕
-                </button>
-              </div>
-              <p className="text-xs text-slate-200 leading-relaxed font-sans mt-1 whitespace-pre-wrap">
-                {activePushToast.body}
-              </p>
-              <div className="flex items-center gap-1.5 pt-1.5 font-mono text-[9px] text-slate-400 border-t border-slate-800 mt-2">
-                <span>🔔 Notificações Ativas</span>
-                <span>•</span>
-                <span>Biker AI Notifier</span>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-
-      {/* Floating Support Button removed */}
 
     </div>
   );
