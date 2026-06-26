@@ -15,7 +15,6 @@ import SubscriptionWall from "./components/SubscriptionWall";
 import VolumeEvolutionChart from "./components/VolumeEvolutionChart";
 import WeeklyCalorieChart from "./components/WeeklyCalorieChart";
 import AchievementsDashboard from "./components/AchievementsDashboard";
-import MonthlyCalendar from "./components/MonthlyCalendar";
 import { motion, AnimatePresence } from "motion/react";
 import { 
   Users,
@@ -231,26 +230,6 @@ export default function App() {
     }
   }, [plan]);
 
-  const handleAddWorkout = useCallback(() => {
-    if (!plan) return;
-    const newWorkout: Workout = {
-      day: "Sessão Extra",
-      type: "Treino Personalizado",
-      duration: 60,
-      goal: "Foco livre do ciclista para ganho de fôlego, resistência ou recuperação ativa.",
-      structure: "Pedal contínuo em ritmo confortável e prazeroso.",
-      targetZone: "Z2 - Endurance",
-      rpe: 3,
-      tip: "Este é um treino extra! Mantenha uma cadência confortável e beba bastante água.",
-      completed: false
-    };
-    const updatedPlan = {
-      ...plan,
-      workouts: [...plan.workouts, newWorkout]
-    };
-    setPlan(updatedPlan);
-  }, [plan]);
-
   const handleDeleteWorkout = useCallback((index: number) => {
     if (!plan) return;
     if (!window.confirm("Deseja realmente remover este treino da sua planilha?")) return;
@@ -260,23 +239,6 @@ export default function App() {
       workouts: updatedWorkouts
     };
     setPlan(updatedPlan);
-  }, [plan]);
-
-  const handleClearPendingExtras = useCallback(() => {
-    if (!plan) return;
-    const extraPendingCount = plan.workouts.filter(w => w.day === "Sessão Extra" && !w.completed).length;
-    if (extraPendingCount === 0) {
-      alert("Não há sessões extras pendentes para remover!");
-      return;
-    }
-    if (window.confirm(`Deseja realmente remover as ${extraPendingCount} sessões extras pendentes para limpar sua planilha?`)) {
-      const updatedWorkouts = plan.workouts.filter(w => !(w.day === "Sessão Extra" && !w.completed));
-      const updatedPlan = {
-        ...plan,
-        workouts: updatedWorkouts
-      };
-      setPlan(updatedPlan);
-    }
   }, [plan]);
 
   const handleExportPDF = useCallback(() => {
@@ -1829,17 +1791,6 @@ export default function App() {
 
                     </div>
 
-                    {/* Calendário Mensal Resumido Interativo */}
-                    <MonthlyCalendar 
-                      profile={profile}
-                      plan={plan}
-                      onUpdateWorkoutState={(updatedPlan) => {
-                        if (updatedPlan) {
-                          setPlan(updatedPlan);
-                        }
-                      }}
-                    />
-
                     {/* Progress Tracker Panel & Worksheet Actions */}
                     {plan && plan.workouts && (
                       (() => {
@@ -2253,7 +2204,7 @@ export default function App() {
                                 <ClipboardList className="w-10 h-10 text-slate-300" />
                                 <div>
                                   <h4 className="font-heading font-bold text-slate-600 text-sm">Sem treinos para exibir</h4>
-                                  <p className="text-xs text-slate-400 font-sans mt-1">Clique em "Adicionar Treino" acima para criar sessões personalizadas.</p>
+                                  <p className="text-xs text-slate-400 font-sans mt-1">Sua planilha semanal está vazia no momento.</p>
                                 </div>
                               </div>
                             )}
