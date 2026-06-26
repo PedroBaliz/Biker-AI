@@ -20,13 +20,30 @@ if (fs.existsSync(configPath)) {
   }
 }
 
-if (getApps().length === 0) {
-  initializeApp({
-    projectId: firebaseAppletConfig.projectId,
-  });
-}
+let firestoreDb: any = null;
+let useFirestore = false;
 
-const firestoreDb = getFirestore(firebaseAppletConfig.firestoreDatabaseId || undefined);
+try {
+  if (firebaseAppletConfig && firebaseAppletConfig.projectId) {
+    const isProduction = process.env.NODE_ENV === "production" || process.env.VERCEL;
+    if (isProduction) {
+      if (getApps().length === 0) {
+        initializeApp({
+          projectId: firebaseAppletConfig.projectId,
+        });
+      }
+      firestoreDb = getFirestore(firebaseAppletConfig.firestoreDatabaseId || undefined);
+      useFirestore = true;
+      console.log("[Firebase Admin] Inicializado com sucesso para o projeto:", firebaseAppletConfig.projectId);
+    } else {
+      console.log("[Firebase Admin] Ignorado no ambiente de desenvolvimento. Usando persistência local em users_db.json.");
+    }
+  }
+} catch (err: any) {
+  console.error("[Firebase Admin] Falha ao inicializar. Usando persistência local:", err.message);
+  firestoreDb = null;
+  useFirestore = false;
+}
 
 
 // JSON file database path for local persistence (declared early to avoid temporal dead zone)
@@ -85,24 +102,31 @@ async function getDatabase(): Promise<Record<string, any>> {
   }
 
   const localDb: Record<string, any> = {};
-  try {
-    const snapshot = await firestoreDb.collection("users").get();
-    snapshot.forEach((doc) => {
-      localDb[doc.id] = doc.data();
-    });
-    console.log(`[Firestore] Carregados ${Object.keys(localDb).length} usuários com sucesso.`);
-  } catch (err: any) {
-    console.warn("[Firestore] Erro ao carregar do Firestore, tentando fallback local:", err.message);
-    // Fallback to local file if Firestore is not accessible
+
+  if (useFirestore && firestoreDb) {
     try {
-      if (fs.existsSync(USERS_DB_PATH)) {
-        const data = fs.readFileSync(USERS_DB_PATH, "utf-8");
-        const parsed = JSON.parse(data);
-        Object.assign(localDb, parsed);
-      }
-    } catch (localErr: any) {
-      console.error("[Local Fallback] Falha no fallback local:", localErr.message);
+      const snapshot = await firestoreDb.collection("users").get();
+      snapshot.forEach((doc: any) => {
+        localDb[doc.id] = doc.data();
+      });
+      console.log(`[Firestore] Carregados ${Object.keys(localDb).length} usuários com sucesso do Firestore.`);
+      inMemoryDbCache = localDb;
+      return localDb;
+    } catch (err: any) {
+      console.warn("[Firestore] Erro ao carregar do Firestore, tentando fallback local:", err.message);
     }
+  }
+
+  // Fallback to local file if Firestore is not accessible or not enabled
+  try {
+    if (fs.existsSync(USERS_DB_PATH)) {
+      const data = fs.readFileSync(USERS_DB_PATH, "utf-8");
+      const parsed = JSON.parse(data);
+      Object.assign(localDb, parsed);
+      console.log(`[Banco Local] Carregados ${Object.keys(localDb).length} usuários com sucesso do banco de dados local.`);
+    }
+  } catch (localErr: any) {
+    console.error("[Local Fallback] Falha no fallback local:", localErr.message);
   }
 
   inMemoryDbCache = localDb;
@@ -157,18 +181,20 @@ async function triggerAutomaticBackup(db: Record<string, any>) {
 async function saveDatabase(db: Record<string, any>) {
   inMemoryDbCache = db;
 
-  // Persistir no Firestore
-  try {
-    const batch = firestoreDb.batch();
-    for (const email of Object.keys(db)) {
-      const emailKey = email.trim().toLowerCase();
-      const docRef = firestoreDb.collection("users").doc(emailKey);
-      batch.set(docRef, db[email]);
+  // Persistir no Firestore se habilitado
+  if (useFirestore && firestoreDb) {
+    try {
+      const batch = firestoreDb.batch();
+      for (const email of Object.keys(db)) {
+        const emailKey = email.trim().toLowerCase();
+        const docRef = firestoreDb.collection("users").doc(emailKey);
+        batch.set(docRef, db[email]);
+      }
+      await batch.commit();
+      console.log("[Firestore] Banco de dados sincronizado com sucesso no Firestore.");
+    } catch (err: any) {
+      console.error("[Firestore] ERRO ao sincronizar com Firestore:", err.message);
     }
-    await batch.commit();
-    console.log("[Firestore] Banco de dados sincronizado com sucesso no Firestore.");
-  } catch (err: any) {
-    console.error("[Firestore] ERRO ao sincronizar com Firestore:", err.message);
   }
 
   // Gravar arquivo local como cópia de segurança
@@ -187,6 +213,11 @@ async function saveDatabase(db: Record<string, any>) {
 
 // Executar migração inicial de dados locais para Firestore de forma assíncrona
 async function runInitialMigration() {
+  if (!useFirestore || !firestoreDb) {
+    console.log("[Migração] Ignorando migração para o Firestore (fora de produção ou desabilitado).");
+    return;
+  }
+
   try {
     console.log("[Migração] Verificando se é necessária migração local -> Firestore...");
     const snapshot = await firestoreDb.collection("users").limit(1).get();
