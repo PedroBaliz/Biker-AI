@@ -4,8 +4,8 @@ import dotenv from "dotenv";
 import fs from "fs";
 import os from "os";
 import { GoogleGenAI, Type } from "@google/genai";
-import { initializeApp, getApps } from "firebase-admin/app";
-import { getFirestore } from "firebase-admin/firestore";
+import { initializeApp, getApps, getApp } from "firebase/app";
+import { getFirestore, collection, getDocs, doc, writeBatch, limit, query } from "firebase/firestore";
 
 dotenv.config();
 
@@ -25,22 +25,23 @@ let useFirestore = false;
 
 try {
   if (firebaseAppletConfig && firebaseAppletConfig.projectId) {
-    const isProduction = process.env.NODE_ENV === "production" || process.env.VERCEL;
-    if (isProduction) {
-      if (getApps().length === 0) {
-        initializeApp({
+    const firebaseApp = getApps().length === 0 
+      ? initializeApp({
+          apiKey: firebaseAppletConfig.apiKey,
+          authDomain: firebaseAppletConfig.authDomain,
           projectId: firebaseAppletConfig.projectId,
-        });
-      }
-      firestoreDb = getFirestore(firebaseAppletConfig.firestoreDatabaseId || undefined);
-      useFirestore = true;
-      console.log("[Firebase Admin] Inicializado com sucesso para o projeto:", firebaseAppletConfig.projectId);
-    } else {
-      console.log("[Firebase Admin] Ignorado no ambiente de desenvolvimento. Usando persistência local em users_db.json.");
-    }
+          appId: firebaseAppletConfig.appId,
+          storageBucket: firebaseAppletConfig.storageBucket,
+          messagingSenderId: firebaseAppletConfig.messagingSenderId,
+        })
+      : getApp();
+
+    firestoreDb = getFirestore(firebaseApp, firebaseAppletConfig.firestoreDatabaseId || undefined);
+    useFirestore = true;
+    console.log("[Firebase Client SDK] Inicializado com sucesso no servidor:", firebaseAppletConfig.projectId);
   }
 } catch (err: any) {
-  console.error("[Firebase Admin] Falha ao inicializar. Usando persistência local:", err.message);
+  console.error("[Firebase Client SDK] Falha ao inicializar. Usando persistência local:", err.message);
   firestoreDb = null;
   useFirestore = false;
 }
@@ -105,7 +106,7 @@ async function getDatabase(): Promise<Record<string, any>> {
 
   if (useFirestore && firestoreDb) {
     try {
-      const snapshot = await firestoreDb.collection("users").get();
+      const snapshot = await getDocs(collection(firestoreDb, "users"));
       snapshot.forEach((doc: any) => {
         localDb[doc.id] = doc.data();
       });
@@ -184,10 +185,10 @@ async function saveDatabase(db: Record<string, any>) {
   // Persistir no Firestore se habilitado
   if (useFirestore && firestoreDb) {
     try {
-      const batch = firestoreDb.batch();
+      const batch = writeBatch(firestoreDb);
       for (const email of Object.keys(db)) {
         const emailKey = email.trim().toLowerCase();
-        const docRef = firestoreDb.collection("users").doc(emailKey);
+        const docRef = doc(firestoreDb, "users", emailKey);
         batch.set(docRef, db[email]);
       }
       await batch.commit();
@@ -220,7 +221,8 @@ async function runInitialMigration() {
 
   try {
     console.log("[Migração] Verificando se é necessária migração local -> Firestore...");
-    const snapshot = await firestoreDb.collection("users").limit(1).get();
+    const q = query(collection(firestoreDb, "users"), limit(1));
+    const snapshot = await getDocs(q);
     if (!snapshot.empty) {
       console.log("[Migração] Firestore já contém dados. Nenhuma migração necessária.");
       return;
@@ -232,10 +234,10 @@ async function runInitialMigration() {
       const userEmails = Object.keys(localDb);
       if (userEmails.length > 0) {
         console.log(`[Migração] Migrando ${userEmails.length} usuários locais para o Firestore...`);
-        const batch = firestoreDb.batch();
+        const batch = writeBatch(firestoreDb);
         for (const email of userEmails) {
           const emailKey = email.trim().toLowerCase();
-          const docRef = firestoreDb.collection("users").doc(emailKey);
+          const docRef = doc(firestoreDb, "users", emailKey);
           batch.set(docRef, localDb[email]);
         }
         await batch.commit();
@@ -445,8 +447,29 @@ app.get("/api/diagnostics", async (req, res) => {
     apiKeyLength: process.env.GEMINI_API_KEY ? process.env.GEMINI_API_KEY.length : 0,
     apiKeySnippet: process.env.GEMINI_API_KEY ? `${process.env.GEMINI_API_KEY.substring(0, 6)}...${process.env.GEMINI_API_KEY.substring(process.env.GEMINI_API_KEY.length - 4)}` : null,
     nodeEnv: process.env.NODE_ENV,
-    modelName: "gemini-3.5-flash"
+    modelName: "gemini-3.5-flash",
+    useFirestore,
+    firestoreInitialized: !!firestoreDb,
+    firestoreDatabaseId: firebaseAppletConfig?.firestoreDatabaseId || null
   };
+
+  // Test Firestore Connection
+  if (useFirestore && firestoreDb) {
+    try {
+      const q = query(collection(firestoreDb, "users"), limit(1));
+      const snapshot = await getDocs(q);
+      responses.firestoreConnection = "SUCCESS";
+      responses.firestoreEmpty = snapshot.empty;
+      responses.firestoreMessage = "Successfully queried Firestore 'users' collection.";
+    } catch (err: any) {
+      responses.firestoreConnection = "FAILED";
+      responses.firestoreErrorName = err.name || "Error";
+      responses.firestoreErrorMessage = err.message;
+      responses.firestoreErrorStack = err.stack;
+    }
+  } else {
+    responses.firestoreConnection = "DISABLED_OR_UNINITIALIZED";
+  }
 
   try {
     const key = (process.env.GEMINI_API_KEY || "").trim();
