@@ -520,7 +520,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
                   </div>
                   <div className="space-y-1">
                     <span className="font-bold text-[#00E676] block tracking-wider uppercase text-[10px] font-mono font-black">Biker AI Inteligente:</span>
-                    <p className="text-slate-300">Você simplesmente clica no botão ou avisa no chat: <span className="italic block mt-1 bg-slate-950 p-2 rounded text-slate-350 font-mono text-[11px] border border-slate-850 font-medium">"Hoje tive um imprevisto!"</span>. Nossa IA reorganiza a planilha e os descansos do restante da semana instantaneamente.</p>
+                    <p className="text-slate-300">Você simplesmente atualiza sua disponibilidade nas configurações. Nossa IA reorganiza a planilha e os descansos do restante da semana instantaneamente para se ajustar à sua rotina real.</p>
                   </div>
                 </div>
               </div>
@@ -662,9 +662,9 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
               <div className="w-12 h-12 rounded-2xl bg-linear-to-tr from-lime-500 to-emerald-500 text-slate-950 flex items-center justify-center font-heading font-black text-lg">
                 1
               </div>
-              <h4 className="font-heading font-black text-base">Conversa rápida</h4>
+              <h4 className="font-heading font-black text-base">Questionário rápido</h4>
               <p className="text-xs text-slate-400 font-sans leading-relaxed">
-                Você responde algumas perguntas fáceis no nosso chat para o robô entender o seu nível atual e de quanto tempo precisa.
+                Você responde algumas perguntas fáceis e diretas sobre seus objetivos para nossa inteligência artificial entender o seu nível atual.
               </p>
             </div>
 
@@ -709,7 +709,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
               <div className="p-5 rounded-2xl bg-slate-900/50 border border-slate-850 space-y-2">
                 <span className="text-xs font-black text-lime-400 uppercase tracking-widest block">Menos Desculpas</span>
                 <p className="text-xs text-slate-300 font-medium">
-                  Se chover ou não der tempo de treinar na rua, você avisa no chat e o sistema remarca o dia ou adapta para um treino mais curto de rolo em casa.
+                  Se chover ou não der tempo de treinar na rua, você reajusta suas preferências e a nossa inteligência reorganiza os treinos ou os adapta para o rolo.
                 </p>
               </div>
               <div className="p-5 rounded-2xl bg-slate-900/50 border border-slate-850 space-y-2">
