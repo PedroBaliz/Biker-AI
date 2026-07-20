@@ -27,6 +27,12 @@
     "recharts": "^3.8.1",
     "vite": "^6.2.3"
   },
+  "overrides": {
+    "jwks-rsa": "^3.1.4"
+  },
+  "resolutions": {
+    "jwks-rsa": "^3.1.4"
+  },
   "devDependencies": {
     "@types/canvas-confetti": "^1.9.0",
     "@types/express": "^4.17.21",
@@ -36,7 +42,6 @@
     "jimp": "^1.6.1",
     "tailwindcss": "^4.1.14",
     "tsx": "^4.21.0",
-    "typescript": "~5.8.2",
-    "vite": "^6.2.3"
+    "typescript": "~5.8.2"
   }
 }
