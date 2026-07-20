@@ -299,14 +299,14 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
             </div>
           </div>
           <div className="hidden md:flex items-center gap-6">
-            <a href="#como-funciona" className="text-xs font-semibold text-slate-300 hover:text-lime-450 transition-colors">
-              Como Funciona
+            <a href="#preview-do-app" className="text-xs font-semibold text-slate-300 hover:text-lime-450 transition-colors">
+              Conhecer o App
             </a>
             <a href="#beneficios" className="text-xs font-semibold text-slate-300 hover:text-lime-450 transition-colors">
               Benefícios
             </a>
-            <a href="#precos" className="text-xs font-semibold text-slate-300 hover:text-lime-450 transition-colors">
-              Preços
+            <a href="#como-funciona" className="text-xs font-semibold text-slate-300 hover:text-lime-450 transition-colors">
+              Como Funciona
             </a>
           </div>
           <div>
@@ -340,22 +340,6 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
           <p className="text-sm sm:text-base text-slate-300 font-sans leading-relaxed max-w-2xl">
             Descubra as planilhas semanais que se adaptam de verdade à sua vida. Ajustamos seus treinos de acordo com o seu cansaço e o seu tempo livre. Chega de treinar no escuro seguindo planilhas de papel ou PDFs parados!
           </p>
-
-          <div className="flex flex-col sm:flex-row gap-4 pt-2 pb-4">
-            <a 
-              href="#auth-section"
-              className="inline-flex items-center justify-center gap-2.5 px-6 py-4 bg-linear-to-r from-lime-500 to-emerald-500 hover:from-lime-450 hover:to-emerald-450 active:scale-98 text-slate-950 text-xs font-black uppercase tracking-wider rounded-2xl shadow-lg shadow-lime-500/20 transition-all cursor-pointer"
-            >
-              <span>Criar Conta</span>
-              <ChevronRight className="w-4 h-4" />
-            </a>
-            <a 
-              href="#como-funciona"
-              className="inline-flex items-center justify-center gap-2 px-6 py-4 bg-slate-900/80 hover:bg-slate-850 text-white text-xs font-bold uppercase tracking-wider rounded-2xl border border-slate-800 hover:border-slate-700 transition-all cursor-pointer"
-            >
-              <span>Ver Como Funciona</span>
-            </a>
-          </div>
 
           {/* Key Metrics grid */}
           <div className="grid grid-cols-3 gap-4 pt-4 border-t border-slate-900">
@@ -400,47 +384,6 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
         </div>
       </section>
 
-      {/* SEÇÃO COMPARATIVA: PDF VS BIKER AI */}
-      <section className="relative py-16 px-4 sm:px-6 md:px-12 bg-slate-900/40 border-t border-slate-900">
-        <div className="max-w-4xl mx-auto rounded-3xl border border-slate-800 bg-slate-950 overflow-hidden relative shadow-xl">
-          <div className="absolute -inset-y-12 -inset-x-12 bg-radial-to-r from-lime-500/5 to-transparent opacity-40 pointer-events-none"></div>
-          <div className="p-6 md:p-10 grid grid-cols-1 md:grid-cols-2 gap-8 relative z-10 text-left items-center">
-            <div className="space-y-4">
-              <span className="text-[9px] font-mono font-bold tracking-widest text-lime-400 uppercase bg-lime-500/10 border border-lime-500/20 px-2.5 py-1 rounded-md">
-                Diferencial Exclusivo
-              </span>
-              <h4 className="text-2xl md:text-3xl font-heading font-black text-white leading-tight">Por que planilhas em PDF comuns não funcionam?</h4>
-              <p className="text-xs sm:text-sm text-slate-400 leading-relaxed font-sans">
-                Comprar um PDF genérico estático na internet parece barato, mas as tabelas de papel ou planilha travadas falham ao menor sinal de imprevisto. Se chover, se você adoecer, viajar ou trabalhar até mais tarde e pular a terça-feira, o PDF não muda sozinho para te salvar.
-              </p>
-              <div className="text-xs text-lime-400 font-bold block pt-1">
-                No Biker AI, a planilha se curva à sua vida real, e nunca o contrário.
-              </div>
-            </div>
-
-            <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4 font-sans text-xs">
-              <div className="flex items-center gap-2 text-xs font-bold text-white border-b border-slate-800 pb-2.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-lime-400 animate-pulse"></span>
-                <span>O que acontece se você perder um treino?</span>
-              </div>
-              
-              <div className="space-y-4">
-                <div className="space-y-1">
-                  <span className="font-bold text-rose-400 block tracking-wider uppercase text-[10px] font-mono">Planilhas Gerais Estáticas:</span>
-                  <p className="text-slate-400">Você se sente culpado, tenta empilhar o treino perdido, treina dolorido sem orientação e acaba se fadigando ou lesionando.</p>
-                </div>
-                <div className="space-y-1">
-                  <span className="font-bold text-[#00E676] block tracking-wider uppercase text-[10px] font-mono font-black flex items-center gap-1">
-                    <Check className="w-3 h-3 text-[#00E676]" /> Biker AI Inteligente:
-                  </span>
-                  <p className="text-slate-300">Você simplesmente atualiza sua disponibilidade nas configurações. Nossa IA reorganiza a planilha e os descansos do restante da semana instantaneamente para se ajustar à sua rotina real.</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* SEÇÃO COMO É FÁCIL USAR O BIKER AI */}
       <section id="como-funciona" className="relative py-24 px-4 sm:px-6 md:px-12 bg-slate-950 border-t border-slate-900 scroll-mt-24">
         <div className="absolute inset-0 bg-radial-to-b from-lime-500/5 via-transparent to-transparent opacity-60"></div>
@@ -448,7 +391,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
           
           <div className="text-center space-y-4 max-w-3xl mx-auto">
             <span className="text-[10px] bg-lime-500/10 border border-lime-500/25 text-lime-400 font-black px-3 py-1 rounded-full uppercase tracking-widest font-mono">
-              Sem Complicação
+              Sem Complicação ⚡
             </span>
             <h3 className="text-3xl sm:text-4xl font-heading font-black tracking-tight text-white">
               Sua planilha de treinos no piloto automático: <span className="text-lime-400">veja como é fácil</span>
@@ -506,15 +449,15 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
               <div className="space-y-2">
                 <h4 className="text-lg font-heading font-black text-white">Sua planilha sob medida</h4>
                 <p className="text-xs sm:text-sm text-slate-400 leading-relaxed font-sans">
-                  Nossa IA calcula suas zonas de esforço de forma automática (por percepção de esforço ou watts de forma totalmente invisível). Você não precisa entender de tabelas difíceis: a IA faz todo o cálculo chato nos bastidores por você.
+                  Nossa IA calcula suas zonas de esforço personalizadas com estimativas automáticas de força em Watts (ou por percepção se não tiver sensor) e ajusta as intensidades precisas para a sua evolução no pedal.
                 </p>
               </div>
 
               <div className="pt-4 border-t border-slate-850 space-y-1.5">
-                <span className="text-[9px] uppercase font-bold text-slate-500 font-mono tracking-wider block">A IA Cuida de Tudo nos Bastidores:</span>
+                <span className="text-[9px] uppercase font-bold text-slate-500 font-mono tracking-wider block">Métricas Calculadas para Você:</span>
                 <div className="flex flex-wrap gap-1.5">
-                  <span className="text-[10px] text-lime-400 bg-lime-500/5 px-2 py-0.5 rounded border border-lime-500/10 font-medium">Zonas de Ritmo Descomplicadas</span>
-                  <span className="text-[10px] text-lime-400 bg-lime-500/5 px-2 py-0.5 rounded border border-lime-500/10 font-medium">Watts & Frequência Automáticos</span>
+                  <span className="text-[10px] text-lime-400 bg-lime-500/5 px-2 py-0.5 rounded border border-lime-500/10">Zonas de Potência</span>
+                  <span className="text-[10px] text-lime-400 bg-lime-500/5 px-2 py-0.5 rounded border border-lime-500/10">Volume e Ritmo Inteligente</span>
                 </div>
               </div>
             </div>
@@ -548,6 +491,40 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
               </div>
             </div>
 
+          </div>
+
+          {/* Comparativo Explicativo de Valor */}
+          <div className="max-w-4xl mx-auto rounded-3xl border border-slate-800 bg-slate-950 overflow-hidden relative">
+            <div className="absolute -inset-y-12 -inset-x-12 bg-radial-to-r from-lime-500/5 to-transparent opacity-40 pointer-events-none"></div>
+            <div className="p-6 md:p-8 grid grid-cols-1 md:grid-cols-2 gap-8 relative z-10 text-left items-center">
+              <div className="space-y-3">
+                <h4 className="text-xl sm:text-2xl font-heading font-black text-white leading-tight">Por que planilhas em PDF comuns não funcionam?</h4>
+                <p className="text-xs sm:text-sm text-slate-400 leading-relaxed font-sans">
+                  Comprar um PDF genérico estático na internet parece barato, mas as tabelas travadas falham ao menor sinal de imprevisto. Se chover, se você adoecer, viajar ou trabalhar até mais tarde e pular a terça-feira, o PDF não muda sozinho para te resgatar.
+                </p>
+                <div className="text-xs text-lime-400 font-bold block pt-1">
+                  💡 No Biker AI, a planilha se curva à sua vida real, e nunca o contrário.
+                </div>
+              </div>
+
+              <div className="p-5 rounded-2xl bg-slate-905 border border-slate-800 space-y-4 font-sans text-xs">
+                <div className="flex items-center gap-2 text-xs font-bold text-white border-b border-slate-850 pb-2">
+                  <span className="w-2 h-2 rounded-full bg-lime-400 animate-pulse"></span>
+                  <span>O que acontece se você perder um treino?</span>
+                </div>
+                
+                <div className="space-y-3">
+                  <div className="space-y-1">
+                    <span className="font-bold text-rose-400 block tracking-wider uppercase text-[10px] font-mono">Planilhas Gerais Estáticas:</span>
+                    <p className="text-slate-400">Você se sente culpado, tenta empilhar o treino perdido, treina dolorido sem orientação e acaba se fadigando ou lesionando.</p>
+                  </div>
+                  <div className="space-y-1">
+                    <span className="font-bold text-[#00E676] block tracking-wider uppercase text-[10px] font-mono font-black">Biker AI Inteligente:</span>
+                    <p className="text-slate-300">Você simplesmente atualiza sua disponibilidade nas configurações. Nossa IA reorganiza a planilha e os descansos do restante da semana instantaneamente para se ajustar à sua rotina real.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
         </div>
@@ -628,26 +605,18 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
               <span className="text-[10px] font-bold text-blue-400 uppercase tracking-widest font-mono">Fácil Sem Esforço</span>
             </div>
 
-            {/* Card 5 - HIGHLIGHTED MOBILE & OFFLINE FEATURE */}
-            <div className="p-6 rounded-3xl bg-linear-to-b from-slate-900 to-lime-950/30 border border-lime-500/30 hover:border-lime-500/50 flex flex-col justify-between transition-all group space-y-4 text-left shadow-lg shadow-lime-500/5 relative overflow-hidden">
-              <div className="absolute top-0 right-0 px-2.5 py-1 bg-lime-500 text-slate-950 font-black text-[8px] uppercase tracking-wider rounded-bl-xl font-mono">
-                Diferencial Forte
-              </div>
+            {/* Card 5 */}
+            <div className="p-6 rounded-3xl bg-slate-900 border border-slate-800 flex flex-col justify-between hover:border-purple-500/20 transition-all group space-y-4 text-left">
               <div className="space-y-3">
-                <div className="w-10 h-10 rounded-2xl bg-lime-500/20 border border-lime-500/30 text-lime-400 flex items-center justify-center">
-                  <Smartphone className="w-5 h-5 animate-pulse" />
+                <div className="w-10 h-10 rounded-2xl bg-purple-500/10 border border-purple-500/20 text-purple-400 flex items-center justify-center">
+                  <Smartphone className="w-5 h-5" />
                 </div>
-                <h4 className="font-heading font-black text-base text-white flex items-center gap-2">
-                  Funciona No Celular <span className="text-lime-400 text-xs">PWA</span>
-                </h4>
-                <p className="text-xs text-slate-300 font-sans leading-relaxed">
-                  Instale o aplicativo em seu celular direto pelo navegador. Leve toda a sua lista de treinos personalizados e o cronômetro para as montanhas ou estradas, funcionando perfeitamente sem sinal de internet ou dados móveis!
+                <h4 className="font-heading font-black text-base text-white">Funciona No Celular</h4>
+                <p className="text-xs text-slate-400 font-sans leading-relaxed">
+                  Instale o aplicativo em seu celular e leve a lista de treinos e o cronômetro para a estrada de forma rápida, mesmo sem sinal de internet.
                 </p>
               </div>
-              <span className="text-[10px] font-bold text-lime-400 uppercase tracking-widest font-mono flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-lime-400 animate-ping"></span>
-                Modo Offline & GPS Seguro
-              </span>
+              <span className="text-[10px] font-bold text-purple-400 uppercase tracking-widest font-mono">Modo Offline</span>
             </div>
 
             {/* Card 6 */}
@@ -671,82 +640,101 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
 
 
 
-
-
-      {/* SEÇÃO DE PREÇOS TRANSPARENTE COM TRIAL */}
-      <section id="precos" className="relative py-24 px-4 sm:px-6 md:px-12 bg-slate-900/30 border-t border-slate-900 scroll-mt-24">
-        <div className="absolute inset-0 bg-radial-to-b from-emerald-500/5 via-transparent to-transparent opacity-40 pointer-events-none"></div>
-        <div className="max-w-7xl mx-auto w-full space-y-16 relative z-10">
+      {/* "Como Funciona" Step-by-Step Road */}
+      <section id="como-funciona" className="bg-slate-900/30 border-y border-slate-900 py-24 px-4 sm:px-6 md:px-12 scroll-mt-24">
+        <div className="max-w-7xl mx-auto w-full space-y-16">
           
-          <div className="text-center space-y-4 max-w-3xl mx-auto">
-            <span className="text-[10px] bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 font-black px-3 py-1 rounded-full uppercase tracking-widest font-mono">
-              Preço Transparente
+          <div className="text-center space-y-3 max-w-3xl mx-auto">
+            <span className="text-[10px] bg-lime-500/10 border border-lime-500/25 text-lime-400 font-black px-3 py-1 rounded-full uppercase tracking-wider">
+              Simples e Prático
             </span>
-            <h3 className="text-3xl sm:text-4xl font-heading font-black tracking-tight text-white">
-              Um único plano, sem surpresas na assinatura
+            <h3 className="text-3xl sm:text-4xl font-heading font-black tracking-tight">
+              Como tudo funciona, passo a passo
             </h3>
-            <p className="text-sm sm:text-base text-slate-400 font-sans leading-relaxed">
-              Você não precisa cadastrar cartão de crédito para ver o preço ou testar. Criamos uma política simples e focada em valor real para a sua evolução no pedal.
+            <p className="text-sm text-slate-400 font-sans leading-relaxed">
+              Sem termos complicados ou burocracia. O processo leva menos de 5 minutos para criar o seu plano ideal.
             </p>
           </div>
 
-          <div className="max-w-md mx-auto">
-            <div className="p-8 rounded-3xl bg-slate-900 border border-lime-500/30 relative flex flex-col justify-between space-y-8 text-left shadow-2xl shadow-lime-500/5 overflow-hidden font-sans">
-              <div className="absolute top-0 right-0 px-4 py-1.5 bg-lime-500 text-slate-950 font-black text-[9px] uppercase tracking-widest font-mono rounded-bl-2xl shadow-sm">
-                Melhor Escolha
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-8 text-left">
+            
+            <div className="space-y-4">
+              <div className="w-12 h-12 rounded-2xl bg-linear-to-tr from-lime-500 to-emerald-500 text-slate-950 flex items-center justify-center font-heading font-black text-lg">
+                1
               </div>
+              <h4 className="font-heading font-black text-base">Questionário rápido</h4>
+              <p className="text-xs text-slate-400 font-sans leading-relaxed">
+                Você responde algumas perguntas fáceis e diretas sobre seus objetivos para nossa inteligência artificial entender o seu nível atual.
+              </p>
+            </div>
 
-              <div className="space-y-4">
-                <div>
-                  <h4 className="font-heading font-black text-lg text-white uppercase tracking-wider">Plano Pro Completo</h4>
-                  <p className="text-xs text-slate-400 mt-1">Acesso ilimitado a todas as ferramentas e treinos inteligentes.</p>
-                </div>
-
-                <div className="pt-2 flex items-baseline gap-1">
-                  <span className="text-xl font-heading text-slate-400 font-medium">R$</span>
-                  <span className="text-5xl font-heading font-black text-white tracking-tight">29,90</span>
-                  <span className="text-xs text-slate-400 font-mono font-semibold">/ mês</span>
-                </div>
-
-                <div className="inline-flex items-center gap-1.5 py-1.5 px-3 bg-lime-500/10 border border-lime-500/20 text-lime-400 rounded-lg text-[10px] font-black uppercase tracking-wider font-heading">
-                  Liberação Imediata Após Assinatura
-                </div>
+            <div className="space-y-4 border-t md:border-t-0 md:border-l border-slate-900 pt-6 md:pt-0 md:pl-6">
+              <div className="w-12 h-12 rounded-2xl bg-slate-900 border border-slate-800 text-slate-350 flex items-center justify-center font-heading font-black text-lg">
+                2
               </div>
+              <h4 className="font-heading font-black text-base">Seus dias e horários</h4>
+              <p className="text-xs text-slate-400 font-sans leading-relaxed">
+                Você escolhe em quais dias da semana quer treinar e quanto tempo livre tem em cada dia para dividirmos as sessões.
+              </p>
+            </div>
 
-              {/* Recursos inclusos */}
-              <div className="space-y-3.5 border-t border-slate-800 pt-6">
-                <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider font-mono">Tudo o que você recebe:</p>
-                
-                <ul className="space-y-2.5 text-xs text-slate-300">
-                  <li className="flex items-start gap-2.5">
-                    <Check className="w-4 h-4 text-lime-400 shrink-0 mt-0.5" />
-                    <span>Planilhas de Treino Adaptativas geradas por IA</span>
-                  </li>
-                  <li className="flex items-start gap-2.5">
-                    <Check className="w-4 h-4 text-lime-400 shrink-0 mt-0.5" />
-                    <span>Calculador de zonas simplificado e prático</span>
-                  </li>
-                  <li className="flex items-start gap-2.5">
-                    <Check className="w-4 h-4 text-lime-400 shrink-0 mt-0.5" />
-                    <span>Sem anúncios ou taxas ocultas de adesão</span>
-                  </li>
-                </ul>
+            <div className="space-y-4 border-t md:border-t-0 md:border-l border-slate-900 pt-6 md:pt-0 md:pl-6">
+              <div className="w-12 h-12 rounded-2xl bg-slate-900 border border-slate-800 text-slate-350 flex items-center justify-center font-heading font-black text-lg">
+                3
               </div>
+              <h4 className="font-heading font-black text-base">Treino na tela</h4>
+              <p className="text-xs text-slate-400 font-sans leading-relaxed">
+                Os treinos aparecem na sua tela. Dá para usar o nosso cronômetro no celular ou salvar o treino para ler quando quiser.
+              </p>
+            </div>
 
-              {/* Botão de CTA */}
-              <div className="pt-4">
-                <a 
-                  href="#auth-section"
-                  className="w-full inline-flex items-center justify-center gap-2.5 py-4 px-4 bg-linear-to-r from-lime-500 to-emerald-500 hover:from-lime-450 hover:to-emerald-450 active:scale-98 text-slate-950 rounded-xl text-xs font-black uppercase tracking-wider shadow-lg shadow-lime-500/10 cursor-pointer"
-                >
-                  <span>Criar Conta</span>
-                  <ChevronRight className="w-4 h-4" />
-                </a>
-                <p className="text-[10px] text-slate-500 text-center mt-2.5 font-sans leading-normal">
-                  Cancele quando quiser diretamente no painel de configurações. Sem pegadinhas de fidelidade ou multas de cancelamento.
+            <div className="space-y-4 border-t md:border-t-0 md:border-l border-slate-900 pt-6 md:pt-0 md:pl-6">
+              <div className="w-12 h-12 rounded-2xl bg-slate-900 border border-slate-800 text-lime-450 flex items-center justify-center font-heading font-black text-lg">
+                4
+              </div>
+              <h4 className="font-heading font-black text-base">Resultados reais</h4>
+              <p className="text-xs text-slate-400 font-sans leading-relaxed">
+                Você pedala no seu ritmo, marca o treino como feito e sente seu corpo cansando bem menos e subindo mais rápido.
+              </p>
+            </div>
+
+          </div>
+
+          {/* Expanded extra benefits section */}
+          <div className="mt-20 pt-12 border-t border-slate-850">
+            <h4 className="text-center font-heading font-black text-lg text-white mb-8">
+              Ainda mais motivos para treinar com a gente:
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
+              <div className="p-5 rounded-2xl bg-slate-900/50 border border-slate-850 space-y-2">
+                <span className="text-xs font-black text-lime-400 uppercase tracking-widest block">Menos Desculpas</span>
+                <p className="text-xs text-slate-300 font-medium">
+                  Se chover ou não der tempo de treinar na rua, você reajusta suas preferências e a nossa inteligência reorganiza os treinos ou os adapta para o rolo.
+                </p>
+              </div>
+              <div className="p-5 rounded-2xl bg-slate-900/50 border border-slate-850 space-y-2">
+                <span className="text-xs font-black text-emerald-400 uppercase tracking-widest block">Mais Disposição</span>
+                <p className="text-xs text-slate-300 font-medium">
+                  Os treinos não te deixam exausto para o resto do dia. Pelo contrário: você ganha mais energia para trabalhar e aproveitar o tempo livre.
+                </p>
+              </div>
+              <div className="p-5 rounded-2xl bg-slate-900/50 border border-slate-850 space-y-2">
+                <span className="text-xs font-black text-yellow-400 uppercase tracking-widest block">Sem Planilhas Presas</span>
+                <p className="text-xs text-slate-300 font-medium">
+                  Sinta-se livre para mudar seus dias preferidos a qualquer momento. Suas metas semanais mudam sozinhas para você não perder o ritmo.
                 </p>
               </div>
             </div>
+          </div>
+
+          <div className="pt-6 text-center">
+            <a 
+              href="#auth-section"
+              className="inline-flex items-center gap-2.5 px-6 py-4 bg-linear-to-r from-lime-500 to-emerald-500 hover:from-lime-450 hover:to-emerald-450 text-slate-950 text-xs font-black uppercase tracking-wider rounded-2xl shadow-lg shadow-lime-500/10 cursor-pointer"
+            >
+              <span>Criar Minha Conta Grátis Agora</span>
+              <ChevronRight className="w-4 h-4" />
+            </a>
           </div>
 
         </div>
@@ -927,9 +915,9 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
             <p className="text-xs font-extrabold text-white">BIKER AI — Smart Assessment</p>
           </div>
           <div className="flex flex-wrap justify-center gap-6">
-            <a href="#como-funciona" className="hover:text-white transition-colors">Como funciona</a>
+            <a href="#preview-do-app" className="hover:text-white transition-colors">Conhecer o App</a>
             <a href="#beneficios" className="hover:text-white transition-colors">Benefícios</a>
-            <a href="#precos" className="hover:text-white transition-colors">Preços</a>
+            <a href="#como-funciona" className="hover:text-white transition-colors">Como funciona</a>
             <a href="#auth-section" className="text-lime-400 hover:text-white transition-colors">Entrar no Portal</a>
           </div>
           <div className="text-[10px] text-slate-600 font-mono">
@@ -963,7 +951,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
                 </div>
                 <div>
                   <h3 className="font-heading font-black text-sm uppercase tracking-wide">
-                    Como Instalar o Biker AI
+                    Como Instalar o Biker AI 📲
                   </h3>
                   <p className="text-[10px] text-slate-400 mt-0.5 font-mono">
                     Adicione à tela inicial como um aplicativo nativo
@@ -1010,7 +998,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
                 </div>
 
                 <div className="bg-lime-500/5 p-3 rounded-xl border border-lime-500/10 text-[11px] text-lime-400 flex items-start gap-2">
-                  <span className="font-extrabold select-none">VANTAGENS:</span>
+                  <span className="font-extrabold select-none">💡 VANTAGENS:</span>
                   <span className="leading-relaxed text-slate-300">Instalar o aplicativo garante carregamento instantâneo, menos consumo de internet, suporte offline e navegação livre de barras do navegador!</span>
                 </div>
 
