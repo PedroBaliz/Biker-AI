@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { UserProfile, ZoneInfo } from "../types";
+import { apiFetch } from "../firebase";
 import { motion, AnimatePresence } from "motion/react";
 import { 
   Users, 
@@ -64,7 +65,7 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
   const fetchBackups = async () => {
     setBackupsLoading(true);
     try {
-      const response = await fetch("/api/admin/backups");
+      const response = await apiFetch("/api/admin/backups");
       if (response.ok) {
         const data = await response.json();
         if (data.success) {
@@ -85,7 +86,7 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
     setSuccess("");
     setError("");
     try {
-      const response = await fetch("/api/admin/backups/create", { method: "POST" });
+      const response = await apiFetch("/api/admin/backups/create", { method: "POST" });
       if (response.ok) {
         const data = await response.json();
         if (data.success) {
@@ -114,7 +115,7 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
     setSuccess("");
     setError("");
     try {
-      const response = await fetch("/api/admin/backups/restore", {
+      const response = await apiFetch("/api/admin/backups/restore", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ filename })
@@ -155,7 +156,7 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
     setLoading(true);
     setError("");
     try {
-      const response = await fetch("/api/admin/users");
+      const response = await apiFetch("/api/admin/users");
       if (response.ok) {
         const data = await response.json();
         if (data.success && data.users) {
@@ -190,7 +191,7 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
   useEffect(() => {
     if (selectedUser) {
       setEditStatus(selectedUser.profile.subscriptionStatus || 'active');
-      setEditPlan(selectedUser.profile.subscriptionPlan || 'Bronze (Mensal)');
+      setEditPlan(selectedUser.profile.subscriptionPlan || 'Plano Pro');
       setEditExpiresAt(selectedUser.profile.subscriptionExpiresAt || '2026-12-31');
       setEditRole(selectedUser.profile.role || 'athlete');
       setEditFtp(selectedUser.profile.ftp ?? "");
@@ -206,7 +207,7 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
     setError("");
     setSuccess("");
     try {
-      const response = await fetch("/api/admin/update-user-status", {
+      const response = await apiFetch("/api/admin/update-user-status", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -248,7 +249,7 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
     setError("");
     setSuccess("");
     try {
-      const response = await fetch("/api/admin/update-user-status", {
+      const response = await apiFetch("/api/admin/update-user-status", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -259,7 +260,7 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
       if (response.ok) {
         const data = await response.json();
         if (data.success) {
-          setSuccess(`Status de ${user.profile.name} alterado rápido para ${newStat === 'active' ? '🚨 Ativo' : '🔒 Expirado'}`);
+          setSuccess(`Status de ${user.profile.name} alterado rápido para ${newStat === 'active' ? 'Ativo' : 'Expirado'}`);
           if (user.email.toLowerCase() === currentUserEmail.toLowerCase()) {
             onRefreshCurrentProfile(data.user.profile);
           }
@@ -278,13 +279,10 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
   const expiredCount = users.filter(u => u.profile.subscriptionStatus === 'expired').length;
   const avgFtp = (users.filter(u => u.profile.ftp).reduce((sum, u) => sum + (u.profile.ftp || 0), 0) / (users.filter(u => u.profile.ftp).length || 1)).toFixed(0);
 
-  // Estimativa de faturamento de MVP (Bronze R$ 29,90/mês, Prata R$ 24,90/mês equ., Ouro R$ 16,58/mês equ.)
+  // Estimativa de faturamento de MVP (Plano Pro R$ 29,90/mês)
   const estimatedRevenue = users.reduce((sum, u) => {
     if (u.profile.subscriptionStatus !== 'active') return sum;
-    const plan = (u.profile.subscriptionPlan || "").toLowerCase();
-    if (plan.includes("ouro") || plan.includes("anual")) return sum + 16.58; // mensalizado
-    if (plan.includes("prata") || plan.includes("trimestral")) return sum + 24.9;
-    return sum + 29.9; // Bronze
+    return sum + 29.9; // Plano Pro
   }, 0).toFixed(2);
 
   // Filter users list
@@ -294,7 +292,7 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
       user.email.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesStatus = statusFilter === "all" || (user.profile.subscriptionStatus || "active") === statusFilter;
-    const matchesPlan = planFilter === "all" || (user.profile.subscriptionPlan || "Bronze (Mensal)") === planFilter;
+    const matchesPlan = planFilter === "all" || (user.profile.subscriptionPlan || "Plano Pro") === planFilter;
 
     return matchesSearch && matchesStatus && matchesPlan;
   });
@@ -449,9 +447,9 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
                 className="w-full bg-slate-50 border border-slate-150 focus:border-slate-350 focus:bg-white rounded-xl pl-9 pr-3 py-3 text-xs outline-hidden transition-all text-slate-700 font-bold"
               >
                 <option value="all">Filtro: Todos</option>
-                <option value="active">✓ Ativos</option>
-                <option value="pending_payment">⏳ Atrasados</option>
-                <option value="expired">🔒 Expirados</option>
+                <option value="active">Ativos</option>
+                <option value="pending_payment">Atrasados</option>
+                <option value="expired">Expirados</option>
               </select>
             </div>
           </div>
@@ -510,7 +508,7 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
                         <div className="flex gap-2.5 items-center flex-wrap pt-0.5">
                           <span className="text-[10px] text-slate-500 font-sans flex items-center gap-1">
                             <Tag className="w-3 h-3" />
-                            {user.profile.subscriptionPlan || "Bronze (Mensal)"}
+                            {user.profile.subscriptionPlan || "Plano Pro"}
                           </span>
                           <span className="text-slate-200">|</span>
                           <span className="text-[10px] text-slate-500 font-sans flex items-center gap-1">
@@ -689,9 +687,7 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
                         onChange={(e) => setEditPlan(e.target.value)}
                         className="w-full bg-slate-50 border border-slate-150 focus:border-slate-300 rounded-xl px-2.5 py-2.5 text-xs outline-hidden text-slate-700 font-bold"
                       >
-                        <option value="Bronze (Mensal)">Bronze (Mensal)</option>
-                        <option value="Prata (Trimestral)">Prata (Trimestral)</option>
-                        <option value="Ouro (Anual)">Ouro (Anual)</option>
+                        <option value="Plano Pro">Plano Pro (Mensal)</option>
                       </select>
                     </div>
 

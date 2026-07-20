@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { UserProfile } from "../types";
+import { apiFetch } from "../firebase";
 import { motion, AnimatePresence } from "motion/react";
 import { 
   ShieldAlert, 
@@ -47,13 +48,13 @@ export default function SubscriptionWall({ userEmail, userName, currentStatus, o
   const [mpPixData, setMpPixData] = useState<{ qr_code: string; qr_code_base64: string; paymentId?: number } | null>(null);
 
   // Single premium plan
-  const premiumPlan = { name: "Plano Premium", price: "29,90" };
+  const premiumPlan = { name: "Plano Pro", price: "29,90" };
 
   // Fetch integration status on mount
   useEffect(() => {
     const checkMpConfig = async () => {
       try {
-        const response = await fetch("/api/mercadopago/config");
+        const response = await apiFetch("/api/mercadopago/config");
         if (response.ok) {
           const data = await response.json();
           setMpConfig({ isReal: data.isReal, publicKey: data.publicKey });
@@ -69,7 +70,7 @@ export default function SubscriptionWall({ userEmail, userName, currentStatus, o
   const loadMpPreference = async () => {
     setMpLoading(true);
     try {
-      const response = await fetch("/api/mercadopago/create-preference", {
+      const response = await apiFetch("/api/mercadopago/create-preference", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: userEmail })
@@ -90,7 +91,7 @@ export default function SubscriptionWall({ userEmail, userName, currentStatus, o
   const loadMpPix = async () => {
     setMpLoading(true);
     try {
-      const response = await fetch("/api/mercadopago/create-pix", {
+      const response = await apiFetch("/api/mercadopago/create-pix", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: userEmail })
@@ -154,7 +155,7 @@ export default function SubscriptionWall({ userEmail, userName, currentStatus, o
       futureDate.setMonth(futureDate.getMonth() + 1);
       const formattedDate = futureDate.toISOString().split('T')[0];
       
-      const response = await fetch("/api/admin/update-user-status", {
+      const response = await apiFetch("/api/admin/update-user-status", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -240,7 +241,7 @@ export default function SubscriptionWall({ userEmail, userName, currentStatus, o
       futureDate.setMonth(futureDate.getMonth() + 1);
       const formattedDate = futureDate.toISOString().split('T')[0];
 
-      const response = await fetch("/api/admin/update-user-status", {
+      const response = await apiFetch("/api/admin/update-user-status", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -325,7 +326,7 @@ export default function SubscriptionWall({ userEmail, userName, currentStatus, o
               <span className="bg-lime-500/15 text-lime-600 text-[10px] font-black uppercase px-2.5 py-1 rounded-full border border-lime-500/10 tracking-wider">
                 Acesso Ilimitado Garantido
               </span>
-              <h4 className="font-heading font-black text-slate-800 text-lg pt-1">Assinatura Premium CycleCoach AI</h4>
+              <h4 className="font-heading font-black text-slate-800 text-lg pt-1">Assinatura Plano Pro CycleCoach AI</h4>
               <p className="text-xs text-slate-400 font-sans max-w-md mx-auto">Acesse planilhas inteligentes recalibradas pela IA e evolua seu rendimento ilimitadamente.</p>
             </div>
 
@@ -339,7 +340,7 @@ export default function SubscriptionWall({ userEmail, userName, currentStatus, o
                     <span className="text-[10px] uppercase font-bold tracking-wider text-lime-400">Plano Único e Completo</span>
                     <Zap className="w-4 h-4 text-lime-400" />
                   </div>
-                  <h5 className="font-heading font-black text-lg mt-2">Mensal Premium</h5>
+                  <h5 className="font-heading font-black text-lg mt-2">Plano Pro (Mensal)</h5>
                   <p className="text-[11px] mt-1.5 text-slate-300">
                     Acesso completo a todas as ferramentas, gráficos e treinador AI, sem barreiras de uso nem limitações de fôlego!
                   </p>
@@ -566,7 +567,7 @@ export default function SubscriptionWall({ userEmail, userName, currentStatus, o
                 
                 {mpError && (
                   <div className="p-3 bg-rose-50 border border-rose-250 text-rose-800 text-[11px] rounded-xl font-sans font-bold">
-                    ⚠️ {mpError}
+                    {mpError}
                   </div>
                 )}
 
