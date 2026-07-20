@@ -21,8 +21,7 @@ import {
   ExternalLink,
   Loader2,
   Lock,
-  XCircle,
-  Info
+  XCircle
 } from "lucide-react";
 import SmartHydrationTip from "./SmartHydrationTip";
 
@@ -33,59 +32,6 @@ interface WorkoutCardProps {
   profile?: UserProfile;
   key?: string;
   allWorkouts?: Workout[];
-  isSimpleMode?: boolean;
-}
-
-// Translation helper for simplified display mode (sensation-based, no technical jargon)
-function getSimplifiedText(text: string | undefined): string {
-  if (!text) return "";
-  
-  let result = text;
-  
-  // Replace Z1..Z7 with simplified descriptions
-  result = result.replace(/Z1\s*\(Recuperação\)|Z1/gi, "Muito Leve (Giro Regenerativo)");
-  result = result.replace(/Z2\s*\(Endurance\)|Z2\s*\(Resistência\)|Z2/gi, "Leve (Giro confortável / Ritmo de conversa)");
-  result = result.replace(/Z3\s*\(Tempo\/Ritmo\)|Z3\s*\(Tempo\)|Z3/gi, "Moderado (Esforço firme / Fôlego presente)");
-  result = result.replace(/Z4\s*\(Limiar de Lactato\)|Z4\s*\(Limiar\)|Z4/gi, "Forte (Seu limite / Falar poucas palavras)");
-  result = result.replace(/Z5\s*\(VO2 M[aá]ximo\)|Z5\s*\(VO2\s*Max\)|Z5/gi, "Muito Forte (Fôlego extremo / VO2 Max)");
-  result = result.replace(/Z6\s*\(Capacidade\s+Anaer[oó]bica\)|Z6/gi, "Explosivo (Força máxima / Arrancada)");
-  result = result.replace(/Z7\s*\(Pot[eê]ncia\s+Neuromuscular\)|Z7/gi, "Explosão Máxima");
-  
-  // Replace other technical jargon
-  result = result.replace(/FTP/gi, "seu esforço limite atual (FTP)");
-  result = result.replace(/Fartlek/gi, "ritmos variados (jogo de velocidade)");
-  result = result.replace(/Sweet Spot/gi, "ritmo firme eficiente");
-  result = result.replace(/limiar de lactato/gi, "limiar de esforço pesado");
-  result = result.replace(/overtraining/gi, "excesso de treino (esgotamento)");
-  result = result.replace(/microciclo de progressão/gi, "ciclo de evolução de cargas");
-  result = result.replace(/supercompensação/gi, "recuperação super-compensada");
-  result = result.replace(/mitocôndrias/gi, "geradores de fôlego do corpo");
-  result = result.replace(/mitocondriais/gi, "geradores de fôlego corporal");
-  result = result.replace(/glicogênio muscular/gi, "reservas de energia muscular");
-  result = result.replace(/glicogênio/gi, "reservas de energia");
-  result = result.replace(/capilarização muscular/gi, "oxigenação dos músculos");
-  
-  return result;
-}
-
-function getZoneExplanation(zone: string): string {
-  const z = zone.toUpperCase();
-  if (z.includes("Z1") || z.includes("RECUPERAÇÃO") || z.includes("REGENERATIVO")) {
-    return "Zona 1 (Giro Regenerativo): Intensidade super leve para soltar as pernas e recuperar os músculos de treinos anteriores. Sem cansaço ou fôlego curto.";
-  }
-  if (z.includes("Z2") || z.includes("ENDURANCE") || z.includes("RESISTÊNCIA")) {
-    return "Zona 2 (Ritmo de Viagem): Intensidade confortável que você consegue manter por horas. Ideal para construir resistência aeróbica básica e queimar gordura.";
-  }
-  if (z.includes("Z3") || z.includes("TEMPO") || z.includes("RITMO")) {
-    return "Zona 3 (Ritmo Firme): Intensidade moderadamente forte. Respiração fica profunda e constante. Exige foco para manter, mas ainda é possível falar.";
-  }
-  if (z.includes("Z4") || z.includes("LIMIAR") || z.includes("FTP") || z.includes("LACTATO")) {
-    return "Zona 4 (Limiar / Força): Intensidade forte e cansativa. Pernas começam a arder devido ao esforço e só dá para falar frases muito curtas.";
-  }
-  if (z.includes("Z5") || z.includes("VO2") || z.includes("MÁXIMO")) {
-    return "Zona 5 (VO2 Máximo): Intensidade extrema e exaustiva. Fôlego no limite e respiração ofegante total. Sustentável por poucos minutos.";
-  }
-  return "Zona de Intensidade Coordenada: Esforço técnico calculado especificamente para otimizar seus marcadores físicos.";
 }
 
 // Custom simple markdown helper to render coaching feedback elegantly
@@ -139,17 +85,10 @@ function parseBold(text: string) {
   });
 }
 
-export default function WorkoutCard({ workout, onUpdate, onDelete, profile, allWorkouts, isSimpleMode = true }: WorkoutCardProps) {
+export default function WorkoutCard({ workout, onUpdate, onDelete, profile, allWorkouts }: WorkoutCardProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [isCompleting, setIsCompleting] = useState(false);
   const [showLimitError, setShowLimitError] = useState(false);
-  const [showZoneExplanation, setShowZoneExplanation] = useState(false);
-
-  const displayType = isSimpleMode ? getSimplifiedText(workout.type) : workout.type;
-  const displayTargetZone = isSimpleMode ? getSimplifiedText(workout.targetZone) : workout.targetZone;
-  const displayGoal = isSimpleMode ? getSimplifiedText(workout.goal) : workout.goal;
-  const displayStructure = isSimpleMode ? getSimplifiedText(workout.structure) : workout.structure;
-  const displayTip = isSimpleMode ? getSimplifiedText(workout.tip) : workout.tip;
   
   // Temporary local state for editing prescription (Coach / Admin)
   const [editType, setEditType] = useState(workout.type);
@@ -244,11 +183,11 @@ export default function WorkoutCard({ workout, onUpdate, onDelete, profile, allW
   };
 
   const getSimpleEffortText = (rpe: number) => {
-    if (rpe <= 2) return "Muito Leve";
-    if (rpe <= 4) return "Leve";
-    if (rpe <= 6) return "Moderado";
-    if (rpe <= 8) return "Forte";
-    return "Máximo";
+    if (rpe <= 2) return "Muito Leve 👍";
+    if (rpe <= 4) return "Leve 🚴";
+    if (rpe <= 6) return "Moderado 🔥";
+    if (rpe <= 8) return "Forte ⚡";
+    return "Máximo 🚨";
   };
 
   const rpeStyles = getRpeStyles(workout.rpe || 5);
@@ -436,16 +375,16 @@ export default function WorkoutCard({ workout, onUpdate, onDelete, profile, allW
                 onChange={(e) => setEditRpe(Number(e.target.value))}
                 className="w-full bg-white border border-slate-200 focus:border-lime-500 rounded-lg p-2 text-xs text-slate-800 outline-hidden"
               >
-                <option value={1}>Muito Leve (Giro Fácil)</option>
-                <option value={2}>Muito Leve (Regenerativo)</option>
-                <option value={3}>Leve (Resistência)</option>
-                <option value={4}>Leve (Ritmo Confortável)</option>
-                <option value={5}>Moderado (Ritmo Firme)</option>
-                <option value={6}>Moderado (Firme/Z3)</option>
-                <option value={7}>Forte (Intenso/Z4)</option>
-                <option value={8}>Forte (Intervalado Ativo)</option>
-                <option value={9}>Máximo (Esforço Total)</option>
-                <option value={10}>Máximo (VO2 Max/Tiro)</option>
+                <option value={1}>Muito Leve 👍 (Giro Fácil)</option>
+                <option value={2}>Muito Leve 👍 (Regenerativo)</option>
+                <option value={3}>Leve 🚴 (Resistência)</option>
+                <option value={4}>Leve 🚴 (Ritmo Confortável)</option>
+                <option value={5}>Moderado 🔥 (Ritmo Firme)</option>
+                <option value={6}>Moderado 🔥 (Firme/Z3)</option>
+                <option value={7}>Forte ⚡ (Intenso/Z4)</option>
+                <option value={8}>Forte ⚡ (Intervalado Ativo)</option>
+                <option value={9}>Máximo 🚨 (Esforço Total)</option>
+                <option value={10}>Máximo 🚨 (VO2 Max/Tiro)</option>
               </select>
             </div>
           </div>
@@ -541,7 +480,7 @@ export default function WorkoutCard({ workout, onUpdate, onDelete, profile, allW
           onClick={() => setShowLimitError(false)}
           className="w-full bg-rose-500 hover:bg-rose-600 text-white py-2.5 px-3 rounded-xl text-[10px] font-extrabold uppercase font-heading tracking-wider transition-all shadow-2xs active:scale-95 cursor-pointer text-center"
         >
-          Entendi, vou descansar hoje!
+          Entendi, vou descansar hoje! 👍
         </button>
       </div>
     );
@@ -586,7 +525,7 @@ export default function WorkoutCard({ workout, onUpdate, onDelete, profile, allW
                 onChange={(e) => setActualRpe(Number(e.target.value))}
                 className="w-full bg-white border border-slate-200 focus:border-sky-550 rounded-xl px-1.5 py-1.5 text-xs text-slate-805 outline-hidden font-medium"
               >
-                <option value={1}>1/10 (Super Leve)</option>
+                <option value={1}>1/10 (Super Leve) 👍</option>
                 <option value={2}>2/10 (Giro Regenerativo)</option>
                 <option value={3}>3/10 (Zona de Resistência)</option>
                 <option value={4}>4/10 (Ritmo Confortável)</option>
@@ -595,7 +534,7 @@ export default function WorkoutCard({ workout, onUpdate, onDelete, profile, allW
                 <option value={7}>7/10 (Limiar de Lactato)</option>
                 <option value={8}>8/10 (Intervalos Fortes)</option>
                 <option value={9}>9/10 (Estresse VO2max)</option>
-                <option value={10}>10/10 (Esforço Máximo/Tiro)</option>
+                <option value={10}>10/10 (Esforço Máximo/Tiro) 🔥</option>
               </select>
             </div>
           </div>
@@ -762,7 +701,7 @@ export default function WorkoutCard({ workout, onUpdate, onDelete, profile, allW
             ) : (
               <>
                 <Sparkles className="w-4 h-4 text-amber-400 fill-amber-400/20" />
-                <span>{workout.completed ? "Atualizar e Reavaliar com Coach AI" : "Salvar e Avaliar com Coach AI"}</span>
+                <span>{workout.completed ? "Atualizar e Reavaliar com Coach AI 🤖" : "Salvar e Avaliar com Coach AI 🤖"}</span>
               </>
             )}
           </button>
@@ -815,30 +754,13 @@ export default function WorkoutCard({ workout, onUpdate, onDelete, profile, allW
               {workout.day}
             </span>
             <h4 className={`font-heading font-black text-slate-800 text-lg sm:text-base leading-snug ${workout.completed ? 'text-slate-500 line-through' : ''}`}>
-              {displayType}
+              {workout.type}
             </h4>
           </div>
-          <button 
-            type="button"
-            onClick={() => setShowZoneExplanation(!showZoneExplanation)}
-            className={`px-3 py-1 text-[10px] font-mono font-bold rounded-full border shrink-0 transition-all flex items-center gap-1 active:scale-95 cursor-pointer ${rpeStyles.text}`}
-            title="Clique para ver o que significa esta zona de esforço"
-          >
-            <span>{displayTargetZone}</span>
-            <Info className="w-3 h-3 text-current shrink-0" />
-          </button>
+          <span className={`px-3 py-1 text-[10px] font-mono font-bold rounded-full border shrink-0 transition-transform ${rpeStyles.text}`}>
+            {workout.targetZone}
+          </span>
         </div>
-
-        {/* Dynamic Zone Explanation Dropdown */}
-        {showZoneExplanation && (
-          <div className="bg-slate-50 border border-slate-200/60 rounded-xl p-3 text-[11px] font-sans text-slate-650 leading-relaxed my-3.5 animate-fadeIn">
-            <p className="font-semibold text-slate-805 flex items-center gap-1.5 mb-1 text-[10.5px]">
-              <Info className="w-3.5 h-3.5 text-sky-600 shrink-0" />
-              Sua sensação física nesta zona:
-            </p>
-            {getZoneExplanation(workout.targetZone)}
-          </div>
-        )}
 
         {/* Duration & PSE Row */}
         <div className="grid grid-cols-2 gap-3 border-y border-slate-100/60 py-3.5 my-4">
@@ -1011,7 +933,7 @@ export default function WorkoutCard({ workout, onUpdate, onDelete, profile, allW
             <Compass className="w-3.5 h-3.5" />
             <span className="text-[9px] font-extrabold uppercase tracking-widest font-heading">Foco do Treino</span>
           </div>
-          <p className="text-xs font-sans text-slate-655 leading-relaxed font-normal">{displayGoal}</p>
+          <p className="text-xs font-sans text-slate-655 leading-relaxed font-normal">{workout.goal}</p>
         </div>
 
         {/* Structure */}
@@ -1021,15 +943,15 @@ export default function WorkoutCard({ workout, onUpdate, onDelete, profile, allW
             <span className="text-[9px] font-extrabold uppercase tracking-widest font-heading">Estrutura de Ritmo</span>
           </div>
           <div className="bg-slate-50/70 border border-slate-100 rounded-2xl p-3.5 shadow-2xs">
-            <p className="text-xs font-mono text-slate-700 leading-relaxed break-words font-medium">{displayStructure}</p>
+            <p className="text-xs font-mono text-slate-700 leading-relaxed break-words font-medium">{workout.structure}</p>
           </div>
         </div>
 
         {/* Dica do Treino */}
-        {displayTip && (
+        {workout.tip && (
           <div id="workout-tip-bubble" className="mt-4 mb-5 p-3.5 rounded-2xl bg-amber-50/50 border border-amber-100/60 flex items-start gap-2.5">
             <MessageSquareCode className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-            <p className="text-[11px] font-sans font-medium text-slate-650 leading-relaxed italic">{displayTip}</p>
+            <p className="text-[11px] font-sans font-medium text-slate-650 leading-relaxed italic">{workout.tip}</p>
           </div>
         )}
 
@@ -1096,7 +1018,7 @@ export default function WorkoutCard({ workout, onUpdate, onDelete, profile, allW
               {workout.completed ? (
                 <>
                   <Check className="w-3.5 h-3.5 stroke-[3.5]" />
-                  <span>Concluído</span>
+                  <span>Concluído 🏆</span>
                 </>
               ) : (
                 <>

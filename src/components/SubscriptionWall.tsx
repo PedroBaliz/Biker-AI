@@ -566,7 +566,7 @@ export default function SubscriptionWall({ userEmail, userName, currentStatus, o
                 
                 {mpError && (
                   <div className="p-3 bg-rose-50 border border-rose-250 text-rose-800 text-[11px] rounded-xl font-sans font-bold">
-                    {mpError}
+                    ⚠️ {mpError}
                   </div>
                 )}
 

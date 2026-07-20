@@ -207,7 +207,7 @@ export default function VolumeEvolutionChart({ profile, plan }: VolumeEvolutionC
           <p className="font-heading font-black text-lime-450 uppercase tracking-widest text-[10px] border-b border-slate-800 pb-1.5 flex items-center justify-between">
             <span>{data.name}</span>
             <span className="text-[9px] text-slate-450 font-mono">
-              {data.isReal ? "Real" : "Simulado"}
+              {data.isReal ? "✓ Real" : "⚡ Simulado"}
             </span>
           </p>
           <div className="space-y-1.5 font-medium text-slate-350">

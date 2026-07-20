@@ -259,7 +259,7 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
       if (response.ok) {
         const data = await response.json();
         if (data.success) {
-          setSuccess(`Status de ${user.profile.name} alterado rápido para ${newStat === 'active' ? 'Ativo' : 'Expirado'}`);
+          setSuccess(`Status de ${user.profile.name} alterado rápido para ${newStat === 'active' ? '🚨 Ativo' : '🔒 Expirado'}`);
           if (user.email.toLowerCase() === currentUserEmail.toLowerCase()) {
             onRefreshCurrentProfile(data.user.profile);
           }
@@ -446,9 +446,9 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
                 className="w-full bg-slate-50 border border-slate-150 focus:border-slate-350 focus:bg-white rounded-xl pl-9 pr-3 py-3 text-xs outline-hidden transition-all text-slate-700 font-bold"
               >
                 <option value="all">Filtro: Todos</option>
-                <option value="active">Ativos</option>
-                <option value="pending_payment">Atrasados</option>
-                <option value="expired">Expirados</option>
+                <option value="active">✓ Ativos</option>
+                <option value="pending_payment">⏳ Atrasados</option>
+                <option value="expired">🔒 Expirados</option>
               </select>
             </div>
           </div>

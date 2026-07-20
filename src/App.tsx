@@ -49,11 +49,7 @@ import {
   Download,
   Smartphone,
   Share,
-  X,
-  AlertTriangle,
-  TrendingDown,
-  MessageSquare,
-  Lightbulb
+  X
 } from "lucide-react";
 
 export default function App() {
@@ -139,11 +135,6 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<"planilha" | "desempenho" | "zonas">("planilha");
   const [showMyWorkouts, setShowMyWorkouts] = useState(false);
   const [showPseExplanation, setShowPseExplanation] = useState(false);
-
-  // Simple / Technical display mode for workouts
-  const [displayMode, setDisplayMode] = useState<"simples" | "tecnico">(() => {
-    return (localStorage.getItem("biker_ai_display_mode") as "simples" | "tecnico") || "simples";
-  });
 
   // PWA installation states
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -538,14 +529,14 @@ export default function App() {
         const history = [...prev, {
           id: `gen-week-${Date.now()}`,
           sender: "treinador",
-          text: `**Sua Semana ${nextWeek} de Treinos Iniciou!**\n\n${data.coachMessage || "Preparei estímulos novos na planilha baseando-me nas suas sensações, cargas anteriores e nas conclusões!"}`,
+          text: `🚀 **Sua Semana ${nextWeek} de Treinos Iniciou!**\n\n${data.coachMessage || "Preparei estímulos novos na planilha baseando-me nas suas sensações, cargas anteriores e nas conclusões!"}`,
           timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
         }];
         if (data.geminiError) {
           history.push({
             id: `system-warn-${Date.now()}`,
             sender: "treinador",
-            text: `**Modo de Segurança Ativado (Treinador Local)**\n\nSua nova semana foi evoluída utilizando as regras de periodização embarcada para progressão de carga (supercompensação clássica) por conta de um erro técnico na IA.\n\n**Causa do erro:** \`${data.geminiError}\`\n\n*Para obter comentários analíticos profundos de IA integrada, configure uma chave de acesso GEMINI_API_KEY válida em seu painel.*`,
+            text: `⚠️ **Modo de Segurança Ativado (Treinador Local)**\n\nSua nova semana foi evoluída utilizando as regras de periodização embarcada para progressão de carga (supercompensação clássica) por conta de um erro técnico na IA.\n\n**Causa do erro:** \`${data.geminiError}\`\n\n*Para obter comentários analíticos profundos de IA integrada, configure uma chave de acesso GEMINI_API_KEY válida em seu painel.*`,
             timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
           });
         }
@@ -553,7 +544,7 @@ export default function App() {
       });
 
     } catch (err: any) {
-      alert("Erro detalhado ao evoluir a planilha:\n\n" + err.message + "\n\nPor favor, tente novamente ou verifique se as credenciais do servidor estão corretas.");
+      alert("⚠️ Erro detalhado ao evoluir a planilha:\n\n" + err.message + "\n\nPor favor, tente novamente ou verifique se as credenciais do servidor estão corretas.");
     } finally {
       setIsGeneratingNextWeek(false);
     }
@@ -764,6 +755,15 @@ export default function App() {
         return fields.filter(val => val !== null && val !== "" && val !== undefined).length;
       };
 
+      console.log("[ONBOARDING LOG - ANTES DO ENVIO]", {
+        perguntaAtual: profile.onboardingStep,
+        totalRespostasRegistradas: getRegisteredAnswersCount(profile),
+        estadoCompleto: profile,
+        mensagemEnviada: messageToSend,
+        isOnboarding,
+        endpoint
+      });
+
       const response = await customFetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -800,7 +800,7 @@ export default function App() {
           history.push({
             id: `system-warn-${Date.now()}`,
             sender: "treinador",
-            text: `**Aviso de Chamada Off-line**\n\nO coach respondeu usando respostas dinâmicas embarcadas de salvaguarda, pois a busca avançada por IA personalizada falhou.\n\n**Causa do erro:** \`${data.geminiError}\``,
+            text: `⚠️ **Aviso de Chamada Off-line**\n\nO coach respondeu usando respostas dinâmicas embarcadas de salvaguarda, pois a busca avançada por IA personalizada falhou.\n\n**Causa do erro:** \`${data.geminiError}\``,
             timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
           });
         }
@@ -815,6 +815,13 @@ export default function App() {
           if (data.parsedProfile.onboardingStep >= 10) {
             updated.onboardingStep = 10;
           }
+          
+          console.log("[ONBOARDING LOG - DEPOIS DA RESPOSTA (NOVO ESTADO)]", {
+            perguntaAtual: updated.onboardingStep,
+            totalRespostasRegistradas: getRegisteredAnswersCount(updated),
+            estadoCompleto: updated,
+            dadosRecebidosDoServidor: data.parsedProfile
+          });
 
           return updated;
         });
@@ -877,14 +884,14 @@ export default function App() {
         const history = [...prev, {
           id: `gen-${Date.now()}`,
           sender: "treinador",
-          text: `**Planilha Semanal Gerada com Sucesso!**\n\n${profile.name || "Atleta"}, montei uma planilha de treinos sob medida baseada no seu nível (**${profile.level}**) e seu objetivo de **${profile.goal}**. Confira a aba de planilha para ver os passos e dicas de cada dia! Let's ride!`,
+          text: `✨ **Planilha Semanal Gerada com Sucesso!**\n\n${profile.name || "Atleta"}, montei uma planilha de treinos sob medida baseada no seu nível (**${profile.level}**) e seu objetivo de **${profile.goal}**. Confira a aba de planilha para ver os passos e dicas de cada dia! Let's ride! 🚴‍♂️‍♂️💨`,
           timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
         }];
         if (data.geminiError) {
           history.push({
             id: `system-warn-${Date.now()}`,
             sender: "treinador",
-            text: `**Modo de Segurança Ativado (Treinador Local)**\n\nSeus treinos foram calculados utilizando nosso motor fisiológico embarcado com base profissional na grade dos 80/20, pois a chamada para a inteligência de IA personalizada retornou um erro.\n\n**Causa do erro:** \`${data.geminiError}\`\n\n*Geralmente isso ocorre por uma chave do Gemini que expirou ou foi bloqueada pelo Google como vazada (como a chave de demonstração padrão do projeto). Para utilizar a inteligência de IA personalizada completa, atualize a chave **GEMINI_API_KEY** no seu painel de Segredos/Configurações.*`,
+            text: `⚠️ **Modo de Segurança Ativado (Treinador Local)**\n\nSeus treinos foram calculados utilizando nosso motor fisiológico embarcado com base profissional na grade dos 80/20, pois a chamada para a inteligência de IA personalizada retornou um erro.\n\n**Causa do erro:** \`${data.geminiError}\`\n\n*Geralmente isso ocorre por uma chave do Gemini que expirou ou foi bloqueada pelo Google como vazada (como a chave de demonstração padrão do projeto). Para utilizar a inteligência de IA personalizada completa, atualize a chave **GEMINI_API_KEY** no seu painel de Segredos/Configurações.*`,
             timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
           });
         }
@@ -892,7 +899,7 @@ export default function App() {
       });
 
     } catch (err: any) {
-      alert("Erro detalhado ao gerar a planilha:\n\n" + err.message + "\n\nPor favor, tente novamente ou verifique se as credenciais do servidor estão corretas.");
+      alert("⚠️ Erro detalhado ao gerar a planilha:\n\n" + err.message + "\n\nPor favor, tente novamente ou verifique se as credenciais do servidor estão corretas.");
     } finally {
       setIsGeneratingPlan(false);
     }
@@ -1146,7 +1153,7 @@ export default function App() {
               <div className="flex-1 space-y-1.5">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <h3 className="font-heading font-extrabold text-sm sm:text-base text-rose-900 flex items-center gap-2">
-                    Erro de API Detectado (Código {globalError.status || "Conexão"})
+                    ⚠️ Erro de API Detectado (Código {globalError.status || "Conexão"})
                   </h3>
                   <span className="text-[10px] font-mono uppercase tracking-widest bg-rose-100 text-rose-800 px-2.5 py-1 rounded border border-rose-200 font-bold self-start sm:self-center">
                     {globalError.method} {globalError.url.split('?')[0]}
@@ -1374,7 +1381,7 @@ export default function App() {
 
                   {/* Manual Override inputs for profile to guarantee flexible customization */}
                   <div className="text-[11px] text-slate-500 font-sans bg-slate-50 p-3 rounded-xl border border-slate-100">
-                    <strong>Controle de Autonomia:</strong> O treinador atualiza esses campos de forma inteligente com base no chat. Se encontrar algum erro, você também pode digitar ou corrigir no painel abaixo!
+                    💡 <strong>Controle de Autonomia:</strong> O treinador atualiza esses campos de forma inteligente com base no chat. Se encontrar algum erro, você também pode digitar ou corrigir no painel abaixo!
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4">
@@ -1388,7 +1395,7 @@ export default function App() {
                         type="text" 
                         value={profile.name}
                         onChange={(e) => setProfile(prev => ({ ...prev, name: e.target.value }))}
-                        placeholder="Digite seu nome!"
+                        placeholder="⚠️ Digite seu nome!"
                         className={`px-3 py-2 rounded-lg text-xs font-bold transition-all outline-hidden ${
                           !profile.name 
                             ? 'bg-rose-50/20 border-2 border-rose-300 text-rose-800 placeholder:text-rose-450 focus:bg-white' 
@@ -1412,7 +1419,7 @@ export default function App() {
                             : 'bg-slate-50 border border-slate-100 hover:border-slate-200 focus:bg-white text-slate-700'
                         }`}
                       >
-                        <option value="">Precisa selecionar!</option>
+                        <option value="">⚠️ Precisa selecionar!</option>
                         <option value="iniciante">Iniciante</option>
                         <option value="intermediário">Intermediário</option>
                         <option value="avançado">Avançado</option>
@@ -1434,7 +1441,7 @@ export default function App() {
                             : 'bg-slate-50 border border-slate-100 hover:border-slate-200 focus:bg-white text-slate-700'
                         }`}
                       >
-                        <option value="">Precisa selecionar!</option>
+                        <option value="">⚠️ Precisa selecionar!</option>
                         <option value="perder peso">Perder Peso</option>
                         <option value="melhorar condicionamento">Melhorar Condicionamento</option>
                         <option value="completar um evento">Completar Evento/Prova</option>
@@ -1452,7 +1459,7 @@ export default function App() {
                         type="number" 
                         value={profile.daysPerWeek || ""}
                         onChange={(e) => setProfile(prev => ({ ...prev, daysPerWeek: e.target.value ? parseInt(e.target.value) : null }))}
-                        placeholder="Informe quantos dias!"
+                        placeholder="⚠️ Informe quantos dias!"
                         className={`px-3 py-2 rounded-lg text-xs font-bold transition-all outline-hidden ${
                           !profile.daysPerWeek 
                             ? 'bg-rose-50/20 border-2 border-rose-300 text-rose-800 placeholder:text-rose-450 focus:bg-white' 
@@ -1471,7 +1478,7 @@ export default function App() {
                         type="number" 
                         value={profile.durationPerSession || ""}
                         onChange={(e) => setProfile(prev => ({ ...prev, durationPerSession: e.target.value ? parseInt(e.target.value) : null }))}
-                        placeholder="Informe os minutos!"
+                        placeholder="⚠️ Informe os minutos!"
                         className={`px-3 py-2 rounded-lg text-xs font-bold transition-all outline-hidden ${
                           !profile.durationPerSession 
                             ? 'bg-rose-50/20 border-2 border-rose-300 text-rose-800 placeholder:text-rose-450 focus:bg-white' 
@@ -1685,7 +1692,7 @@ export default function App() {
                         id="coach-weekly-feedback-banner" 
                         className="bg-gradient-to-r from-lime-500/10 to-emerald-500/10 border border-lime-500/20 rounded-2xl p-5 flex items-start gap-4 shadow-2xs"
                       >
-                        <MessageSquare className="w-5 h-5 text-lime-600 shrink-0 mt-0.5" />
+                        <span className="text-2xl mt-0.5 shrink-0">🗣️</span>
                         <div>
                           <h4 className="font-heading font-extrabold text-slate-800 text-sm">Feedback do Treinador AI — Semana {plan.weekNumber || 1}</h4>
                           <p className="text-xs font-sans text-slate-650 leading-relaxed mt-1 italic">
@@ -1714,7 +1721,7 @@ export default function App() {
                         </div>
 
                         {/* Direct Access Action Link styled sportily */}
-                        <div className="pt-2 border-t border-slate-800/80 flex flex-wrap items-center justify-between sm:justify-start gap-3">
+                        <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between sm:justify-start gap-3">
                           <button
                             type="button"
                             onClick={() => {
@@ -1745,38 +1752,6 @@ export default function App() {
                               </>
                             )}
                           </button>
-
-                          {/* Simplified vs Technical mode toggle selector */}
-                          <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-800/80 items-center">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setDisplayMode("simples");
-                                localStorage.setItem("biker_ai_display_mode", "simples");
-                              }}
-                              className={`px-3 py-1.5 rounded-lg text-[10px] font-heading font-black uppercase tracking-wider transition-all cursor-pointer ${
-                                displayMode === "simples"
-                                  ? "bg-slate-800 text-lime-400 shadow-xs"
-                                  : "text-slate-400 hover:text-white"
-                              }`}
-                            >
-                              Modo Simples (Sensações)
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setDisplayMode("tecnico");
-                                localStorage.setItem("biker_ai_display_mode", "tecnico");
-                              }}
-                              className={`px-3 py-1.5 rounded-lg text-[10px] font-heading font-black uppercase tracking-wider transition-all cursor-pointer ${
-                                displayMode === "tecnico"
-                                  ? "bg-slate-800 text-lime-400 shadow-xs"
-                                  : "text-slate-400 hover:text-white"
-                              }`}
-                            >
-                              Modo Técnico (Fisiologia)
-                            </button>
-                          </div>
                         </div>
                       </motion.div>
 
@@ -1846,7 +1821,7 @@ export default function App() {
                                   }`}
                                 >
                                   <Sparkles className="w-3.5 h-3.5 shrink-0" />
-                                  <span>{showNextWeekForm ? "Fechar Configuração" : "Evoluir de Semana"}</span>
+                                  <span>{showNextWeekForm ? "Fechar Configuração" : "Evoluir de Semana 🚀"}</span>
                                 </button>
                                 <button
                                   type="button"
@@ -1915,7 +1890,7 @@ export default function App() {
                                               : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
                                           }`}
                                         >
-                                          <Dumbbell className="w-4 h-4 text-emerald-500 mt-1 shrink-0" />
+                                          <span className="text-xl shrink-0">💪</span>
                                           <div>
                                             <p className="font-bold text-emerald-800 text-[11px] uppercase tracking-wide">Excelente / Forte</p>
                                             <p className="text-[10px] text-slate-550 leading-tight mt-0.5">Me senti muito forte, pernas recuperadas e com energia de sobra.</p>
@@ -1931,7 +1906,7 @@ export default function App() {
                                               : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
                                           }`}
                                         >
-                                          <CheckCircle2 className="w-4 h-4 text-amber-500 mt-1 shrink-0" />
+                                          <span className="text-xl shrink-0">👍</span>
                                           <div>
                                             <p className="font-bold text-amber-800 text-[11px] uppercase tracking-wide">Equilibrado / Normal</p>
                                             <p className="text-[10px] text-slate-550 leading-tight mt-0.5">Cansaço normal esperado das sessões, mas completei bem.</p>
@@ -1947,7 +1922,7 @@ export default function App() {
                                               : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
                                           }`}
                                         >
-                                          <AlertTriangle className="w-4 h-4 text-rose-500 mt-1 shrink-0" />
+                                          <span className="text-xl shrink-0">⚠️</span>
                                           <div>
                                             <p className="font-bold text-rose-800 text-[11px] uppercase tracking-wide">Exausto / Dores</p>
                                             <p className="text-[10px] text-slate-550 leading-tight mt-0.5">Sinto dores articulares persistentes, exaustão física ou queimação pesada.</p>
@@ -1972,7 +1947,7 @@ export default function App() {
 
                                     {/* Progression rule visual tips based on stats */}
                                     <div className="bg-slate-200/45 p-3 rounded-xl text-[11px] text-slate-625 flex items-start gap-2.5 border border-slate-250/50">
-                                      <TrendingDown className="w-4 h-4 text-slate-500 mt-0.5 shrink-0" />
+                                      <span className="text-sm shrink-0">📉</span>
                                       <p className="leading-relaxed font-sans">
                                         {pctW >= 75 ? (
                                           <span>Análise Fisiológica: Você concluiu <strong>{pctW}% dos treinos</strong> propostos! Atleta exemplar! Iremos propor um microciclo de <strong>Progressão de Cargas e Supercompensação Aeróbica</strong> para a Semana {(plan.weekNumber || 1) + 1}.</span>
@@ -1998,7 +1973,7 @@ export default function App() {
                                         ) : (
                                           <>
                                             <Sparkles className="w-4 h-4 text-lime-450" />
-                                            <span>Salvar Progresso & Evoluir p/ Semana {(plan.weekNumber || 1) + 1}</span>
+                                            <span>Salvar Progresso & Evoluir p/ Semana {(plan.weekNumber || 1) + 1} ⚡</span>
                                           </>
                                         )}
                                       </button>
@@ -2026,7 +2001,7 @@ export default function App() {
                                 <div className="w-full">
                                   <span className="text-[10px] text-slate-400 font-sans block uppercase font-bold tracking-wider">Rendimento</span>
                                   <span className="text-xl font-heading font-black text-emerald-600">
-                                    {pctW === 100 ? "100%" : pctW >= 75 ? "Excelente" : pctW >= 50 ? "Bom" : pctW > 0 ? "Em progresso" : "Falta começar"}
+                                    {pctW === 100 ? "100% 🏆" : pctW >= 75 ? "Ótimo 🔥" : pctW >= 50 ? "Bom 👍" : pctW > 0 ? "Em progresso" : "Falta começar"}
                                   </span>
                                 </div>
                               </div>
@@ -2058,7 +2033,7 @@ export default function App() {
                           {/* Workouts section header with the PSE Explanation button */}
                           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-5 pb-3 border-b border-slate-100 mb-2">
                             <div className="flex items-center gap-2">
-                              <Calendar className="w-4 h-4 text-slate-500 shrink-0" />
+                              <span className="text-xl">📅</span>
                               <h3 className="font-heading font-black text-slate-800 text-sm uppercase tracking-wider">
                                 Sessões de Treino Semanais
                               </h3>
@@ -2073,7 +2048,7 @@ export default function App() {
                               }`}
                             >
                               <HelpCircle className="w-3.5 h-3.5" />
-                              <span>O que é PSE?</span>
+                              <span>O que é PSE? 💡</span>
                             </button>
                           </div>
 
@@ -2191,8 +2166,7 @@ export default function App() {
                                   </div>
                                   
                                   <div className="bg-amber-100/30 p-3.5 rounded-xl border border-amber-200/50 text-xs text-amber-850 flex items-start gap-2.5">
-                                    <Lightbulb className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-                                    <span className="font-bold text-amber-800 shrink-0 select-none">DICA DE OURO:</span>
+                                    <span className="font-bold text-amber-800 shrink-0 select-none">💡 DICA DE OURO:</span>
                                     <span className="leading-relaxed">Não encare a PSE apenas como dor nas pernas física. Pense no seu <strong>fôlego respiratório</strong> (quão ofegante você ficou) e no <strong>foco mental</strong> exigido para completar aquela sessão inteira.</span>
                                   </div>
                                 </div>
@@ -2217,7 +2191,6 @@ export default function App() {
                                   allWorkouts={plan?.workouts || []}
                                   onUpdate={(updatedWorkout) => handleUpdateWorkout(index, updatedWorkout)}
                                   onDelete={() => handleDeleteWorkout(index)}
-                                  isSimpleMode={displayMode === "simples"}
                                 />
                               </motion.div>
                             ))}
@@ -2432,7 +2405,7 @@ export default function App() {
                 </div>
                 <div>
                   <h3 className="font-heading font-black text-sm uppercase tracking-wide">
-                    Como Instalar o Biker AI
+                    Como Instalar o Biker AI 📲
                   </h3>
                   <p className="text-[10px] text-slate-400 mt-0.5 font-mono">
                     Adicione à tela inicial como um aplicativo nativo
@@ -2479,8 +2452,7 @@ export default function App() {
                 </div>
 
                 <div className="bg-lime-500/5 p-3 rounded-xl border border-lime-500/10 text-[11px] text-lime-400 flex items-start gap-2">
-                  <Lightbulb className="w-4 h-4 text-lime-400 shrink-0 mt-0.5" />
-                  <span className="font-extrabold select-none">VANTAGENS:</span>
+                  <span className="font-extrabold select-none">💡 VANTAGENS:</span>
                   <span className="leading-relaxed font-curate">Instalar o aplicativo garante carregamento instantâneo, menos consumo de internet, suporte offline e navegação livre de barras do navegador!</span>
                 </div>
 
@@ -2552,7 +2524,7 @@ export default function App() {
                   />
                   {adminPasswordError && (
                     <span className="block text-[10px] text-center text-rose-450 font-bold uppercase tracking-wider font-sans mt-1">
-                      {adminPasswordError}
+                      ⚠️ {adminPasswordError}
                     </span>
                   )}
                 </div>

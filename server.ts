@@ -873,7 +873,7 @@ const fallbackEvaluateWorkout = (workout: any, profile: any): any => {
     stravaStatsText += `- **Link da Sessão:** [Ver atividade carregada no Strava](${workout.actualStravaLink})\n`;
   }
 
-  const feedbackMarkdown = `### Avaliação do Coach para o Treino do dia
+  const feedbackMarkdown = `### Avaliação do Coach para o Treino do dia 🚴
 
 Parabéns pelo registro do seu treino, **atleta**! Ter constância é o pilar número um da evolução no ciclismo de alta performance. 
 
@@ -1107,7 +1107,7 @@ Cálculo de Zonas (mencione de forma implícita ou explícita nas dicas):
 - Se tiver potência (FTP), use zonas de potência Coggan (Z1 a Z7).
 - Se tiver apenas frequência cardíaca (FCmax), use zonas de FC de Karvonen ou Friel (Z1 a Z5).
 
-REGRA CRÍTICA DE COMUNICAÇÃO: Nunca utilize a palavra "RPE" ou "Percepção Subjetiva de Esforço" em suas explicações, resumos, descrições ou dicas. Esse termo técnico afasta o ciclista. Use termos muito simples e diretos para explicar o nível de esforço, tais como: "Muito Leve", "Leve", "Moderado", "Forte" ou "Máximo". Além disso, todos os dias de treinos devem ser descritos de forma simples e de fácil entendimento, explicando de forma lúdica os termos técnicos do ciclismo (por exemplo, em vez de dizer apenas "FTP", descreva como "seu ritmo máximo sustentável de 1 hora" ou "potência de limiar", e explique "Fartlek" como "brincar de acelerar e desacelerar conforme seu fôlego" ou "ritmo variado"). NUNCA use jargões fisiológicos áridos e isolados sem traduzi-los para sensações de esforço fáceis de assimilar.
+REGRA CRÍTICA DE COMUNICAÇÃO: Nunca utilize a palavra "RPE" ou "Percepção Subjetiva de Esforço" em suas explicações, resumos, descrições ou dicas. Esse termo técnico afasta o ciclista. Use termos muito simples e diretos para explicar o nível de esforço, tais como: "Muito Leve", "Leve", "Moderado", "Forte" ou "Máximo".
 
 Você DEVE responder rigorosamente no formato JSON com a seguinte estrutura:
 {
