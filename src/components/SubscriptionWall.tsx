@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { UserProfile } from "../types";
-import { apiFetch } from "../firebase";
 import { motion, AnimatePresence } from "motion/react";
 import { 
   ShieldAlert, 
@@ -54,7 +53,7 @@ export default function SubscriptionWall({ userEmail, userName, currentStatus, o
   useEffect(() => {
     const checkMpConfig = async () => {
       try {
-        const response = await apiFetch("/api/mercadopago/config");
+        const response = await fetch("/api/mercadopago/config");
         if (response.ok) {
           const data = await response.json();
           setMpConfig({ isReal: data.isReal, publicKey: data.publicKey });
@@ -70,7 +69,7 @@ export default function SubscriptionWall({ userEmail, userName, currentStatus, o
   const loadMpPreference = async () => {
     setMpLoading(true);
     try {
-      const response = await apiFetch("/api/mercadopago/create-preference", {
+      const response = await fetch("/api/mercadopago/create-preference", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: userEmail })
@@ -91,7 +90,7 @@ export default function SubscriptionWall({ userEmail, userName, currentStatus, o
   const loadMpPix = async () => {
     setMpLoading(true);
     try {
-      const response = await apiFetch("/api/mercadopago/create-pix", {
+      const response = await fetch("/api/mercadopago/create-pix", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: userEmail })
@@ -155,7 +154,7 @@ export default function SubscriptionWall({ userEmail, userName, currentStatus, o
       futureDate.setMonth(futureDate.getMonth() + 1);
       const formattedDate = futureDate.toISOString().split('T')[0];
       
-      const response = await apiFetch("/api/admin/update-user-status", {
+      const response = await fetch("/api/admin/update-user-status", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -241,7 +240,7 @@ export default function SubscriptionWall({ userEmail, userName, currentStatus, o
       futureDate.setMonth(futureDate.getMonth() + 1);
       const formattedDate = futureDate.toISOString().split('T')[0];
 
-      const response = await apiFetch("/api/admin/update-user-status", {
+      const response = await fetch("/api/admin/update-user-status", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

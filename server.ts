@@ -3,14 +3,9 @@ import path from "path";
 import dotenv from "dotenv";
 import fs from "fs";
 import os from "os";
-import crypto from "crypto";
-import https from "https";
 import { GoogleGenAI, Type } from "@google/genai";
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getFirestore, collection, getDocs, doc, setDoc } from "firebase/firestore/lite";
-import { initializeApp as initializeAdminApp, getApp as getAdminApp } from "firebase-admin/app";
-import { getFirestore as getAdminFirestore } from "firebase-admin/firestore";
-import { getAuth as getAdminAuth } from "firebase-admin/auth";
 
 dotenv.config();
 
@@ -53,31 +48,6 @@ try {
   useFirestore = false;
 }
 
-// Inicializar SDK de administração do Firebase (Firebase Admin) para bypass de regras de segurança no servidor
-let adminFirestoreDb: any = null;
-try {
-  if (firebaseAppletConfig && firebaseAppletConfig.projectId) {
-    initializeAdminApp({
-      projectId: firebaseAppletConfig.projectId
-    });
-    let firestoreInstance: any;
-    try {
-      if (firebaseAppletConfig.firestoreDatabaseId) {
-        firestoreInstance = getAdminFirestore(getAdminApp(), firebaseAppletConfig.firestoreDatabaseId);
-      } else {
-        firestoreInstance = getAdminFirestore(getAdminApp());
-      }
-    } catch (e: any) {
-      console.warn("[Firebase Admin] Falha ao iniciar firestore com databaseId, tentando padrão:", e.message);
-      firestoreInstance = getAdminFirestore(getAdminApp());
-    }
-    adminFirestoreDb = firestoreInstance;
-    console.log("[Firebase Admin] Inicializado com sucesso para o projeto:", firebaseAppletConfig.projectId);
-  }
-} catch (err: any) {
-  console.warn("[Firebase Admin] Falha ao inicializar Admin SDK (esperado no desenvolvimento offline):", err.message);
-}
-
 
 // JSON file database path for local persistence (declared early to avoid temporal dead zone)
 const USERS_DB_PATH = process.env.VERCEL
@@ -96,182 +66,6 @@ try {
   );
 } catch (e: any) {
   console.error("Failed to write startup log:", e);
-}
-
-// --- CRYPTOGRAPHIC HELPERS & SECURITY MIDDLEWARES ---
-
-// Password hashing with native PBKDF2 (100,000 iterations, SHA-256)
-function hashPassword(password: string): string {
-  const salt = crypto.randomBytes(16).toString("hex");
-  const hash = crypto.pbkdf2Sync(password, salt, 100000, 64, "sha256").toString("hex");
-  return `${salt}:${hash}`;
-}
-
-// Verify a password against a stored PBKDF2 hash, with plaintext fallback for legacy migration
-function verifyPassword(password: string, storedHash: string): boolean {
-  if (!storedHash) return false;
-  
-  if (!storedHash.includes(":")) {
-    return password === storedHash;
-  }
-  
-  const [salt, hash] = storedHash.split(":");
-  const testHash = crypto.pbkdf2Sync(password, salt, 100000, 64, "sha256").toString("hex");
-  return testHash === hash;
-}
-
-// Google public keys cache for Firebase ID token verification
-let googlePublicKeys: Record<string, string> = {};
-let keysExpiryTime = 0;
-
-async function fetchGooglePublicKeys(): Promise<Record<string, string>> {
-  if (Date.now() < keysExpiryTime && Object.keys(googlePublicKeys).length > 0) {
-    return googlePublicKeys;
-  }
-
-  return new Promise((resolve, reject) => {
-    // Usando a API do Identity Toolkit para obter chaves públicas válidas de forma robusta
-    const req = https.get("https://www.googleapis.com/identitytoolkit/v3/relyingparty/publicKeys", (res) => {
-      let data = "";
-      res.on("data", (chunk) => { data += chunk; });
-      res.on("end", () => {
-        try {
-          googlePublicKeys = JSON.parse(data);
-          const cacheControl = res.headers["cache-control"] || "";
-          const maxAgeMatch = cacheControl.match(/max-age=(\d+)/);
-          const maxAge = maxAgeMatch ? parseInt(maxAgeMatch[1]) * 1000 : 3600 * 1000;
-          keysExpiryTime = Date.now() + maxAge;
-          resolve(googlePublicKeys);
-        } catch (e) {
-          reject(new Error("Failed to parse Google public keys"));
-        }
-      });
-    });
-    req.on("error", (err) => {
-      reject(err);
-    });
-  });
-}
-
-function base64UrlDecode(str: string): string {
-  let base64 = str.replace(/-/g, "+").replace(/_/g, "/");
-  while (base64.length % 4) {
-    base64 += "=";
-  }
-  return Buffer.from(base64, "base64").toString("utf8");
-}
-
-// Cryptographic verification of Firebase ID token signature & claims
-async function verifyFirebaseIdToken(token: string, projectId: string): Promise<any> {
-  // 1. Tentar verificação nativa usando o SDK de administração do Firebase
-  try {
-    const decoded = await getAdminAuth().verifyIdToken(token);
-    return decoded;
-  } catch (adminErr: any) {
-    console.warn("[Firebase Admin] Falha na verificação de token nativa, tentando fallback manual:", adminErr.message);
-  }
-
-  // 2. Fallback para verificação de token manual
-  const parts = token.split(".");
-  if (parts.length !== 3) {
-    throw new Error("Formato de token inválido");
-  }
-
-  const [headerB64, payloadB64, signatureB64] = parts;
-  const header = JSON.parse(base64UrlDecode(headerB64));
-  const payload = JSON.parse(base64UrlDecode(payloadB64));
-  const signature = Buffer.from(signatureB64, "base64url");
-
-  if (header.alg !== "RS256") {
-    throw new Error("Algoritmo de assinatura não suportado");
-  }
-
-  const keys = await fetchGooglePublicKeys();
-  const cert = keys[header.kid];
-  if (!cert) {
-    console.error(`[VerifyToken Error] Kid do token: ${header.kid}. Chaves disponíveis:`, Object.keys(keys));
-    throw new Error(`Chave pública não encontrada para o kid do token (${header.kid})`);
-  }
-
-  const verifier = crypto.createVerify("SHA256");
-  verifier.update(`${headerB64}.${payloadB64}`);
-  const isVerified = verifier.verify(cert, signature);
-
-  if (!isVerified) {
-    throw new Error("Assinatura do token inválida");
-  }
-
-  const now = Math.floor(Date.now() / 1000);
-  if (payload.exp < now) {
-    throw new Error("O token de autenticação expirou");
-  }
-
-  if (payload.iss !== `https://securetoken.google.com/${projectId}`) {
-    throw new Error("Emissor do token inválido");
-  }
-
-  if (payload.aud !== projectId) {
-    throw new Error("Audiência do token inválida");
-  }
-
-  if (!payload.sub) {
-    throw new Error("Token sem campo de identificador (uid)");
-  }
-
-  return payload;
-}
-
-// Middleware to enforce active Firebase Auth session
-async function requireAuth(req: any, res: any, next: any) {
-  try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return res.status(401).json({ error: "Sessão inválida ou ausente. Por favor, realize o login." });
-    }
-
-    const token = authHeader.split("Bearer ")[1];
-    const projectId = firebaseAppletConfig.projectId;
-
-    if (!projectId) {
-      // Local development fallback
-      return next();
-    }
-
-    const decodedToken = await verifyFirebaseIdToken(token, projectId);
-    req.user = decodedToken;
-    next();
-  } catch (err: any) {
-    console.error("[RequireAuth] Falha na validação do token:", err.message);
-    res.status(401).json({ error: `Sessão inválida ou expirada: ${err.message}` });
-  }
-}
-
-// Middleware to prevent cross-user data scraping or alteration
-function verifyUserMatch(req: any, res: any, next: any) {
-  if (req.user) {
-    const requestedEmail = req.body.email || req.body.profile?.email || req.query.email;
-    if (requestedEmail) {
-      const authEmail = req.user.email?.toLowerCase();
-      const bodyEmail = requestedEmail.trim().toLowerCase();
-      // Coach pedro.bramos@sempreceub.com bypass
-      if (authEmail !== "pedro.bramos@sempreceub.com" && authEmail !== bodyEmail) {
-        return res.status(403).json({ error: "Acesso negado. Você só tem permissão para consultar ou modificar seus próprios dados." });
-      }
-    }
-  }
-  next();
-}
-
-// Middleware to restrict access to coach/admin only
-function requireAdmin(req: any, res: any, next: any) {
-  if (!req.user) {
-    return res.status(401).json({ error: "Autenticação requerida." });
-  }
-  const authEmail = req.user.email?.toLowerCase();
-  if (authEmail !== "pedro.bramos@sempreceub.com") {
-    return res.status(403).json({ error: "Acesso restrito. Operação exclusiva do treinador/coach." });
-  }
-  next();
 }
 
 const app = express();
@@ -304,21 +98,8 @@ app.use((req, res, next) => {
 // In-memory cache to keep performance high and prevent disk read fatigue
 let inMemoryDbCache: Record<string, any> | null = null;
 
-// Fetch all users from Firestore via Firebase Admin (secure) or fallback to Firestore Lite SDK
+// Fetch all users from Firestore via Firestore Lite SDK
 async function fetchFirestoreUsers(): Promise<Record<string, any>> {
-  if (adminFirestoreDb) {
-    try {
-      const snapshot = await adminFirestoreDb.collection("users").get();
-      const users: Record<string, any> = {};
-      snapshot.forEach((doc: any) => {
-        users[doc.id] = doc.data();
-      });
-      return users;
-    } catch (err: any) {
-      console.warn("[Firebase Admin] Falha ao obter todos os usuários no Firestore Admin, tentando fallback:", err.message);
-    }
-  }
-
   if (!useFirestore || !firestoreDb) {
     throw new Error("Firestore não está habilitado.");
   }
@@ -331,17 +112,8 @@ async function fetchFirestoreUsers(): Promise<Record<string, any>> {
   return users;
 }
 
-// Save a single user doc in Firestore via Firebase Admin (secure) or fallback to Firestore Lite SDK
+// Save a single user doc in Firestore via Firestore Lite SDK
 async function saveFirestoreUser(email: string, userData: any): Promise<void> {
-  if (adminFirestoreDb) {
-    try {
-      await adminFirestoreDb.collection("users").doc(email.trim().toLowerCase()).set(userData);
-      return;
-    } catch (err: any) {
-      console.warn("[Firebase Admin] Falha ao salvar usuário no Firestore Admin, tentando fallback:", err.message);
-    }
-  }
-
   if (!useFirestore || !firestoreDb) {
     throw new Error("Firestore não está habilitado.");
   }
@@ -599,7 +371,7 @@ app.post("/api/auth/register", async (req, res) => {
 
     const newUserEntry = {
       email: email.trim(),
-      password: hashPassword(password), // Hashed & Secured!
+      password,
       profile: newProfile,
       chatHistory: initialChat,
       plan: null
@@ -608,10 +380,7 @@ app.post("/api/auth/register", async (req, res) => {
     db[emailKey] = newUserEntry;
     await saveDatabase(db);
 
-    const responseUser = { ...newUserEntry };
-    delete (responseUser as any).password; // Sanitize for privacy
-
-    res.json({ success: true, user: responseUser });
+    res.json({ success: true, user: newUserEntry });
   } catch (error: any) {
     console.error("Error in server registration:", error);
     res.status(500).json({ error: error.message });
@@ -634,14 +403,8 @@ app.post("/api/auth/login", async (req, res) => {
       return res.status(400).json({ error: "Nenhum cadastro encontrado com este e-mail. Crie uma conta ao lado!" });
     }
 
-    if (!verifyPassword(password, user.password)) {
+    if (user.password !== password) {
       return res.status(400).json({ error: "Senha incorreta. Verifique os dados e tente novamente." });
-    }
-
-    // Auto-migrate plaintext legacy password to PBKDF2 hash on successful login
-    if (!user.password.includes(":")) {
-      user.password = hashPassword(password);
-      await saveDatabase(db);
     }
 
     // Ensure older users get default subscription parameters gracefully
@@ -656,10 +419,7 @@ app.post("/api/auth/login", async (req, res) => {
       if (!user.profile.subscriptionExpiresAt) user.profile.subscriptionExpiresAt = "2026-12-31";
     }
 
-    const responseUser = { ...user };
-    delete (responseUser as any).password; // Sanitize for privacy
-
-    res.json({ success: true, user: responseUser });
+    res.json({ success: true, user });
   } catch (error: any) {
     console.error("Error in server login:", error);
     res.status(500).json({ error: error.message });
@@ -667,7 +427,7 @@ app.post("/api/auth/login", async (req, res) => {
 });
 
 // Real-time synchronization of athlete profile, history & planning sheets to the cloud
-app.post("/api/auth/save-user", requireAuth, verifyUserMatch, async (req, res) => {
+app.post("/api/auth/save-user", async (req, res) => {
   try {
     const { email, userAccount, password } = req.body;
     if (!email || !userAccount) {
@@ -677,15 +437,9 @@ app.post("/api/auth/save-user", requireAuth, verifyUserMatch, async (req, res) =
     const db = await getDatabase();
     const emailKey = email.trim().toLowerCase();
     
-    // Maintain password securely
+    // Maintain password
     const fallbackPassword = emailKey === "pedro.bramos@sempreceub.com" ? "Pedro23072007" : "123456";
-    let preservedPassword = db[emailKey]?.password;
-    if (password && password !== db[emailKey]?.password) {
-      // If client sent a new password, check if it's already hashed. If not, hash it!
-      preservedPassword = password.includes(":") ? password : hashPassword(password);
-    } else if (!preservedPassword) {
-      preservedPassword = hashPassword(fallbackPassword);
-    }
+    const preservedPassword = password || db[emailKey]?.password || fallbackPassword;
 
     db[emailKey] = {
       ...userAccount,
@@ -701,7 +455,7 @@ app.post("/api/auth/save-user", requireAuth, verifyUserMatch, async (req, res) =
 });
 
 // Fetch user account session data directly by email
-app.post("/api/auth/session", requireAuth, verifyUserMatch, async (req, res) => {
+app.post("/api/auth/session", async (req, res) => {
   try {
     const { email } = req.body;
     if (!email) {
@@ -713,34 +467,9 @@ app.post("/api/auth/session", requireAuth, verifyUserMatch, async (req, res) => 
     if (!user) {
       return res.status(404).json({ error: "Usuário não encontrado." });
     }
-    
-    const responseUser = { ...user };
-    delete (responseUser as any).password; // Sanitize for privacy
-
-    res.json({ success: true, user: responseUser });
+    res.json({ success: true, user });
   } catch (error: any) {
     console.error("Error in server session retrieval:", error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// New Secure Verification endpoint for validating the user's password during settings updates
-app.post("/api/auth/verify-password", requireAuth, verifyUserMatch, async (req, res) => {
-  try {
-    const { email, password } = req.body;
-    if (!email || !password) {
-      return res.status(400).json({ error: "E-mail e senha são obrigatórios para verificação." });
-    }
-    const db = await getDatabase();
-    const emailKey = email.trim().toLowerCase();
-    const user = db[emailKey];
-    if (!user) {
-      return res.status(404).json({ error: "Usuário não encontrado." });
-    }
-    const isValid = verifyPassword(password, user.password);
-    res.json({ success: isValid });
-  } catch (error: any) {
-    console.error("Error in verify-password endpoint:", error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -1221,7 +950,7 @@ Em que posso te ajudar hoje para tornar seu pedal ainda mais estruturado e efici
  * Analyzes the latest athlete message, extracts any relevant training parameters,
  * and replies with the friendly next question in Portuguese.
  */
-app.post("/api/onboard", requireAuth, verifyUserMatch, async (req, res) => {
+app.post("/api/onboard", async (req, res) => {
   const { message, profile, messageHistory } = req.body;
   try {
     checkApiKey();
@@ -1363,7 +1092,7 @@ Se o ciclista já respondeu a tudo, diga que o perfil está completo e que ele p
  * Creates a fully customized, structured weekly training plan based on sports physiology
  * and the completed profile.
  */
-app.post("/api/generate-plan", requireAuth, verifyUserMatch, async (req, res) => {
+app.post("/api/generate-plan", async (req, res) => {
   const { profile } = req.body;
   try {
     checkApiKey();
@@ -1470,7 +1199,7 @@ Atividade recente cadastrada: ${profile?.recentActivity || "Nenhuma registrada"}
  * Generates the next week of training based on the athlete's completion records
  * of the current week (workouts "completed" status) and subjective feedback.
  */
-app.post("/api/generate-next-week", requireAuth, verifyUserMatch, async (req, res) => {
+app.post("/api/generate-next-week", async (req, res) => {
   const { profile, currentPlan, athleteFeedback, nextWeekNumber } = req.body;
   try {
     checkApiKey();
@@ -1590,7 +1319,7 @@ Gere o planejamento estruturado completo para a Semana ${nextWeekNumber} seguind
  * Endpoint 3: Individual Workout Evaluator
  * Evaluates a single completed workout based on prescribed targets vs actual performance notes/metrics.
  */
-app.post("/api/evaluate-workout", requireAuth, verifyUserMatch, async (req, res) => {
+app.post("/api/evaluate-workout", async (req, res) => {
   const { profile, workout } = req.body;
   try {
     checkApiKey();
@@ -1730,7 +1459,7 @@ const fallbackParseStrava = (stravaLink: string, workout: any, profile: any) => 
   };
 };
 
-app.post("/api/parse-strava", requireAuth, verifyUserMatch, async (req, res) => {
+app.post("/api/parse-strava", async (req, res) => {
   const { stravaLink, workout, profile } = req.body;
   try {
     checkApiKey();
@@ -1831,7 +1560,7 @@ Por favor, gere e retorne o JSON estruturado com os dados reais e sensações ex
  * Allows the athlete to ask any scientific/practical coaching question, modify structures manually,
  * etc.
  */
-app.post("/api/chat", requireAuth, verifyUserMatch, async (req, res) => {
+app.post("/api/chat", async (req, res) => {
   const { message, profile, currentPlan, messageHistory } = req.body;
   try {
     checkApiKey();
@@ -1919,7 +1648,7 @@ Histórico Recente: ${JSON.stringify(messageHistory?.slice(-10) || [])}
 // -------------------------------------------------------------
 
 // Fetch all registered users in the database
-app.get("/api/admin/users", requireAuth, requireAdmin, async (req, res) => {
+app.get("/api/admin/users", async (req, res) => {
   try {
     const db = await getDatabase();
     // Return all users metadata (omitting passwords)
@@ -1949,7 +1678,7 @@ app.get("/api/admin/users", requireAuth, requireAdmin, async (req, res) => {
 });
 
 // Update profile status / subscription details of a user
-app.post("/api/admin/update-user-status", requireAuth, requireAdmin, async (req, res) => {
+app.post("/api/admin/update-user-status", async (req, res) => {
   try {
     const { email, subscriptionStatus, subscriptionPlan, subscriptionExpiresAt, role, ftp, maxHeartRate } = req.body;
     if (!email) {
@@ -1991,7 +1720,7 @@ app.post("/api/admin/update-user-status", requireAuth, requireAdmin, async (req,
 });
 
 // GET automated backups list
-app.get("/api/admin/backups", requireAuth, requireAdmin, async (req, res) => {
+app.get("/api/admin/backups", async (req, res) => {
   try {
     if (!fs.existsSync(BACKUPS_DIR)) {
       fs.mkdirSync(BACKUPS_DIR, { recursive: true });
@@ -2040,7 +1769,7 @@ app.get("/api/admin/backups", requireAuth, requireAdmin, async (req, res) => {
 });
 
 // Force create manual/instant backup
-app.post("/api/admin/backups/create", requireAuth, requireAdmin, async (req, res) => {
+app.post("/api/admin/backups/create", async (req, res) => {
   try {
     const db = await getDatabase();
     await triggerAutomaticBackup(db);
@@ -2052,7 +1781,7 @@ app.post("/api/admin/backups/create", requireAuth, requireAdmin, async (req, res
 });
 
 // Restore backup from specific filename
-app.post("/api/admin/backups/restore", requireAuth, requireAdmin, async (req, res) => {
+app.post("/api/admin/backups/restore", async (req, res) => {
   try {
     const { filename } = req.body;
     if (!filename) {
@@ -2099,7 +1828,7 @@ app.get("/api/mercadopago/config", (req, res) => {
   });
 });
 
-app.post("/api/mercadopago/create-preference", requireAuth, verifyUserMatch, async (req, res) => {
+app.post("/api/mercadopago/create-preference", async (req, res) => {
   try {
     const { email } = req.body;
     const payerEmail = email || "usuario@cyclecoach.ai";
@@ -2169,7 +1898,7 @@ app.post("/api/mercadopago/create-preference", requireAuth, verifyUserMatch, asy
   }
 });
 
-app.post("/api/mercadopago/create-pix", requireAuth, verifyUserMatch, async (req, res) => {
+app.post("/api/mercadopago/create-pix", async (req, res) => {
   try {
     const { email } = req.body;
     const payerEmail = email || "usuario@cyclecoach.ai";

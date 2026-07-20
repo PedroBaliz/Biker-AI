@@ -5,7 +5,7 @@ import confetti from "canvas-confetti";
 import cyclingActionImg from "./assets/images/cycling_action_1780860242304.png";
 import { UserProfile, ChatMessage, TrainingPlan, UserAccount, Workout, isRestDay } from "./types";
 import { onAuthStateChanged, signOut } from "firebase/auth";
-import { auth, apiFetch } from "./firebase";
+import { auth } from "./firebase";
 import WorkoutCard from "./components/WorkoutCard";
 import ZoneCalculator from "./components/ZoneCalculator";
 import LoginScreen from "./components/LoginScreen";
@@ -69,7 +69,7 @@ export default function App() {
     const urlStr = typeof input === "string" ? input : (input as Request).url;
     const method = init?.method || "GET";
     try {
-      const response = await apiFetch(input, init);
+      const response = await fetch(input, init);
       if (response.status === 404 || response.status === 500) {
         let errorText = "";
         try {
@@ -591,7 +591,7 @@ export default function App() {
         }
 
         // Fetch existing user from database to merge or create
-        const sessionRes = await apiFetch("/api/auth/session", {
+        const sessionRes = await fetch("/api/auth/session", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email })
@@ -610,7 +610,7 @@ export default function App() {
         if (chatVal && (!mergedUser.chatHistory || mergedUser.chatHistory.length <= 1)) mergedUser.chatHistory = chatVal;
 
         // Save to Firebase Firestore via server
-        await apiFetch("/api/auth/save-user", {
+        await fetch("/api/auth/save-user", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email, userAccount: mergedUser, password: passwordToPreserve })
@@ -640,7 +640,7 @@ export default function App() {
           // Trigger localStorage migration to Firestore if legacy data exists
           await migrateLocalStorageToFirebase(emailKey);
 
-          const response = await apiFetch("/api/auth/session", {
+          const response = await fetch("/api/auth/session", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ email: emailKey })
@@ -706,7 +706,7 @@ export default function App() {
     }
 
     // Async background sync with Node.js server database
-    apiFetch("/api/auth/save-user", {
+    fetch("/api/auth/save-user", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -931,7 +931,7 @@ export default function App() {
     setProfile(updatedUser.profile);
 
     // Sync to backend immediately for instant server persistence
-    apiFetch("/api/auth/save-user", {
+    fetch("/api/auth/save-user", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

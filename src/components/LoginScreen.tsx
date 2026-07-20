@@ -5,7 +5,7 @@ import {
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword 
 } from "firebase/auth";
-import { auth, apiFetch } from "../firebase";
+import { auth } from "../firebase";
 import { 
   Dumbbell, ShieldAlert, Sparkles, Mail, Lock, User, Eye, EyeOff, Bike, 
   ChevronRight, CheckCircle, Download, Smartphone, Share, X, ExternalLink,
@@ -160,7 +160,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
           if (fbErr.code === "auth/user-not-found" || fbErr.code === "auth/invalid-credential") {
             console.log("[Migration] User not found in Firebase Auth, checking legacy backend DB...");
             try {
-              const serverResponse = await apiFetch("/api/auth/login", {
+              const serverResponse = await fetch("/api/auth/login", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ email: emailKey, password })
@@ -187,7 +187,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
 
         // If we didn't fetch the userObj from legacy bridge, fetch it from session
         if (!userObj) {
-          const response = await apiFetch("/api/auth/session", {
+          const response = await fetch("/api/auth/session", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ email: emailKey })
@@ -226,7 +226,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
         }
 
         // Create document in server database (Firestore)
-        const response = await apiFetch("/api/auth/register", {
+        const response = await fetch("/api/auth/register", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email: emailKey, password, name })

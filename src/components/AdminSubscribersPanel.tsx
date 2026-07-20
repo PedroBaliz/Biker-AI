@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { UserProfile, ZoneInfo } from "../types";
-import { apiFetch } from "../firebase";
 import { motion, AnimatePresence } from "motion/react";
 import { 
   Users, 
@@ -65,7 +64,7 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
   const fetchBackups = async () => {
     setBackupsLoading(true);
     try {
-      const response = await apiFetch("/api/admin/backups");
+      const response = await fetch("/api/admin/backups");
       if (response.ok) {
         const data = await response.json();
         if (data.success) {
@@ -86,7 +85,7 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
     setSuccess("");
     setError("");
     try {
-      const response = await apiFetch("/api/admin/backups/create", { method: "POST" });
+      const response = await fetch("/api/admin/backups/create", { method: "POST" });
       if (response.ok) {
         const data = await response.json();
         if (data.success) {
@@ -115,7 +114,7 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
     setSuccess("");
     setError("");
     try {
-      const response = await apiFetch("/api/admin/backups/restore", {
+      const response = await fetch("/api/admin/backups/restore", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ filename })
@@ -156,7 +155,7 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
     setLoading(true);
     setError("");
     try {
-      const response = await apiFetch("/api/admin/users");
+      const response = await fetch("/api/admin/users");
       if (response.ok) {
         const data = await response.json();
         if (data.success && data.users) {
@@ -207,7 +206,7 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
     setError("");
     setSuccess("");
     try {
-      const response = await apiFetch("/api/admin/update-user-status", {
+      const response = await fetch("/api/admin/update-user-status", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -249,7 +248,7 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
     setError("");
     setSuccess("");
     try {
-      const response = await apiFetch("/api/admin/update-user-status", {
+      const response = await fetch("/api/admin/update-user-status", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

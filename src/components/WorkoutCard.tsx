@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { Workout, UserProfile, isRestDay } from "../types";
-import { apiFetch } from "../firebase";
 import { 
   Clock, 
   Bike, 
@@ -199,7 +198,7 @@ export default function WorkoutCard({ workout, onUpdate, onDelete, profile, allW
     if (!actualStravaLink.trim()) return;
     setIsParsingStrava(true);
     try {
-      const response = await apiFetch("/api/parse-strava", {
+      const response = await fetch("/api/parse-strava", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -355,7 +354,7 @@ export default function WorkoutCard({ workout, onUpdate, onDelete, profile, allW
     };
 
     try {
-      const response = await apiFetch("/api/evaluate-workout", {
+      const response = await fetch("/api/evaluate-workout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

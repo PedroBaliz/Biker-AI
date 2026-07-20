@@ -62,7 +62,7 @@ export default function AccountSettings({ currentUser, onUpdateAccount, onClose 
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input);
   };
 
-  const handleSave = async (e: React.FormEvent) => {
+  const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setSuccess("");
@@ -88,26 +88,33 @@ export default function AccountSettings({ currentUser, onUpdateAccount, onClose 
         return;
       }
 
-      try {
-        const verifyRes = await fetch("/api/auth/verify-password", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: currentUser.email, password: currentPasswordConfirm })
-        });
-        
-        if (!verifyRes.ok) {
-          const errData = await verifyRes.json().catch(() => ({ error: "Erro de conexão ao validar" }));
-          setError(errData.error || "A senha atual de confirmação está incorreta. Não foi possível autorizar a atualização.");
-          return;
+      // Validate current password
+      const savedUsers = localStorage.getItem("coach_users");
+      let usersMap: Record<string, any> = {};
+      if (savedUsers) {
+        try {
+          usersMap = JSON.parse(savedUsers);
+        } catch (err) {
+          usersMap = {};
         }
-        
-        const verifyData = await verifyRes.json();
-        if (!verifyData.success) {
-          setError("A senha atual de confirmação está incorreta. Não foi possível autorizar a atualização.");
-          return;
-        }
-      } catch (err: any) {
-        setError("Erro de conexão ao validar sua credencial com o servidor principal.");
+      }
+
+      const currentEmailKey = currentUser.email.toLowerCase();
+      const oldUserEntry = usersMap[currentEmailKey];
+      
+      if (!oldUserEntry) {
+        setError("Instância de usuário corrompida. Por favor, reinicie a sessão.");
+        return;
+      }
+
+      if (oldUserEntry.password !== currentPasswordConfirm) {
+        setError("A senha atual de confirmação está incorreta. Não foi possível autorizar a atualização.");
+        return;
+      }
+
+      const newEmailKey = email.trim().toLowerCase();
+      if (newEmailKey !== currentEmailKey && usersMap[newEmailKey]) {
+        setError("Este novo endereço de e-mail já está sendo utilizado por outro atleta.");
         return;
       }
     }
@@ -144,7 +151,13 @@ export default function AccountSettings({ currentUser, onUpdateAccount, onClose 
       }
     };
 
-    const finalPassword = newPassword.trim() ? newPassword : undefined;
+    const savedUsers = localStorage.getItem("coach_users");
+    let usersMap: Record<string, any> = {};
+    if (savedUsers) {
+      try { usersMap = JSON.parse(savedUsers); } catch (e) {}
+    }
+    const currentEmailKey = currentUser.email.toLowerCase();
+    const finalPassword = newPassword.trim() ? newPassword : (usersMap[currentEmailKey]?.password || "123456");
 
     const ok = onUpdateAccount(updatedUser, finalPassword);
     if (ok) {
