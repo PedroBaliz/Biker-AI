@@ -8,6 +8,9 @@ import https from "https";
 import { GoogleGenAI, Type } from "@google/genai";
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getFirestore, collection, getDocs, doc, setDoc } from "firebase/firestore/lite";
+import { initializeApp as initializeAdminApp, getApp as getAdminApp } from "firebase-admin/app";
+import { getFirestore as getAdminFirestore } from "firebase-admin/firestore";
+import { getAuth as getAdminAuth } from "firebase-admin/auth";
 
 dotenv.config();
 
@@ -48,6 +51,31 @@ try {
   console.error("[Firebase Lite] Falha ao inicializar. Usando persistência local:", err.message);
   firestoreDb = null;
   useFirestore = false;
+}
+
+// Inicializar SDK de administração do Firebase (Firebase Admin) para bypass de regras de segurança no servidor
+let adminFirestoreDb: any = null;
+try {
+  if (firebaseAppletConfig && firebaseAppletConfig.projectId) {
+    initializeAdminApp({
+      projectId: firebaseAppletConfig.projectId
+    });
+    let firestoreInstance: any;
+    try {
+      if (firebaseAppletConfig.firestoreDatabaseId) {
+        firestoreInstance = getAdminFirestore(getAdminApp(), firebaseAppletConfig.firestoreDatabaseId);
+      } else {
+        firestoreInstance = getAdminFirestore(getAdminApp());
+      }
+    } catch (e: any) {
+      console.warn("[Firebase Admin] Falha ao iniciar firestore com databaseId, tentando padrão:", e.message);
+      firestoreInstance = getAdminFirestore(getAdminApp());
+    }
+    adminFirestoreDb = firestoreInstance;
+    console.log("[Firebase Admin] Inicializado com sucesso para o projeto:", firebaseAppletConfig.projectId);
+  }
+} catch (err: any) {
+  console.warn("[Firebase Admin] Falha ao inicializar Admin SDK (esperado no desenvolvimento offline):", err.message);
 }
 
 
@@ -102,7 +130,8 @@ async function fetchGooglePublicKeys(): Promise<Record<string, string>> {
   }
 
   return new Promise((resolve, reject) => {
-    const req = https.get("https://www.googleapis.com/robot/v1/metadata/x509/securetoken-system@system.gserviceaccount.com", (res) => {
+    // Usando a API do Identity Toolkit para obter chaves públicas válidas de forma robusta
+    const req = https.get("https://www.googleapis.com/identitytoolkit/v3/relyingparty/publicKeys", (res) => {
       let data = "";
       res.on("data", (chunk) => { data += chunk; });
       res.on("end", () => {
@@ -134,6 +163,15 @@ function base64UrlDecode(str: string): string {
 
 // Cryptographic verification of Firebase ID token signature & claims
 async function verifyFirebaseIdToken(token: string, projectId: string): Promise<any> {
+  // 1. Tentar verificação nativa usando o SDK de administração do Firebase
+  try {
+    const decoded = await getAdminAuth().verifyIdToken(token);
+    return decoded;
+  } catch (adminErr: any) {
+    console.warn("[Firebase Admin] Falha na verificação de token nativa, tentando fallback manual:", adminErr.message);
+  }
+
+  // 2. Fallback para verificação de token manual
   const parts = token.split(".");
   if (parts.length !== 3) {
     throw new Error("Formato de token inválido");
@@ -151,7 +189,8 @@ async function verifyFirebaseIdToken(token: string, projectId: string): Promise<
   const keys = await fetchGooglePublicKeys();
   const cert = keys[header.kid];
   if (!cert) {
-    throw new Error("Chave pública não encontrada para o kid do token");
+    console.error(`[VerifyToken Error] Kid do token: ${header.kid}. Chaves disponíveis:`, Object.keys(keys));
+    throw new Error(`Chave pública não encontrada para o kid do token (${header.kid})`);
   }
 
   const verifier = crypto.createVerify("SHA256");
@@ -265,8 +304,21 @@ app.use((req, res, next) => {
 // In-memory cache to keep performance high and prevent disk read fatigue
 let inMemoryDbCache: Record<string, any> | null = null;
 
-// Fetch all users from Firestore via Firestore Lite SDK
+// Fetch all users from Firestore via Firebase Admin (secure) or fallback to Firestore Lite SDK
 async function fetchFirestoreUsers(): Promise<Record<string, any>> {
+  if (adminFirestoreDb) {
+    try {
+      const snapshot = await adminFirestoreDb.collection("users").get();
+      const users: Record<string, any> = {};
+      snapshot.forEach((doc: any) => {
+        users[doc.id] = doc.data();
+      });
+      return users;
+    } catch (err: any) {
+      console.warn("[Firebase Admin] Falha ao obter todos os usuários no Firestore Admin, tentando fallback:", err.message);
+    }
+  }
+
   if (!useFirestore || !firestoreDb) {
     throw new Error("Firestore não está habilitado.");
   }
@@ -279,8 +331,17 @@ async function fetchFirestoreUsers(): Promise<Record<string, any>> {
   return users;
 }
 
-// Save a single user doc in Firestore via Firestore Lite SDK
+// Save a single user doc in Firestore via Firebase Admin (secure) or fallback to Firestore Lite SDK
 async function saveFirestoreUser(email: string, userData: any): Promise<void> {
+  if (adminFirestoreDb) {
+    try {
+      await adminFirestoreDb.collection("users").doc(email.trim().toLowerCase()).set(userData);
+      return;
+    } catch (err: any) {
+      console.warn("[Firebase Admin] Falha ao salvar usuário no Firestore Admin, tentando fallback:", err.message);
+    }
+  }
+
   if (!useFirestore || !firestoreDb) {
     throw new Error("Firestore não está habilitado.");
   }
