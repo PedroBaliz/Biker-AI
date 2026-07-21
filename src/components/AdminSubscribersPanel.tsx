@@ -55,7 +55,7 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
   const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
 
   // Backups tab and management state
-  const [rightTab, setRightTab] = useState<"athlete" | "backups">("athlete");
+  const [rightTab, setRightTab] = useState<"athlete" | "backups" | "feedbacks">("athlete");
   const [backupsList, setBackupsList] = useState<any[]>([]);
   const [mainDbInfo, setMainDbInfo] = useState<any>(null);
   const [backupsLoading, setBackupsLoading] = useState(false);
@@ -285,6 +285,16 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
     if (u.profile.subscriptionStatus !== 'active') return sum;
     return sum + 29.9; // Plano Pro
   }, 0).toFixed(2);
+
+  // Consolidated feedbacks across all subscribers
+  const allFeedbacks = users.flatMap(u => 
+    (u.feedbacks || []).map(f => ({
+      ...f,
+      userEmail: u.email,
+      userName: u.profile.name || "Sem Nome",
+      userPhoto: u.profile.photoUrl || ""
+    }))
+  ).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
   // Filter users list
   const filteredUsers = users.filter(user => {
@@ -599,6 +609,18 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
               </button>
               <button
                 type="button"
+                onClick={() => setRightTab("feedbacks")}
+                className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${
+                  rightTab === "feedbacks"
+                    ? "bg-sky-400 text-slate-950 shadow-xs"
+                    : "text-sky-450 hover:text-sky-300 hover:bg-slate-800"
+                }`}
+              >
+                <MessageSquare className="w-3 h-3" />
+                <span>Feedbacks</span>
+              </button>
+              <button
+                type="button"
                 onClick={() => {
                   setRightTab("backups");
                   fetchBackups();
@@ -833,7 +855,7 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
                   Clique sobre qualquer inscrito da lista à esquerda para revisar sua ficha fisiológica completa, gerenciar sua mensalidade ou alternar seu perfil de faturamento.
                 </p>
               </div>
-            ) : (
+            ) : rightTab === "backups" ? (
               /* THE MASTER BACKUPS PANEL UI CONTAINER */
               <motion.div 
                 key="backups-management"
@@ -928,7 +950,7 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
                         >
                           <div className="space-y-0.5 min-w-0">
                             <span className="text-[10.5px] font-mono font-bold text-slate-700 block truncate" title={bk.filename}>
-                              {bk.filename}
+                                {bk.filename}
                             </span>
                             <span className="text-[9.5px] text-slate-400 font-sans block">
                               {new Date(bk.createdAt).toLocaleDateString("pt-BR")} - {new Date(bk.createdAt).toLocaleTimeString("pt-BR", { hour: '2-digit', minute: '2-digit' })} ({(bk.sizeBytes / 1024).toFixed(1)} KB)
@@ -960,6 +982,77 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
                   </p>
                   <p>Qualquer ação do treinador (salvar atleta, alterar status) ou ativações de alunos disparam backups silenciosos imediatos de segurança.</p>
                 </div>
+              </motion.div>
+            ) : (
+              /* THE MASTER FEEDBACKS PANEL UI CONTAINER */
+              <motion.div 
+                key="feedbacks-management"
+                initial={{ opacity: 0, scale: 0.98 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.98 }}
+                className="bg-white rounded-3xl border border-slate-100 p-6 shadow-sm space-y-5"
+              >
+                <div className="pb-3 border-b border-slate-100">
+                  <h3 className="font-heading font-extrabold text-slate-800 text-sm leading-tight flex items-center gap-1.5">
+                    <MessageSquare className="w-4 h-4 text-sky-500 animate-pulse" />
+                    <span>Feedbacks de Alunos ({allFeedbacks.length})</span>
+                  </h3>
+                  <p className="text-[10.5px] text-slate-450 mt-1 leading-normal">
+                    Veja o que os atletas estão relatando sobre a experiência do app, planilhas e sugestões de evolução.
+                  </p>
+                </div>
+
+                {allFeedbacks.length === 0 ? (
+                  <div className="p-8 border border-dashed border-slate-200 rounded-2xl text-center text-slate-400 text-xs">
+                    <span>Nenhum feedback enviado pelos alunos ainda.</span>
+                  </div>
+                ) : (
+                  <div className="space-y-3 max-h-[480px] overflow-y-auto pr-1">
+                    {allFeedbacks.map((fb) => {
+                      const associatedUser = users.find(u => u.email === fb.userEmail);
+                      return (
+                        <div
+                          key={fb.id}
+                          onClick={() => {
+                            if (associatedUser) {
+                              setSelectedUser(associatedUser);
+                              setRightTab("athlete");
+                            }
+                          }}
+                          className="group bg-slate-50/55 hover:bg-sky-50/30 border border-slate-150 hover:border-sky-250 rounded-2xl p-3.5 shadow-3xs hover:shadow-2xs transition-all cursor-pointer relative"
+                        >
+                          <div className="flex items-center justify-between gap-2 mb-2">
+                            <div className="flex items-center gap-2">
+                              <div className="w-7 h-7 rounded-full bg-sky-100 text-sky-700 flex items-center justify-center font-heading font-black text-xs">
+                                {fb.userName.substring(0, 2).toUpperCase()}
+                              </div>
+                              <div>
+                                <span className="font-heading font-black text-slate-800 text-xs block group-hover:text-sky-700 transition-colors">
+                                  {fb.userName}
+                                </span>
+                                <span className="text-[10px] font-mono text-slate-450 block leading-none">
+                                  {fb.userEmail}
+                                </span>
+                              </div>
+                            </div>
+                            <span className="text-[9px] text-slate-400 font-mono shrink-0">
+                              {new Date(fb.timestamp).toLocaleDateString("pt-BR")} - {new Date(fb.timestamp).toLocaleTimeString("pt-BR", { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                          
+                          <p className="text-xs text-slate-700 leading-normal font-sans bg-white p-2.5 rounded-xl border border-slate-105 italic shadow-3xs">
+                            "{fb.text}"
+                          </p>
+                          
+                          <div className="mt-2 text-[9px] font-bold text-sky-600 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <span>Clique para abrir ficha de treino do atleta</span>
+                            <ArrowLeft className="w-3 h-3 rotate-180 text-sky-600" />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </motion.div>
             )}
           </AnimatePresence>

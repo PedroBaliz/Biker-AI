@@ -1835,59 +1835,6 @@ export default function App() {
                               </>
                             )}
                           </button>
-
-                          {/* Simplified vs Technical mode toggle selector */}
-                          <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-800/80 items-center gap-1">
-                            <div className="relative group/tooltip">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setDisplayMode("simples");
-                                  localStorage.setItem("biker_ai_display_mode", "simples");
-                                }}
-                                className={`px-2.5 py-1.5 rounded-lg text-[10px] font-heading font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 ${
-                                  displayMode === "simples"
-                                    ? "bg-slate-800 text-lime-400 shadow-xs"
-                                    : "text-slate-400 hover:text-white"
-                                }`}
-                              >
-                                <span>Modo Simples (Sensações)</span>
-                                <HelpCircle className="w-3 h-3 text-slate-500 group-hover/tooltip:text-lime-400 transition-colors" />
-                              </button>
-                              
-                              {/* Tooltip */}
-                              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-52 p-2.5 bg-slate-900 border border-slate-800 text-[10.5px] text-slate-300 rounded-xl shadow-xl opacity-0 scale-95 pointer-events-none group-hover/tooltip:opacity-100 group-hover/tooltip:scale-100 transition-all duration-200 z-50 text-center font-sans normal-case font-normal leading-normal">
-                                <div className="font-extrabold text-lime-400 mb-0.5">Modo Simples</div>
-                                Foco nas sensações de esforço (PSE) e tempos de treino. Perfeito para quem treina livre ou sem sensores adicionais.
-                                <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-900"></div>
-                              </div>
-                            </div>
-
-                            <div className="relative group/tooltip">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setDisplayMode("tecnico");
-                                  localStorage.setItem("biker_ai_display_mode", "tecnico");
-                                }}
-                                className={`px-2.5 py-1.5 rounded-lg text-[10px] font-heading font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 ${
-                                  displayMode === "tecnico"
-                                    ? "bg-slate-800 text-lime-400 shadow-xs"
-                                    : "text-slate-400 hover:text-white"
-                                }`}
-                              >
-                                <span>Modo Técnico (Fisiologia)</span>
-                                <HelpCircle className="w-3 h-3 text-slate-500 group-hover/tooltip:text-lime-400 transition-colors" />
-                              </button>
-
-                              {/* Tooltip */}
-                              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-52 p-2.5 bg-slate-900 border border-slate-800 text-[10.5px] text-slate-300 rounded-xl shadow-xl opacity-0 scale-95 pointer-events-none group-hover/tooltip:opacity-100 group-hover/tooltip:scale-100 transition-all duration-200 z-50 text-center font-sans normal-case font-normal leading-normal">
-                                <div className="font-extrabold text-lime-400 mb-0.5">Modo Técnico</div>
-                                Detalha zonas de potência e frequência cardíaca. Ideal para monitorar métricas fisiológicas avançadas.
-                                <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-900"></div>
-                              </div>
-                            </div>
-                          </div>
                         </div>
                       </motion.div>
 
