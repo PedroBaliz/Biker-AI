@@ -26,6 +26,7 @@ import {
   Info
 } from "lucide-react";
 import SmartHydrationTip from "./SmartHydrationTip";
+import { getSimplifiedText } from "../utils/translation";
 
 interface WorkoutCardProps {
   workout: Workout;
@@ -37,56 +38,36 @@ interface WorkoutCardProps {
   isSimpleMode?: boolean;
 }
 
-// Translation helper for simplified display mode (sensation-based, no technical jargon)
-function getSimplifiedText(text: string | undefined): string {
-  if (!text) return "";
-  
-  let result = text;
-  
-  // Replace Z1..Z7 with simplified descriptions
-  result = result.replace(/Z1\s*\(Recuperação\)|Z1/gi, "Muito Leve (Giro Regenerativo)");
-  result = result.replace(/Z2\s*\(Endurance\)|Z2\s*\(Resistência\)|Z2/gi, "Leve (Giro confortável / Ritmo de conversa)");
-  result = result.replace(/Z3\s*\(Tempo\/Ritmo\)|Z3\s*\(Tempo\)|Z3/gi, "Moderado (Esforço firme / Fôlego presente)");
-  result = result.replace(/Z4\s*\(Limiar de Lactato\)|Z4\s*\(Limiar\)|Z4/gi, "Forte (Seu limite / Falar poucas palavras)");
-  result = result.replace(/Z5\s*\(VO2 M[aá]ximo\)|Z5\s*\(VO2\s*Max\)|Z5/gi, "Muito Forte (Fôlego extremo / VO2 Max)");
-  result = result.replace(/Z6\s*\(Capacidade\s+Anaer[oó]bica\)|Z6/gi, "Explosivo (Força máxima / Arrancada)");
-  result = result.replace(/Z7\s*\(Pot[eê]ncia\s+Neuromuscular\)|Z7/gi, "Explosão Máxima");
-  
-  // Replace other technical jargon
-  result = result.replace(/FTP/gi, "seu esforço limite atual (FTP)");
-  result = result.replace(/Fartlek/gi, "ritmos variados (jogo de velocidade)");
-  result = result.replace(/Sweet Spot/gi, "ritmo firme eficiente");
-  result = result.replace(/limiar de lactato/gi, "limiar de esforço pesado");
-  result = result.replace(/overtraining/gi, "excesso de treino (esgotamento)");
-  result = result.replace(/microciclo de progressão/gi, "ciclo de evolução de cargas");
-  result = result.replace(/supercompensação/gi, "recuperação super-compensada");
-  result = result.replace(/mitocôndrias/gi, "geradores de fôlego do corpo");
-  result = result.replace(/mitocondriais/gi, "geradores de fôlego corporal");
-  result = result.replace(/glicogênio muscular/gi, "reservas de energia muscular");
-  result = result.replace(/glicogênio/gi, "reservas de energia");
-  result = result.replace(/capilarização muscular/gi, "oxigenação dos músculos");
-  
-  return result;
-}
-
-function getZoneExplanation(zone: string): string {
+function getZoneExplanation(zone: string, isSimpleMode = false): string {
   const z = zone.toUpperCase();
   if (z.includes("Z1") || z.includes("RECUPERAÇÃO") || z.includes("REGENERATIVO")) {
-    return "Zona 1 (Giro Regenerativo): Intensidade super leve para soltar as pernas e recuperar os músculos de treinos anteriores. Sem cansaço ou fôlego curto.";
+    return isSimpleMode
+      ? "Muito Leve 🟢 (Giro super leve, sem peso algum nos pedais). Ideal para descansar as pernas, recuperar a energia e aquecer suavemente sem cansar nada."
+      : "Zona 1 (Giro Regenerativo): Intensidade super leve para soltar as pernas e recuperar os músculos de treinos anteriores. Sem cansaço ou fôlego curto.";
   }
   if (z.includes("Z2") || z.includes("ENDURANCE") || z.includes("RESISTÊNCIA")) {
-    return "Zona 2 (Ritmo de Viagem): Intensidade confortável que você consegue manter por horas. Ideal para construir resistência aeróbica básica e queimar gordura.";
+    return isSimpleMode
+      ? "Leve 🟢 (Ritmo confortável que você aguenta pedalar por horas). Dá para bater um papo inteiro com os amigos ou cantar normalmente sem perder o fôlego."
+      : "Zona 2 (Ritmo de Viagem): Intensidade confortável que você consegue manter por horas. Ideal para construir resistência aeróbica básica e queimar gordura.";
   }
   if (z.includes("Z3") || z.includes("TEMPO") || z.includes("RITMO")) {
-    return "Zona 3 (Ritmo Firme): Intensidade moderadamente forte. Respiração fica profunda e constante. Exige foco para manter, mas ainda é possível falar.";
+    return isSimpleMode
+      ? "Moderado 🟡 (Esforço firme e focado, respiração um pouco mais profunda). Você sente as pernas trabalhando de forma constante, mas ainda consegue falar frases inteiras se precisar."
+      : "Zona 3 (Ritmo Firme): Intensidade moderadamente forte. Respiração fica profunda e constante. Exige foco para manter, mas ainda é possível falar.";
   }
   if (z.includes("Z4") || z.includes("LIMIAR") || z.includes("FTP") || z.includes("LACTATO")) {
-    return "Zona 4 (Limiar / Força): Intensidade forte e cansativa. Pernas começam a arder devido ao esforço e só dá para falar frases muito curtas.";
+    return isSimpleMode
+      ? "Forte 🟠 (Esforço pesado de alto rendimento). As pernas começam a queimar e a respiração fica bem ofegante; você só consegue falar poucas palavras curtas por vez."
+      : "Zona 4 (Limiar / Força): Intensidade forte e cansativa. Pernas começam a arder devido ao esforço e só dá para falar frases muito curtas.";
   }
   if (z.includes("Z5") || z.includes("VO2") || z.includes("MÁXIMO")) {
-    return "Zona 5 (VO2 Máximo): Intensidade extrema e exaustiva. Fôlego no limite e respiração ofegante total. Sustentável por poucos minutos.";
+    return isSimpleMode
+      ? "Muito Forte 🔴 (Esforço extremo no seu limite de fôlego). Coração disparado e respiração totalmente ofegante. É um ritmo muito pesado para sustentar por poucos minutos."
+      : "Zona 5 (VO2 Máximo): Intensidade extrema e exaustiva. Fôlego no limite e respiração ofegante total. Sustentável por poucos minutos.";
   }
-  return "Zona de Intensidade Coordenada: Esforço técnico calculado especificamente para otimizar seus marcadores físicos.";
+  return isSimpleMode
+    ? "Esforço adaptado sob medida de acordo com as sensações do corpo e percepção de cansaço para a planilha de hoje."
+    : "Zona de Intensidade Coordenada: Esforço técnico calculado especificamente para otimizar seus marcadores físicos.";
 }
 
 // Custom simple markdown helper to render coaching feedback elegantly
@@ -245,11 +226,11 @@ export default function WorkoutCard({ workout, onUpdate, onDelete, profile, allW
   };
 
   const getSimpleEffortText = (rpe: number) => {
-    if (rpe <= 2) return "Muito Leve";
-    if (rpe <= 4) return "Leve";
-    if (rpe <= 6) return "Moderado";
-    if (rpe <= 8) return "Forte";
-    return "Máximo";
+    if (rpe <= 2) return "Muito Leve 🟢 (Sem cansaço, ritmo de passeio)";
+    if (rpe <= 4) return "Leve 🟢 (Confortável, ritmo de conversa)";
+    if (rpe <= 6) return "Moderado 🟡 (Firme, fôlego presente e sob controle)";
+    if (rpe <= 8) return "Forte 🟠 (Pesado, fôlego curto, pernas cansando)";
+    return "Máximo 🔥 (Extremo, fôlego no limite)";
   };
 
   const rpeStyles = getRpeStyles(workout.rpe || 5);
@@ -837,7 +818,7 @@ export default function WorkoutCard({ workout, onUpdate, onDelete, profile, allW
               <Info className="w-3.5 h-3.5 text-sky-600 shrink-0" />
               Sua sensação física nesta zona:
             </p>
-            {getZoneExplanation(workout.targetZone)}
+            {getZoneExplanation(workout.targetZone, isSimpleMode)}
           </div>
         )}
 
@@ -1036,7 +1017,7 @@ export default function WorkoutCard({ workout, onUpdate, onDelete, profile, allW
 
         {/* Smart Hydration Suggestion Component */}
         <div id={`hydration-advice-wrapper-${workout.day}`} className="mb-5">
-          <SmartHydrationTip workout={workout} />
+          <SmartHydrationTip workout={workout} isSimpleMode={isSimpleMode} />
         </div>
 
         {/* Saúde em Primeiro Lugar Banner */}

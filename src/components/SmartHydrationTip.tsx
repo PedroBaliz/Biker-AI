@@ -4,18 +4,14 @@ import {
   Droplet, 
   Sparkles, 
   Info, 
-  Hourglass, 
-  TrendingUp, 
-  Scale, 
   ChevronDown, 
   ChevronUp, 
-  Zap, 
-  Egg, 
-  GlassWater 
 } from "lucide-react";
+import { getSimplifiedText } from "../utils/translation";
 
 interface SmartHydrationTipProps {
   workout: Workout;
+  isSimpleMode?: boolean;
 }
 
 interface HydrationResult {
@@ -49,7 +45,7 @@ export function calculateHydration(durationMinutes: number, targetZone: string, 
     hourlyPotassium = 80;
     hourlyCarbs = 0;
     sipInterval = 15;
-    intensityLevel = "Fácil (Giro Ativo)";
+    intensityLevel = "Muito Leve";
     advice = "Treino leve com baixa taxa de suor. Água pura ou pequenos tabletes de sal são ideais. Evite excesso de calorias desnecessárias.";
   } else if (zone.includes("Z2") || effort <= 4) {
     hourlyWater = 620;
@@ -57,24 +53,24 @@ export function calculateHydration(durationMinutes: number, targetZone: string, 
     hourlyPotassium = 110;
     hourlyCarbs = 30; // 30g starch/sugar per hour
     sipInterval = 12;
-    intensityLevel = "Endurance Aeróbica";
-    advice = "Zona de endurance contínua. Básico bem feito: adicione uma pitada de sal ou cápsula eletrolítica se o pedal passar de 1h para reter líquido no sangue.";
+    intensityLevel = "Leve / Giro Confortável";
+    advice = "Pedal confortável em ritmo de conversa. Básico bem feito: adicione uma pitada de sal ou cápsula eletrolítica se o pedal passar de 1h para reter líquido no sangue e evitar cãibras.";
   } else if (zone.includes("Z3") || effort <= 6) {
     hourlyWater = 750;
     hourlySodium = 650;
     hourlyPotassium = 150;
     hourlyCarbs = 45;
     sipInterval = 10;
-    intensityLevel = "Ritmo Firme / Tempo";
-    advice = "Intensidade moderada-alta. Perda significativa de sais minerais pela transpiração. Use carbo líquido para manter os estoques de glicogênio ativos.";
+    intensityLevel = "Moderado / Esforço Firme";
+    advice = "Intensidade moderada-alta. Perda significativa de sais minerais pela transpiração. Use carbo líquido para manter os estoques de energia ativos.";
   } else if (zone.includes("Z4") || effort <= 8) {
     hourlyWater = 900;
     hourlySodium = 850;
     hourlyPotassium = 200;
     hourlyCarbs = 70;
     sipInterval = 8;
-    intensityLevel = "Limiar de Lactato (Ponto de fadiga rápida)";
-    advice = "Treino forte no limite de fôlego. Sudorese acentuada. Alterne água pura com isotônico contendo carbo (6% a 8% de CHO - Carboidratos simples) para reabastecer as pernas rapidamente.";
+    intensityLevel = "Forte / No Limite";
+    advice = "Treino forte no limite de fôlego. Sudorese acentuada. Alterne água pura com isotônico contendo carbo para reabastecer as pernas rapidamente.";
   } else {
     // Z5/Z6/Z7 or RPE 9-10
     hourlyWater = 1050;
@@ -82,8 +78,8 @@ export function calculateHydration(durationMinutes: number, targetZone: string, 
     hourlyPotassium = 250;
     hourlyCarbs = 85;
     sipInterval = 7;
-    intensityLevel = "Máximo (VO2Max de fôlego / Tiros)";
-    advice = "Estresse metabólico severo. Hidrate bem nas 2h anteriores. Durante o pedal forte, bebe goles pequenos e precisos a cada tiro ou período de respiro.";
+    intensityLevel = "Muito Forte / Esforço Extremo";
+    advice = "Estresse físico severo. Hidrate bem nas 2h anteriores. Durante o pedal forte, beba goles pequenos e precisos a cada tiro ou período de descanso.";
   }
 
   // 2. Adjust carbs for shorter workouts to avoid metabolic waste
@@ -119,7 +115,7 @@ export function calculateHydration(durationMinutes: number, targetZone: string, 
   };
 }
 
-export default function SmartHydrationTip({ workout }: SmartHydrationTipProps) {
+export default function SmartHydrationTip({ workout, isSimpleMode = false }: SmartHydrationTipProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   // Compute calculated recommendations
@@ -153,9 +149,11 @@ export default function SmartHydrationTip({ workout }: SmartHydrationTipProps) {
             <Droplet className={`w-3.5 h-3.5 ${isOpen ? "fill-sky-500 animate-bounce" : ""}`} />
           </div>
           <div>
-            <span className="text-[10px] font-bold text-slate-400 block tracking-widest uppercase font-mono leading-none mb-0.5">Calculadora Fisiológica</span>
+            <span className="text-[10px] font-bold text-slate-400 block tracking-widest uppercase font-mono leading-none mb-0.5">
+              {isSimpleMode ? "Guia Fácil de Hidratação 💧" : "Calculadora Fisiológica"}
+            </span>
             <span className="text-xs font-heading font-extrabold text-slate-800 flex items-center gap-1">
-              Hidratação Inteligente
+              {isSimpleMode ? "Como se Hidratar no Pedal" : "Hidratação Inteligente"}
               <span className="text-[9px] bg-sky-100 text-sky-700 font-bold px-1.5 py-0.2 rounded-md font-sans">
                 {recommendation.waterMl}ml
               </span>
@@ -180,52 +178,78 @@ export default function SmartHydrationTip({ workout }: SmartHydrationTipProps) {
             
             {/* Water Block */}
             <div className="bg-white rounded-xl p-3 border border-slate-100 flex flex-col justify-between h-20 shadow-2xs">
-              <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block font-sans">VOLUME DE ÁGUA</span>
+              <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block font-sans">
+                {isSimpleMode ? "GARRAFA DE ÁGUA 💧" : "VOLUME DE ÁGUA"}
+              </span>
               <div className="flex items-baseline gap-1 mt-1">
                 <span className="text-base font-mono font-black text-sky-600">{recommendation.waterMl}</span>
                 <span className="text-[10px] text-slate-500 font-bold font-mono">ml</span>
               </div>
               <span className="text-[10px] text-slate-400 font-medium">
-                ≈ {recommendation.bottlesCount} caramanhola(s) (garrafinha de água de bike de 750ml)
+                {isSimpleMode 
+                  ? `≈ ${recommendation.bottlesCount} garrafa(s) de 750ml` 
+                  : `≈ ${recommendation.bottlesCount} caramanhola(s) (garrafa comum de 750ml)`
+                }
               </span>
             </div>
 
             {/* Sodium Block */}
             <div className="bg-white rounded-xl p-3 border border-slate-100 flex flex-col justify-between h-20 shadow-2xs">
-              <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block font-sans">REPOSIÇÃO DE SAL (SÓDIO)</span>
-              <div className="flex items-baseline gap-1 mt-1">
-                <span className="text-base font-mono font-black text-amber-600">{recommendation.sodiumMg}</span>
-                <span className="text-[10px] text-slate-500 font-bold font-mono">mg</span>
-              </div>
-              <span className="text-[10px] text-slate-400 font-medium">
-                + {recommendation.potassiumMg}mg Potássio (Eletrolíticos)
+              <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block font-sans">
+                {isSimpleMode ? "SAL E MINERAIS 🧂" : "REPOSIÇÃO DE SAL (SÓDIO)"}
               </span>
+              {isSimpleMode ? (
+                <>
+                  <div className="flex items-baseline gap-1 mt-1">
+                    <span className="text-sm font-sans font-black text-amber-600">Sais Eletrolíticos</span>
+                  </div>
+                  <span className="text-[9px] text-slate-400 font-medium leading-none">
+                    {workout.duration > 60 
+                      ? "Recomendado levar cápsula ou sachê" 
+                      : "Apenas água basta para este pedal!"}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <div className="flex items-baseline gap-1 mt-1">
+                    <span className="text-base font-mono font-black text-amber-600">{recommendation.sodiumMg}</span>
+                    <span className="text-[10px] text-slate-500 font-bold font-mono">mg</span>
+                  </div>
+                  <span className="text-[10px] text-slate-400 font-medium">
+                    + {recommendation.potassiumMg}mg Potássio (Eletrolíticos)
+                  </span>
+                </>
+              )}
             </div>
 
             {/* Carb Block */}
             <div className="bg-white rounded-xl p-3 border border-slate-100 flex flex-col justify-between h-20 shadow-2xs">
-              <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block font-sans">CARBOIDRATOS RECOMENDADOS</span>
+              <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block font-sans">
+                {isSimpleMode ? "COMIDA / ENERGIA 🍌" : "CARBOIDRATOS RECOMENDADOS"}
+              </span>
               <div className="flex items-baseline gap-1 mt-1">
                 <span className="text-base font-mono font-black text-lime-600">{recommendation.carbsG}</span>
                 <span className="text-[10px] text-slate-500 font-extrabold font-mono">g</span>
               </div>
               <span className="text-[10px] text-slate-400 font-medium leading-none">
                 {recommendation.gelEstimate > 0 
-                  ? `≈ ${recommendation.gelEstimate} sachê(s) de gel energético` 
-                  : "Pedal curto: desnecessário"}
+                  ? `≈ ${recommendation.gelEstimate} gel ou banana` 
+                  : "Pedal curto: desnecessário levar comida"}
               </span>
             </div>
 
             {/* Sip Frequency Block */}
             <div className="bg-white rounded-xl p-3 border border-slate-100 flex flex-col justify-between h-20 shadow-2xs">
-              <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block font-sans">FREQUÊNCIA DE GOLES</span>
+              <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block font-sans">
+                {isSimpleMode ? "QUANDO BEBER ⏱️" : "FREQUÊNCIA DE GOLES"}
+              </span>
               <div className="flex items-baseline gap-1 mt-1">
                 <span className="text-[10px] font-sans font-bold text-slate-400 shrink-0">A cada</span>
                 <span className="text-base font-mono font-black text-slate-800">{recommendation.sipInterval}</span>
                 <span className="text-[10px] text-slate-500 font-extrabold">min</span>
               </div>
               <span className="text-[10px] text-slate-400 font-medium">
-                Configure alertas no seu GPS! ⏱️
+                {isSimpleMode ? "Dê um gole regular!" : "Configure alertas no seu GPS! ⏱️"}
               </span>
             </div>
 
@@ -236,10 +260,10 @@ export default function SmartHydrationTip({ workout }: SmartHydrationTipProps) {
             <Sparkles className="w-4 h-4 text-sky-500 shrink-0 mt-0.5" />
             <div>
               <span className="font-heading font-black text-[10px] text-sky-700 block uppercase tracking-wider mb-0.5">
-                Alerta de Desgaste: {recommendation.intensityLevel}
+                {isSimpleMode ? "DICA DE INTENSIDADE DO COACH:" : `Alerta de Desgaste: ${recommendation.intensityLevel}`}
               </span>
               <p className="text-slate-600 font-medium font-sans italic">
-                "{recommendation.advice}"
+                "{isSimpleMode ? getSimplifiedText(recommendation.advice) : recommendation.advice}"
               </p>
             </div>
           </div>
@@ -248,7 +272,10 @@ export default function SmartHydrationTip({ workout }: SmartHydrationTipProps) {
           <div className="flex items-start gap-1.5 text-[9.5px] text-slate-400/90 leading-tight">
             <Info className="w-3.5 h-3.5 text-slate-350 shrink-0 mt-0.5" />
             <p className="font-sans">
-              As taxas são baseadas nas diretrizes internacionais do ACSM (American College of Sports Medicine - Colégio Americano de Medicina do Esporte) para ciclismo em temperaturas normais (~21°C). Ajuste para mais se estiver quente ou se você suar bastante.
+              {isSimpleMode 
+                ? "Esses valores são calculados de forma segura para você treinar com saúde e sem cansaço excessivo. Beber água e comer corretamente evita cãibras, tontura e estafa precoce!"
+                : "As taxas são baseadas nas diretrizes internacionais do ACSM (American College of Sports Medicine - Colégio Americano de Medicina do Esporte) para ciclismo em temperaturas normais (~21°C). Ajuste para mais se estiver quente ou se você suar bastante."
+              }
             </p>
           </div>
 

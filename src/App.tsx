@@ -8,6 +8,7 @@ import { onAuthStateChanged, signOut } from "firebase/auth";
 import { auth, apiFetch } from "./firebase";
 import WorkoutCard from "./components/WorkoutCard";
 import ZoneCalculator from "./components/ZoneCalculator";
+import { getSimplifiedText } from "./utils/translation";
 import LoginScreen from "./components/LoginScreen";
 import AccountSettings from "./components/AccountSettings";
 import AdminSubscribersPanel from "./components/AdminSubscribersPanel";
@@ -53,7 +54,9 @@ import {
   AlertTriangle,
   TrendingDown,
   MessageSquare,
-  Lightbulb
+  Lightbulb,
+  BookOpen,
+  ArrowRight
 } from "lucide-react";
 
 export default function App() {
@@ -144,6 +147,13 @@ export default function App() {
   const [displayMode, setDisplayMode] = useState<"simples" | "tecnico">(() => {
     return (localStorage.getItem("biker_ai_display_mode") as "simples" | "tecnico") || "simples";
   });
+
+  // Feedbacks states
+  const [feedbacks, setFeedbacks] = useState<{ id: string; text: string; timestamp: string }[]>([]);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [feedbackText, setFeedbackText] = useState("");
+  const [submittingFeedback, setSubmittingFeedback] = useState(false);
+  const [feedbackSuccess, setFeedbackSuccess] = useState(false);
 
   // PWA installation states
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -652,6 +662,7 @@ export default function App() {
               setProfile(data.user.profile);
               setChatHistory(data.user.chatHistory || []);
               setPlan(data.user.plan || null);
+              setFeedbacks(data.user.feedbacks || []);
             }
           }
         } catch (err) {
@@ -686,7 +697,8 @@ export default function App() {
       email: currentUser.email,
       profile,
       chatHistory,
-      plan
+      plan,
+      feedbacks
     };
 
     const emailKey = currentUser.email.toLowerCase();
@@ -697,7 +709,8 @@ export default function App() {
     if (
       JSON.stringify(currentUser.profile) !== JSON.stringify(profile) ||
       JSON.stringify(currentUser.chatHistory) !== JSON.stringify(chatHistory) ||
-      JSON.stringify(currentUser.plan) !== JSON.stringify(plan)
+      JSON.stringify(currentUser.plan) !== JSON.stringify(plan) ||
+      JSON.stringify(currentUser.feedbacks) !== JSON.stringify(feedbacks)
     ) {
       setCurrentUser({
         ...updatedUser,
@@ -723,7 +736,7 @@ export default function App() {
     .catch((err) => {
       console.warn("Erro de conexão ao sincronizar com servidor central:", err);
     });
-  }, [profile, chatHistory, plan, currentUser?.email]);
+  }, [profile, chatHistory, plan, feedbacks, currentUser?.email]);
 
   useEffect(() => {
     if (chatContainerRef.current) {
@@ -906,6 +919,7 @@ export default function App() {
     setProfile(user.profile);
     setChatHistory(user.chatHistory);
     setPlan(user.plan);
+    setFeedbacks(user.feedbacks || []);
     setShowAccountSettings(false);
   };
 
@@ -924,6 +938,7 @@ export default function App() {
       },
       chatHistory,
       plan,
+      feedbacks,
       password: passwordToStore
     };
 
@@ -950,6 +965,30 @@ export default function App() {
     });
 
     return true;
+  };
+
+  // Handle sending feedback to trainer
+  const handleSendFeedback = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!feedbackText.trim() || !currentUser) return;
+
+    setSubmittingFeedback(true);
+    const newFeedback = {
+      id: "fb_" + Math.random().toString(36).substr(2, 9),
+      text: feedbackText.trim(),
+      timestamp: new Date().toISOString()
+    };
+
+    const updatedFeedbacks = [...feedbacks, newFeedback];
+    setFeedbacks(updatedFeedbacks);
+    setFeedbackText("");
+    setFeedbackSuccess(true);
+    setSubmittingFeedback(false);
+
+    setTimeout(() => {
+      setFeedbackSuccess(false);
+      setShowFeedbackModal(false);
+    }, 2000);
   };
 
   // Sign out of active athlete profile
@@ -1662,6 +1701,18 @@ export default function App() {
                     <Sliders className="w-4 h-4" />
                     <span>Meu Guia</span>
                   </button>
+                  <button 
+                    onClick={() => {
+                      setFeedbackText("");
+                      setFeedbackSuccess(false);
+                      setShowFeedbackModal(true);
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-2 sm:px-4 sm:py-2.5 text-[11px] sm:text-xs font-black leading-none font-heading uppercase rounded-xl transition-all cursor-pointer text-slate-650 hover:bg-slate-200 hover:text-slate-900 bg-white/50 border border-slate-200/50 shadow-xs"
+                    title="Enviar sugestão ou feedback direto para a área privada do treinador"
+                  >
+                    <MessageSquare className="w-4 h-4 text-emerald-500 animate-pulse" />
+                    <span>Feedback</span>
+                  </button>
                 </div>
               </div>
 
@@ -1676,6 +1727,43 @@ export default function App() {
                     transition={{ duration: 0.2 }}
                     className="space-y-8"
                   >
+                    {/* Before Starting Guide Banner */}
+                    <motion.div 
+                      initial={{ opacity: 0, y: -15 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.4, delay: 0.1 }}
+                      id="before-starting-guide-card" 
+                      className="bg-gradient-to-r from-sky-500/10 via-indigo-500/5 to-transparent border border-sky-500/20 rounded-2xl p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-3xs"
+                    >
+                      <div className="flex items-start gap-4">
+                        <div className="p-3 bg-sky-500 text-white rounded-2xl shrink-0 shadow-xs animate-pulse">
+                          <BookOpen className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <span className="text-[9px] font-black tracking-widest uppercase text-sky-600 block mb-1 font-mono">
+                            Passo Essencial 🚀
+                          </span>
+                          <h4 className="font-heading font-extrabold text-slate-800 text-sm flex items-center gap-1.5">
+                            Antes de começar o treino de hoje, leia o seu Guia!
+                          </h4>
+                          <p className="text-xs font-sans text-slate-600 leading-relaxed mt-1">
+                            Acesse o <strong className="text-slate-800 font-extrabold font-heading">Meu Guia</strong> para ver o guia fácil de sensações, as zonas personalizadas de batimento/potência, calculadora de hidratação inteligente e as boas práticas de segurança!
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveTab("zonas");
+                          window.scrollTo({ top: 0, behavior: "smooth" });
+                        }}
+                        className="w-full md:w-auto px-5 py-3 bg-sky-600 hover:bg-sky-700 active:scale-98 text-white text-xs font-heading font-black uppercase tracking-wider rounded-xl transition-all shadow-sm hover:shadow-md shrink-0 flex items-center justify-center gap-2 cursor-pointer border-none"
+                      >
+                        <span>Abrir Meu Guia</span>
+                        <ArrowRight className="w-4 h-4" />
+                      </button>
+                    </motion.div>
+
                     {plan?.coachMessage && (
                       <motion.div 
                         initial={{ opacity: 0, y: 20 }}
@@ -1688,8 +1776,8 @@ export default function App() {
                         <MessageSquare className="w-5 h-5 text-lime-600 shrink-0 mt-0.5" />
                         <div>
                           <h4 className="font-heading font-extrabold text-slate-800 text-sm">Feedback do Treinador AI — Semana {plan.weekNumber || 1}</h4>
-                          <p className="text-xs font-sans text-slate-650 leading-relaxed mt-1 italic">
-                            "{plan.coachMessage}"
+                          <p className="text-xs font-sans text-slate-655 leading-relaxed mt-1 italic">
+                            "{displayMode === "simples" ? getSimplifiedText(plan.coachMessage) : plan.coachMessage}"
                           </p>
                         </div>
                       </motion.div>
@@ -1710,7 +1798,9 @@ export default function App() {
                           <h3 className="font-heading font-extrabold text-sm uppercase tracking-widest text-lime-400 flex items-center gap-1.5">
                             <TrendingUp className="w-4 h-4 text-lime-400" /> Macrociclo & Foco Principal
                           </h3>
-                          <p className="text-xs text-slate-350 leading-relaxed font-sans">{plan?.summary}</p>
+                          <p className="text-xs text-slate-350 leading-relaxed font-sans">
+                            {displayMode === "simples" ? getSimplifiedText(plan?.summary) : plan?.summary}
+                          </p>
                         </div>
 
                         {/* Direct Access Action Link styled sportily */}
@@ -1747,35 +1837,56 @@ export default function App() {
                           </button>
 
                           {/* Simplified vs Technical mode toggle selector */}
-                          <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-800/80 items-center">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setDisplayMode("simples");
-                                localStorage.setItem("biker_ai_display_mode", "simples");
-                              }}
-                              className={`px-3 py-1.5 rounded-lg text-[10px] font-heading font-black uppercase tracking-wider transition-all cursor-pointer ${
-                                displayMode === "simples"
-                                  ? "bg-slate-800 text-lime-400 shadow-xs"
-                                  : "text-slate-400 hover:text-white"
-                              }`}
-                            >
-                              Modo Simples (Sensações)
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setDisplayMode("tecnico");
-                                localStorage.setItem("biker_ai_display_mode", "tecnico");
-                              }}
-                              className={`px-3 py-1.5 rounded-lg text-[10px] font-heading font-black uppercase tracking-wider transition-all cursor-pointer ${
-                                displayMode === "tecnico"
-                                  ? "bg-slate-800 text-lime-400 shadow-xs"
-                                  : "text-slate-400 hover:text-white"
-                              }`}
-                            >
-                              Modo Técnico (Fisiologia)
-                            </button>
+                          <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-800/80 items-center gap-1">
+                            <div className="relative group/tooltip">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setDisplayMode("simples");
+                                  localStorage.setItem("biker_ai_display_mode", "simples");
+                                }}
+                                className={`px-2.5 py-1.5 rounded-lg text-[10px] font-heading font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 ${
+                                  displayMode === "simples"
+                                    ? "bg-slate-800 text-lime-400 shadow-xs"
+                                    : "text-slate-400 hover:text-white"
+                                }`}
+                              >
+                                <span>Modo Simples (Sensações)</span>
+                                <HelpCircle className="w-3 h-3 text-slate-500 group-hover/tooltip:text-lime-400 transition-colors" />
+                              </button>
+                              
+                              {/* Tooltip */}
+                              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-52 p-2.5 bg-slate-900 border border-slate-800 text-[10.5px] text-slate-300 rounded-xl shadow-xl opacity-0 scale-95 pointer-events-none group-hover/tooltip:opacity-100 group-hover/tooltip:scale-100 transition-all duration-200 z-50 text-center font-sans normal-case font-normal leading-normal">
+                                <div className="font-extrabold text-lime-400 mb-0.5">Modo Simples</div>
+                                Foco nas sensações de esforço (PSE) e tempos de treino. Perfeito para quem treina livre ou sem sensores adicionais.
+                                <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-900"></div>
+                              </div>
+                            </div>
+
+                            <div className="relative group/tooltip">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setDisplayMode("tecnico");
+                                  localStorage.setItem("biker_ai_display_mode", "tecnico");
+                                }}
+                                className={`px-2.5 py-1.5 rounded-lg text-[10px] font-heading font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 ${
+                                  displayMode === "tecnico"
+                                    ? "bg-slate-800 text-lime-400 shadow-xs"
+                                    : "text-slate-400 hover:text-white"
+                                }`}
+                              >
+                                <span>Modo Técnico (Fisiologia)</span>
+                                <HelpCircle className="w-3 h-3 text-slate-500 group-hover/tooltip:text-lime-400 transition-colors" />
+                              </button>
+
+                              {/* Tooltip */}
+                              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-52 p-2.5 bg-slate-900 border border-slate-800 text-[10.5px] text-slate-300 rounded-xl shadow-xl opacity-0 scale-95 pointer-events-none group-hover/tooltip:opacity-100 group-hover/tooltip:scale-100 transition-all duration-200 z-50 text-center font-sans normal-case font-normal leading-normal">
+                                <div className="font-extrabold text-lime-400 mb-0.5">Modo Técnico</div>
+                                Detalha zonas de potência e frequência cardíaca. Ideal para monitorar métricas fisiológicas avançadas.
+                                <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-900"></div>
+                              </div>
+                            </div>
                           </div>
                         </div>
                       </motion.div>
@@ -2248,7 +2359,9 @@ export default function App() {
                         <h4 className="font-heading font-bold text-slate-800 text-sm flex items-center gap-1.5 border-b border-slate-50 pb-2">
                           <ShieldAlert className="w-4.5 h-4.5 text-amber-600" /> Marcadores para monitoramento diário
                         </h4>
-                        <p className="text-xs text-slate-600 leading-relaxed font-sans whitespace-pre-line">{plan?.observations}</p>
+                        <p className="text-xs text-slate-600 leading-relaxed font-sans whitespace-pre-line">
+                          {displayMode === "simples" ? getSimplifiedText(plan?.observations) : plan?.observations}
+                        </p>
                       </motion.div>
 
                       {/* Execution feedback card */}
@@ -2378,7 +2491,7 @@ export default function App() {
                     exit={{ opacity: 0, scale: 0.98 }}
                     transition={{ duration: 0.2 }}
                   >
-                    <ZoneCalculator profile={profile} />
+                    <ZoneCalculator profile={profile} isSimpleMode={displayMode === "simples"} />
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -2577,6 +2690,74 @@ export default function App() {
                   </button>
                 </div>
               </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Premium Feedback Modal for Athletes */}
+      <AnimatePresence>
+        {showFeedbackModal && (
+          <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              className="bg-white border border-slate-100 rounded-3xl p-6 max-w-md w-full space-y-4 shadow-2xl relative text-left"
+            >
+              <div className="text-center space-y-1.5">
+                <div className="w-10 h-10 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto border border-emerald-200">
+                  <MessageSquare className="w-5 h-5" />
+                </div>
+                <h3 className="text-base font-heading font-black text-slate-800">
+                  Enviar Feedback ao Treinador
+                </h3>
+                <p className="text-xs text-slate-500 font-sans">
+                  Sua sugestão, dúvida ou elogio será entregue diretamente na área privada de controle do treinador.
+                </p>
+              </div>
+
+              {feedbackSuccess ? (
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="bg-emerald-50 border border-emerald-200 text-emerald-800 p-4 rounded-2xl text-center space-y-1"
+                >
+                  <p className="text-xs font-bold font-heading">Feedback Enviado com Sucesso!</p>
+                  <p className="text-[11px] text-emerald-600 font-sans">Seu treinador já pode visualizar sua mensagem no painel privado.</p>
+                </motion.div>
+              ) : (
+                <form onSubmit={handleSendFeedback} className="space-y-4">
+                  <div className="space-y-1">
+                    <label className="block text-[10px] uppercase font-bold tracking-wider text-slate-450">Mensagem de Feedback</label>
+                    <textarea
+                      placeholder="Ex: nos fale o que pode melhorar no aplicativo..."
+                      rows={4}
+                      value={feedbackText}
+                      onChange={(e) => setFeedbackText(e.target.value)}
+                      required
+                      className="w-full bg-slate-50 border border-slate-200 focus:border-slate-400 focus:bg-white rounded-xl p-3 text-xs outline-hidden transition-all text-slate-800 placeholder:text-slate-400 resize-none font-sans"
+                    />
+                  </div>
+
+                  <div className="flex gap-2.5">
+                    <button
+                      type="button"
+                      onClick={() => setShowFeedbackModal(false)}
+                      className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-650 font-bold rounded-xl text-xs uppercase tracking-wider transition-all cursor-pointer text-center border border-slate-150"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={submittingFeedback || !feedbackText.trim()}
+                      className="flex-1 py-3 bg-slate-900 hover:bg-slate-850 text-lime-400 font-black rounded-xl text-xs uppercase tracking-wider transition-all cursor-pointer shadow-md disabled:opacity-50 text-center"
+                    >
+                      {submittingFeedback ? "Enviando..." : "Enviar Agora"}
+                    </button>
+                  </div>
+                </form>
+              )}
             </motion.div>
           </div>
         )}

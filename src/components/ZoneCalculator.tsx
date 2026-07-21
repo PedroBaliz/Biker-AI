@@ -4,29 +4,90 @@ import { Gauge, Heart, Zap, Sparkles, BookOpen, Info } from "lucide-react";
 
 interface ZoneCalculatorProps {
   profile: UserProfile;
+  isSimpleMode?: boolean;
 }
 
-export default function ZoneCalculator({ profile }: ZoneCalculatorProps) {
+export default function ZoneCalculator({ profile, isSimpleMode = false }: ZoneCalculatorProps) {
   const ftp = profile.ftp || 200;
   const fcMax = profile.maxHeartRate || 180;
   const [showGlossary, setShowGlossary] = React.useState(true);
 
   const powerZones = [
-    { name: "Z1 - Pedal Leve / Giro", range: `< ${Math.round(ftp * 0.55)}W`, desc: "< 55% do FTP", purpose: "Aquecimento, soltura das pernas e descanso ativo após treinos fortes." },
-    { name: "Z2 - Ritmo de Viagem", range: `${Math.round(ftp * 0.56)}W - ${Math.round(ftp * 0.75)}W`, desc: "56% a 75% do FTP", purpose: "Melhora do fôlego básico, queima saudável de energia e resistência geral para pedalar por horas." },
-    { name: "Z3 - Ritmo Firme", range: `${Math.round(ftp * 0.76)}W - ${Math.round(ftp * 0.90)}W`, desc: "76% a 90% do FTP", purpose: "Velocidade média constante de estrada, ideal para treinar a força em planos e ventos moderados." },
-    { name: "Z4 - Esforço Forte", range: `${Math.round(ftp * 0.91)}W - ${Math.round(ftp * 1.05)}W`, desc: "91% a 105% do FTP", purpose: "Melhora da força geral e resistência para aguentar subidas longas com bastante intensidade." },
-    { name: "Z5 - Fôlego Máximo", range: `${Math.round(ftp * 1.06)}W - ${Math.round(ftp * 1.20)}W`, desc: "106% a 120% do FTP", purpose: "Intensidade muito alta para aumentar sua capacidade respiratória e fôlego sob cansaço severo." },
-    { name: "Z6 - Força Explosiva", range: `${Math.round(ftp * 1.21)}W - ${Math.round(ftp * 1.50)}W`, desc: "121% a 150% do FTP", purpose: "Acelerações fortes para ultrapassagens, fugas ou subidas curtas de alta velocidade." },
-    { name: "Z7 - Arrancada Máxima", range: `> ${Math.round(ftp * 1.51)}W`, desc: "> 150% do FTP", purpose: "Esforço extremo de poucos segundos para ganhar força explosiva e potência muscular instantânea." }
+    { 
+      name: isSimpleMode ? "Muito Leve (Giro Regenerativo)" : "Z1 - Pedal Leve / Giro", 
+      range: `< ${Math.round(ftp * 0.55)}W`, 
+      desc: isSimpleMode ? "Giro livre sem peso ou cansaço" : "< 55% do FTP", 
+      purpose: "Aquecimento, soltura das pernas e descanso ativo após treinos fortes." 
+    },
+    { 
+      name: isSimpleMode ? "Leve (Giro Confortável / Ritmo de Conversa)" : "Z2 - Ritmo de Viagem", 
+      range: `${Math.round(ftp * 0.56)}W - ${Math.round(ftp * 0.75)}W`, 
+      desc: isSimpleMode ? "Confortável para conversar normalmente" : "56% a 75% do FTP", 
+      purpose: "Melhora do fôlego básico, queima saudável de energia e resistência geral para pedalar por horas." 
+    },
+    { 
+      name: isSimpleMode ? "Moderado (Esforço Firme / Fôlego Presente)" : "Z3 - Ritmo Firme", 
+      range: `${Math.round(ftp * 0.76)}W - ${Math.round(ftp * 0.90)}W`, 
+      desc: isSimpleMode ? "Esforço constante e fôlego mais profundo" : "76% a 90% do FTP", 
+      purpose: "Velocidade média constante de estrada, ideal para treinar a força em planos e ventos moderados." 
+    },
+    { 
+      name: isSimpleMode ? "Forte (No Seu Limite / Falar Poucas Palavras)" : "Z4 - Esforço Forte", 
+      range: `${Math.round(ftp * 0.91)}W - ${Math.round(ftp * 1.05)}W`, 
+      desc: isSimpleMode ? "Respiração pesada, pernas queimando" : "91% a 105% do FTP", 
+      purpose: "Melhora da força geral e resistência para aguentar subidas longas com bastante intensidade." 
+    },
+    { 
+      name: isSimpleMode ? "Muito Forte (Fôlego Extremo / VO2 Max)" : "Z5 - Fôlego Máximo", 
+      range: `${Math.round(ftp * 1.06)}W - ${Math.round(ftp * 1.20)}W`, 
+      desc: isSimpleMode ? "Fôlego no limite extremo ofegante" : "106% a 120% do FTP", 
+      purpose: "Intensidade muito alta para aumentar sua capacidade respiratória e fôlego sob cansaço severo." 
+    },
+    { 
+      name: isSimpleMode ? "Explosivo (Força Máxima / Arrancada)" : "Z6 - Força Explosiva", 
+      range: `${Math.round(ftp * 1.21)}W - ${Math.round(ftp * 1.50)}W`, 
+      desc: isSimpleMode ? "Arrancada forte com pernas pesadas" : "121% a 150% do FTP", 
+      purpose: "Acelerações fortes para ultrapassagens, fugas ou subidas curtas de alta velocidade." 
+    },
+    { 
+      name: isSimpleMode ? "Explosão Máxima" : "Z7 - Arrancada Máxima", 
+      range: `> ${Math.round(ftp * 1.51)}W`, 
+      desc: isSimpleMode ? "Força muscular total instantânea" : "> 150% do FTP", 
+      purpose: "Esforço extremo de poucos segundos para ganhar força explosiva e potência muscular instantânea." 
+    }
   ];
 
   const hrZones = [
-    { name: "Z1 - Super Leve / Soltura", range: `< ${Math.round(fcMax * 0.65)} bpm`, desc: "< 65% da FCmax", purpose: "Aquecimento inicial ou pedalada tranquila para soltar as pernas e relaxar." },
-    { name: "Z2 - Ritmo Confortável", range: `${Math.round(fcMax * 0.65)} - ${Math.round(fcMax * 0.79)} bpm`, desc: "65% a 79% da FCmax", purpose: "Resistência geral onde você consegue conversar normalmente sem perder o fôlego." },
-    { name: "Z3 - Ritmo Moderado", range: `${Math.round(fcMax * 0.80)} - ${Math.round(fcMax * 0.89)} bpm`, desc: "80% a 89% da FCmax", purpose: "Velocidade moderada, respiração um pouco mais profunda, ideal para focar na postura e ritmo firme." },
-    { name: "Z4 - Limite de Esforço", range: `${Math.round(fcMax * 0.90)} - ${Math.round(fcMax * 0.94)} bpm`, desc: "90% a 94% da FCmax", purpose: "Treino intenso, pernas começam a pesar bastante e a respiração fica acelerada." },
-    { name: "Z5 - Esforço Extremo", range: `> ${Math.round(fcMax * 0.95)} bpm`, desc: ">= 95% da FCmax", purpose: "Força total e fôlego no limite máximo para simulação de competições ou picos de esforço." }
+    { 
+      name: isSimpleMode ? "Muito Leve (Giro Regenerativo / Sem Esforço)" : "Z1 - Super Leve / Soltura", 
+      range: `< ${Math.round(fcMax * 0.65)} bpm`, 
+      desc: isSimpleMode ? "Super tranquilo para girar e relaxar" : "< 65% da FCmax", 
+      purpose: "Aquecimento inicial ou pedalada tranquila para soltar as pernas e relaxar." 
+    },
+    { 
+      name: isSimpleMode ? "Leve (Giro Confortável / Ritmo de Conversa)" : "Z2 - Ritmo Confortável", 
+      range: `${Math.round(fcMax * 0.65)} - ${Math.round(fcMax * 0.79)} bpm`, 
+      desc: isSimpleMode ? "Dá para conversar sem perder o ar" : "65% a 79% da FCmax", 
+      purpose: "Resistência geral onde você consegue conversar normalmente sem perder o fôlego." 
+    },
+    { 
+      name: isSimpleMode ? "Moderado (Esforço Firme / Fôlego Presente)" : "Z3 - Ritmo Moderado", 
+      range: `${Math.round(fcMax * 0.80)} - ${Math.round(fcMax * 0.89)} bpm`, 
+      desc: isSimpleMode ? "Respiração mais profunda e ritmada" : "80% a 89% da FCmax", 
+      purpose: "Velocidade moderada, respiração um pouco mais profunda, ideal para focar na postura e ritmo firme." 
+    },
+    { 
+      name: isSimpleMode ? "Forte (No Seu Limite / Falar Poucas Palavras)" : "Z4 - Limite de Esforço", 
+      range: `${Math.round(fcMax * 0.90)} - ${Math.round(fcMax * 0.94)} bpm`, 
+      desc: isSimpleMode ? "Esforço pesado e respiração acelerada" : "90% a 94% da FCmax", 
+      purpose: "Treino intenso, pernas começam a pesar bastante e a respiração fica acelerada." 
+    },
+    { 
+      name: isSimpleMode ? "Muito Forte / Esforço Extremo" : "Z5 - Esforço Extremo", 
+      range: `> ${Math.round(fcMax * 0.95)} bpm`, 
+      desc: isSimpleMode ? "Força total e fôlego no limite máximo" : ">= 95% da FCmax", 
+      purpose: "Força total e fôlego no limite máximo para simulação de competições ou picos de esforço." 
+    }
   ];
 
   const getZoneColor = (index: number, total: number) => {

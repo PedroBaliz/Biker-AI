@@ -535,14 +535,14 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
               <div className="space-y-2">
                 <h4 className="text-lg font-heading font-black text-white">Flexibilidade que te entende</h4>
                 <p className="text-xs sm:text-sm text-slate-400 leading-relaxed font-sans">
-                  Marcou o pedal como finalizado? Comente em português como foi o esforço ou se sentiu cansaço. Nossa IA elogia seu foco e, o melhor de tudo, se precisar saltar algum treino por imprevisto, ela reagenda toda a semana!
+                  Marcou o pedal como finalizado? Registre de forma super rápida suas sensações e percepção de esforço. Se precisar saltar algum treino por imprevisto, o sistema reagenda toda a semana de forma inteligente!
                 </p>
               </div>
 
               <div className="pt-4 border-t border-slate-850 space-y-1.5">
                 <span className="text-[9px] uppercase font-bold text-slate-500 font-mono tracking-wider block">Flexibilidade Real:</span>
                 <div className="flex flex-wrap gap-1.5">
-                  <span className="text-[10px] text-[#00E676] bg-[#00E676]/5 px-2 py-0.5 rounded border border-[#00E676]/10">Coach de Bolso no Feedback</span>
+                  <span className="text-[10px] text-[#00E676] bg-[#00E676]/5 px-2 py-0.5 rounded border border-[#00E676]/10">Registro de Esforço</span>
                   <span className="text-[10px] text-[#00E676] bg-[#00E676]/5 px-2 py-0.5 rounded border border-[#00E676]/10">Adaptação sob Imprevistos</span>
                 </div>
               </div>
@@ -590,14 +590,14 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
             <div className="p-6 rounded-3xl bg-slate-900 border border-slate-800 flex flex-col justify-between hover:border-emerald-500/20 transition-all group space-y-4 text-left">
               <div className="space-y-3">
                 <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center">
-                  <MessageSquare className="w-5 h-5" />
+                  <Sliders className="w-5 h-5" />
                 </div>
-                <h4 className="font-heading font-black text-base text-white">Ajuda a Qualquer Hora</h4>
+                <h4 className="font-heading font-black text-base text-white">Zonas de Ritmo Claras</h4>
                 <p className="text-xs text-slate-400 font-sans leading-relaxed">
-                   Tire dúvidas na hora sobre o que comer antes de pedalar, como se recuperar de forma mais fácil ou receitas saudáveis para o dia a dia.
+                  Zonas de esforço sob medida para você (tanto pelo Modo Simples com sensações quanto pelo Modo Técnico com watts/frequência), evitando cansaço excessivo.
                 </p>
               </div>
-              <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest font-mono">Assistente 24h</span>
+              <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest font-mono">Guia de Zonas</span>
             </div>
 
             {/* Card 3 */}
@@ -626,28 +626,6 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
                 </p>
               </div>
               <span className="text-[10px] font-bold text-blue-400 uppercase tracking-widest font-mono">Fácil Sem Esforço</span>
-            </div>
-
-            {/* Card 5 - HIGHLIGHTED MOBILE & OFFLINE FEATURE */}
-            <div className="p-6 rounded-3xl bg-linear-to-b from-slate-900 to-lime-950/30 border border-lime-500/30 hover:border-lime-500/50 flex flex-col justify-between transition-all group space-y-4 text-left shadow-lg shadow-lime-500/5 relative overflow-hidden">
-              <div className="absolute top-0 right-0 px-2.5 py-1 bg-lime-500 text-slate-950 font-black text-[8px] uppercase tracking-wider rounded-bl-xl font-mono">
-                Diferencial Forte
-              </div>
-              <div className="space-y-3">
-                <div className="w-10 h-10 rounded-2xl bg-lime-500/20 border border-lime-500/30 text-lime-400 flex items-center justify-center">
-                  <Smartphone className="w-5 h-5 animate-pulse" />
-                </div>
-                <h4 className="font-heading font-black text-base text-white flex items-center gap-2">
-                  Funciona No Celular <span className="text-lime-400 text-xs">PWA</span>
-                </h4>
-                <p className="text-xs text-slate-300 font-sans leading-relaxed">
-                  Instale o aplicativo em seu celular direto pelo navegador. Leve toda a sua lista de treinos personalizados e o cronômetro para as montanhas ou estradas, funcionando perfeitamente sem sinal de internet ou dados móveis!
-                </p>
-              </div>
-              <span className="text-[10px] font-bold text-lime-400 uppercase tracking-widest font-mono flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-lime-400 animate-ping"></span>
-                Modo Offline & GPS Seguro
-              </span>
             </div>
 
             {/* Card 6 */}

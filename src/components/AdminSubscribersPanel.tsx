@@ -36,6 +36,7 @@ interface AdminUser {
   chatHistoryCount: number;
   hasPlan: boolean;
   planSummary: string;
+  feedbacks?: { id: string; text: string; timestamp: string }[];
 }
 
 interface AdminSubscribersPanelProps {
@@ -797,6 +798,30 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
                     <p className="text-[11px]  leading-relaxed text-slate-600 bg-white border border-slate-150 rounded-xl p-2.5 mt-1 font-sans italic">
                       {selectedUser.profile.limitations || "Aluno livre de dores agudas ou limitações físicas limitantes listadas."}
                     </p>
+                  </div>
+
+                  {/* Feedbacks sent by athlete */}
+                  <div className="pt-3 border-t border-slate-150">
+                    <span className="text-slate-450 block text-[9.5px] uppercase font-bold leading-normal flex items-center gap-1">
+                      <MessageSquare className="w-3.5 h-3.5 text-slate-500" />
+                      <span>Feedbacks Enviados pelo Aluno</span>
+                    </span>
+                    {selectedUser.feedbacks && selectedUser.feedbacks.length > 0 ? (
+                      <div className="space-y-2 mt-2 max-h-[160px] overflow-y-auto pr-1">
+                        {selectedUser.feedbacks.map((fb) => (
+                          <div key={fb.id} className="bg-white border border-slate-150 rounded-xl p-3 shadow-xs">
+                            <p className="text-xs text-slate-700 leading-normal font-sans font-medium">{fb.text}</p>
+                            <span className="text-[9px] text-slate-400 font-mono block mt-1.5 text-right">
+                              {new Date(fb.timestamp).toLocaleDateString("pt-BR")} às {new Date(fb.timestamp).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-[11px] leading-relaxed text-slate-400 mt-1 font-sans italic">
+                        Nenhum feedback enviado por este aluno ainda.
+                      </p>
+                    )}
                   </div>
                 </div>
               </motion.div>

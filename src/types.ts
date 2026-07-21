@@ -66,6 +66,7 @@ export interface UserAccount {
   chatHistory: ChatMessage[];
   plan: TrainingPlan | null;
   password?: string;
+  feedbacks?: { id: string; text: string; timestamp: string }[];
 }
 
 export interface ZoneInfo {

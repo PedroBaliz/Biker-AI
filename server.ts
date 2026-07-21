@@ -2056,7 +2056,8 @@ app.get("/api/admin/users", requireAuth, requireAdmin, async (req, res) => {
         },
         chatHistoryCount: user.chatHistory?.length || 0,
         hasPlan: !!user.plan,
-        planSummary: user.plan?.summary || ""
+        planSummary: user.plan?.summary || "",
+        feedbacks: user.feedbacks || []
       };
     });
     res.json({ success: true, users: userList });
