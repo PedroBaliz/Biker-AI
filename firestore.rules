@@ -1,7 +1,13 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Default deny catch-all
     match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Allow read and write for the users collection so the server client SDK and any client can access documents securely
+    match /users/{email} {
       allow read, write: if true;
     }
   }

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { UserProfile, ZoneInfo } from "../types";
+import { apiFetch } from "../firebase";
 import { motion, AnimatePresence } from "motion/react";
 import { 
   Users, 
@@ -64,7 +65,7 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
   const fetchBackups = async () => {
     setBackupsLoading(true);
     try {
-      const response = await fetch("/api/admin/backups");
+      const response = await apiFetch("/api/admin/backups");
       if (response.ok) {
         const data = await response.json();
         if (data.success) {
@@ -85,7 +86,7 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
     setSuccess("");
     setError("");
     try {
-      const response = await fetch("/api/admin/backups/create", { method: "POST" });
+      const response = await apiFetch("/api/admin/backups/create", { method: "POST" });
       if (response.ok) {
         const data = await response.json();
         if (data.success) {
@@ -114,7 +115,7 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
     setSuccess("");
     setError("");
     try {
-      const response = await fetch("/api/admin/backups/restore", {
+      const response = await apiFetch("/api/admin/backups/restore", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ filename })
@@ -155,7 +156,7 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
     setLoading(true);
     setError("");
     try {
-      const response = await fetch("/api/admin/users");
+      const response = await apiFetch("/api/admin/users");
       if (response.ok) {
         const data = await response.json();
         if (data.success && data.users) {
@@ -206,7 +207,7 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
     setError("");
     setSuccess("");
     try {
-      const response = await fetch("/api/admin/update-user-status", {
+      const response = await apiFetch("/api/admin/update-user-status", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -248,7 +249,7 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
     setError("");
     setSuccess("");
     try {
-      const response = await fetch("/api/admin/update-user-status", {
+      const response = await apiFetch("/api/admin/update-user-status", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -259,7 +260,7 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
       if (response.ok) {
         const data = await response.json();
         if (data.success) {
-          setSuccess(`Status de ${user.profile.name} alterado rápido para ${newStat === 'active' ? '🚨 Ativo' : '🔒 Expirado'}`);
+          setSuccess(`Status de ${user.profile.name} alterado rápido para ${newStat === 'active' ? 'Ativo' : 'Expirado'}`);
           if (user.email.toLowerCase() === currentUserEmail.toLowerCase()) {
             onRefreshCurrentProfile(data.user.profile);
           }
@@ -446,9 +447,9 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
                 className="w-full bg-slate-50 border border-slate-150 focus:border-slate-350 focus:bg-white rounded-xl pl-9 pr-3 py-3 text-xs outline-hidden transition-all text-slate-700 font-bold"
               >
                 <option value="all">Filtro: Todos</option>
-                <option value="active">✓ Ativos</option>
-                <option value="pending_payment">⏳ Atrasados</option>
-                <option value="expired">🔒 Expirados</option>
+                <option value="active">Ativos</option>
+                <option value="pending_payment">Atrasados</option>
+                <option value="expired">Expirados</option>
               </select>
             </div>
           </div>
