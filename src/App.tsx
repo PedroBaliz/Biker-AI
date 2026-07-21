@@ -1660,7 +1660,7 @@ export default function App() {
                     }`}
                   >
                     <Sliders className="w-4 h-4" />
-                    <span>Minhas Zonas</span>
+                    <span>Meu Guia</span>
                   </button>
                 </div>
               </div>
