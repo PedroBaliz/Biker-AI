@@ -80,12 +80,8 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
     const checkStandalone = () => {
       const isStandaloneMode = 
         window.matchMedia("(display-mode: standalone)").matches || 
-        (window.navigator as any).standalone === true ||
-        localStorage.getItem("biker_app_installed") === "true";
+        (window.navigator as any).standalone === true;
       setIsPortable(isStandaloneMode);
-      if (isStandaloneMode) {
-        localStorage.setItem("biker_app_installed", "true");
-      }
     };
 
     checkStandalone();
@@ -97,7 +93,6 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
 
     const handleAppInstalled = () => {
       setIsPortable(true);
-      localStorage.setItem("biker_app_installed", "true");
       setDeferredPrompt(null);
     };
 
