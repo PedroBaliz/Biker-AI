@@ -21,7 +21,8 @@ import {
   Flame, 
   Sparkles,
   ClipboardList,
-  CreditCard
+  CreditCard,
+  Instagram
 } from "lucide-react";
 
 interface AccountSettingsProps {
@@ -626,8 +627,19 @@ export default function AccountSettings({ currentUser, onUpdateAccount, onClose 
             </div>
 
             {/* Support footer info */}
-            <div className="bg-amber-50 border border-amber-150 p-3 rounded-2xl text-amber-900 text-xs">
-              Para alterações de faturamento, faturas fiscais, cancelamento ou alteração voluntária de plano, mande uma mensagem de suporte direta ao seu Coach Pedro no WhatsApp cadastrado.
+            <div className="bg-gradient-to-r from-amber-50 to-pink-50 border border-pink-200 p-3.5 rounded-2xl text-slate-800 text-xs space-y-2">
+              <p className="font-sans leading-relaxed">
+                Para suporte técnico, faturamento, alterações de plano ou dúvidas sobre seus treinos:
+              </p>
+              <a
+                href="https://www.instagram.com/biker_ai_app?igsh=MTl1ZnptN3ZjbzBhYg=="
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-pink-300 rounded-xl font-bold transition-all shadow-sm"
+              >
+                <Instagram className="w-4 h-4 text-pink-400 shrink-0" />
+                <span>Envie um Direct em caso de dúvida (@biker_ai_app)</span>
+              </a>
             </div>
           </motion.div>
         )}

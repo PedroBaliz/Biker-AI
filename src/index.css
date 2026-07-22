@@ -35,6 +35,11 @@
   box-shadow: 0 0 20px rgba(99, 102, 241, 0.15);
 }
 
+html, body, #root {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
 /* Base style resets with clean aesthetic dotted background pattern */
 body {
   background-color: #fafbfc;

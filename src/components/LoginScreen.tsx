@@ -10,7 +10,7 @@ import {
   Dumbbell, ShieldAlert, Sparkles, Mail, Lock, User, Eye, EyeOff, Bike, 
   ChevronRight, CheckCircle, Download, Smartphone, Share, X, ExternalLink,
   Activity, TrendingUp, Zap, Award, MessageSquare, Calendar, Heart, Percent, Star, Check,
-  Play, Pause, Sliders, Gauge
+  Play, Pause, Sliders, Gauge, Instagram
 } from "lucide-react";
 // @ts-ignore
 import bikerHero from "../assets/images/biker_hero_1780860230528.png";
@@ -388,19 +388,19 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
           </div>
 
           {/* Key Metrics grid */}
-          <div className="grid grid-cols-3 gap-4 pt-4 border-t border-slate-900">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-slate-900">
             <div className="space-y-0.5">
-              <p className="text-2xl sm:text-3xl font-heading font-black text-lime-400 tracking-tight">Mais Força</p>
+              <p className="text-xl sm:text-3xl font-heading font-black text-lime-400 tracking-tight">Mais Força</p>
               <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Aumente seus watts</p>
               <p className="text-[10px] text-slate-500 leading-normal font-sans">Pedale com mais facilidade e canse muito menos</p>
             </div>
-            <div className="space-y-0.5 border-l border-slate-900 pl-4">
-              <p className="text-2xl sm:text-3xl font-heading font-black text-emerald-400 tracking-tight">Mais Fôlego</p>
+            <div className="space-y-0.5 border-t sm:border-t-0 sm:border-l border-slate-900 pt-3 sm:pt-0 pl-0 sm:pl-4">
+              <p className="text-xl sm:text-3xl font-heading font-black text-emerald-400 tracking-tight">Mais Fôlego</p>
               <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Subidas fáceis</p>
               <p className="text-[10px] text-slate-500 leading-normal font-sans">Sinta menos cansaço nas pernas e suba no seu ritmo</p>
             </div>
-            <div className="space-y-0.5 border-l border-slate-900 pl-4">
-              <p className="text-2xl sm:text-3xl font-heading font-black text-yellow-400 tracking-tight font-heading">No Seu Tempo</p>
+            <div className="space-y-0.5 border-t sm:border-t-0 sm:border-l border-slate-900 pt-3 sm:pt-0 pl-0 sm:pl-4">
+              <p className="text-xl sm:text-3xl font-heading font-black text-yellow-400 tracking-tight font-heading">No Seu Tempo</p>
               <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Treinos Flexíveis</p>
               <p className="text-[10px] text-slate-500 leading-normal font-sans">As sessões cabem no seu tempo livre, dia a dia</p>
             </div>
@@ -906,7 +906,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
             </form>
 
             {/* App installation container */}
-            <div className="pt-4 border-t border-slate-800/60 text-center">
+            <div className="pt-4 border-t border-slate-800/60 text-center space-y-3">
               {isPortable ? (
                 <div className="inline-flex items-center gap-1.5 py-1.5 px-3 bg-emerald-500/10 border border-emerald-500/20 rounded-full text-emerald-400 text-[10px] font-semibold">
                   <CheckCircle className="w-3.5 h-3.5" />
@@ -922,28 +922,60 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
                   <span>Baixar Biker AI no seu Celular</span>
                 </button>
               )}
+
+              <div className="pt-1 flex justify-center">
+                <a
+                  href="https://www.instagram.com/biker_ai_app?igsh=MTl1ZnptN3ZjbzBhYg=="
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-3 py-2 bg-slate-900/90 hover:bg-slate-850 text-pink-300 hover:text-pink-200 border border-pink-500/25 hover:border-pink-500/50 rounded-xl text-[11px] sm:text-xs font-bold transition-all shadow-sm max-w-full"
+                >
+                  <Instagram className="w-4 h-4 text-pink-400 shrink-0" />
+                  <span className="leading-tight">Dúvidas? Envie um Direct para <strong>@biker_ai_app</strong></span>
+                </a>
+              </div>
             </div>
 
           </div>
         </div>
       </section>
-      <footer className="border-t border-slate-900 bg-slate-950 py-12 px-4 sm:px-6 md:px-12 text-slate-500 font-sans text-xs">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-2">
-            <div className="p-1.5 bg-slate-900 rounded-lg text-lime-400 border border-slate-850">
+      <footer className="border-t border-slate-900 bg-slate-950 py-8 sm:py-12 px-4 sm:px-6 md:px-12 text-slate-500 font-sans text-xs pb-24 sm:pb-12">
+        <div className="max-w-7xl mx-auto flex flex-col lg:flex-row items-center justify-between gap-6 text-center sm:text-left">
+          
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 bg-slate-900 rounded-xl text-lime-400 border border-slate-800">
               <Bike className="w-5 h-5" />
             </div>
-            <p className="text-xs font-extrabold text-white">BIKER AI — Smart Assessment</p>
+            <p className="text-xs sm:text-sm font-extrabold text-white">BIKER AI — Smart Assessment</p>
           </div>
-          <div className="flex flex-wrap justify-center gap-6">
-            <button type="button" onClick={() => scrollToSection("como-funciona")} className="hover:text-white transition-colors cursor-pointer bg-transparent border-none p-0 text-slate-400 text-xs">Como funciona</button>
-            <button type="button" onClick={() => scrollToSection("beneficios")} className="hover:text-white transition-colors cursor-pointer bg-transparent border-none p-0 text-slate-400 text-xs">Benefícios</button>
-            <button type="button" onClick={() => scrollToSection("precos")} className="hover:text-white transition-colors cursor-pointer bg-transparent border-none p-0 text-slate-400 text-xs">Preços</button>
-            <button type="button" onClick={() => scrollToSection("auth-section")} className="text-lime-400 hover:text-white transition-colors cursor-pointer bg-transparent border-none p-0 text-xs">Entrar no Portal</button>
+
+          <div className="flex flex-wrap justify-center items-center gap-x-4 gap-y-2.5 text-xs">
+            <button type="button" onClick={() => scrollToSection("como-funciona")} className="hover:text-white transition-colors cursor-pointer bg-transparent border-none p-0 text-slate-400">Como funciona</button>
+            <span className="text-slate-800 hidden xs:inline">•</span>
+            <button type="button" onClick={() => scrollToSection("beneficios")} className="hover:text-white transition-colors cursor-pointer bg-transparent border-none p-0 text-slate-400">Benefícios</button>
+            <span className="text-slate-800 hidden xs:inline">•</span>
+            <button type="button" onClick={() => scrollToSection("precos")} className="hover:text-white transition-colors cursor-pointer bg-transparent border-none p-0 text-slate-400">Preços</button>
+            <span className="text-slate-800 hidden xs:inline">•</span>
+            <button type="button" onClick={() => scrollToSection("auth-section")} className="text-lime-400 hover:text-lime-300 font-bold transition-colors cursor-pointer bg-transparent border-none p-0">Entrar no Portal</button>
           </div>
-          <div className="text-[10px] text-slate-600 font-mono">
-            <span>© 2026 Biker AI. Versão de Produção 2.1 • Todos os direitos reservados.</span>
+
+          <div className="flex items-center justify-center">
+            <a 
+              href="https://www.instagram.com/biker_ai_app?igsh=MTl1ZnptN3ZjbzBhYg=="
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-3.5 py-2 bg-pink-500/10 hover:bg-pink-500/20 text-pink-300 border border-pink-500/30 rounded-xl text-xs font-bold transition-all shadow-sm max-w-full"
+            >
+              <Instagram className="w-4 h-4 text-pink-400 shrink-0" />
+              <span>Suporte Direct @biker_ai_app</span>
+            </a>
           </div>
+
+        </div>
+
+        <div className="max-w-7xl mx-auto pt-6 mt-6 border-t border-slate-900/80 flex flex-col sm:flex-row items-center justify-between gap-2 text-center text-[10px] text-slate-600 font-mono">
+          <span>© 2026 Biker AI. Versão 2.1 • Todos os direitos reservados.</span>
+          <span>Treino Personalizado • Inteligência Artificial</span>
         </div>
       </footer>
 
