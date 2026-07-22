@@ -248,7 +248,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
         const data = await response.json();
         const user = data.user;
 
-        setSuccessMsg("Conta criada com sucesso! Carregando questionário...");
+        setSuccessMsg("Conta criada com sucesso! Redirecionando para a página de pagamento no Mercado Pago (R$ 24,89)...");
         setTimeout(() => {
           onLoginSuccess({
             email: user.email,
@@ -256,7 +256,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
             chatHistory: user.chatHistory || [],
             plan: user.plan || null
           });
-        }, 1000);
+        }, 1200);
       }
     } catch (err: any) {
       console.error("Authentication error:", err);
@@ -682,7 +682,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
 
                 <div className="pt-2 flex items-baseline gap-1">
                   <span className="text-xl font-heading text-slate-400 font-medium">R$</span>
-                  <span className="text-5xl font-heading font-black text-white tracking-tight">29,90</span>
+                  <span className="text-5xl font-heading font-black text-white tracking-tight">24,89</span>
                   <span className="text-xs text-slate-400 font-mono font-semibold">/ mês</span>
                 </div>
 
@@ -720,8 +720,8 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
                   <span>Criar Conta</span>
                   <ChevronRight className="w-4 h-4" />
                 </a>
-                <p className="text-[10px] text-slate-500 text-center mt-2.5 font-sans leading-normal">
-                  Cancele quando quiser diretamente no painel de configurações. Sem pegadinhas de fidelidade ou multas de cancelamento.
+                <p className="text-[10px] text-slate-400 text-center mt-2.5 font-sans leading-normal">
+                  Pagamento seguro de R$ 24,89 processado via Mercado Pago (<a href="https://mpago.la/24PgikU" target="_blank" rel="noopener noreferrer" className="text-sky-400 underline hover:text-sky-300">link oficial</a>). Cancele quando quiser.
                 </p>
               </div>
             </div>

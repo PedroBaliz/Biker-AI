@@ -280,10 +280,10 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
   const expiredCount = users.filter(u => u.profile.subscriptionStatus === 'expired').length;
   const avgFtp = (users.filter(u => u.profile.ftp).reduce((sum, u) => sum + (u.profile.ftp || 0), 0) / (users.filter(u => u.profile.ftp).length || 1)).toFixed(0);
 
-  // Estimativa de faturamento de MVP (Plano Pro R$ 29,90/mês)
+  // Estimativa de faturamento de MVP (Plano Pro R$ 24,89/mês)
   const estimatedRevenue = users.reduce((sum, u) => {
     if (u.profile.subscriptionStatus !== 'active') return sum;
-    return sum + 29.9; // Plano Pro
+    return sum + 24.89; // Plano Pro
   }, 0).toFixed(2);
 
   // Consolidated feedbacks across all subscribers

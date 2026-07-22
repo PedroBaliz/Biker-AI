@@ -2214,7 +2214,8 @@ app.get("/api/mercadopago/config", (req, res) => {
     success: true,
     isReal,
     publicKey: process.env.MERCADO_PAGO_PUBLIC_KEY || "TEST-PublicKey-Simulado",
-    sandbox_mode: true
+    sandbox_mode: true,
+    direct_link: "https://mpago.la/24PgikU"
   });
 });
 
@@ -2229,9 +2230,10 @@ app.post("/api/mercadopago/create-preference", requireAuth, verifyUserMatch, asy
       return res.json({
         success: true,
         isSimulated: true,
-        init_point: "#simular-checkout",
-        sandbox_init_point: "#simular-checkout",
-        preferenceId: "simulated-pref-id-123456"
+        init_point: "https://mpago.la/24PgikU",
+        sandbox_init_point: "https://mpago.la/24PgikU",
+        preferenceId: "simulated-pref-id-123456",
+        direct_link: "https://mpago.la/24PgikU"
       });
     }
 
@@ -2252,7 +2254,7 @@ app.post("/api/mercadopago/create-preference", requireAuth, verifyUserMatch, asy
             id: "premium-monthly",
             title: "Assinatura Mensal Premium - CycleCoach AI",
             quantity: 1,
-            unit_price: 29.90,
+            unit_price: 24.89,
             currency_id: "BRL"
           }
         ],
@@ -2278,9 +2280,10 @@ app.post("/api/mercadopago/create-preference", requireAuth, verifyUserMatch, asy
     res.json({
       success: true,
       isSimulated: false,
-      init_point: mpData.init_point,
-      sandbox_init_point: mpData.sandbox_init_point,
-      preferenceId: mpData.id
+      init_point: mpData.init_point || "https://mpago.la/24PgikU",
+      sandbox_init_point: mpData.sandbox_init_point || "https://mpago.la/24PgikU",
+      preferenceId: mpData.id,
+      direct_link: "https://mpago.la/24PgikU"
     });
   } catch (error: any) {
     console.error("Erro ao processar criação de preferência Mercado Pago:", error);
@@ -2299,8 +2302,9 @@ app.post("/api/mercadopago/create-pix", requireAuth, verifyUserMatch, async (req
       return res.json({
         success: true,
         isSimulated: true,
-        qr_code: "00020101021226870014BR.GOV.BCB.PIX2565bikerai-mp-mercadopago-pedrobramos-29.90-6009SAOPAULO62070503MVP",
-        qr_code_base64: ""
+        qr_code: "00020101021226870014BR.GOV.BCB.PIX2565bikerai-mp-mercadopago-pedrobramos-24.89-6009SAOPAULO62070503MVP",
+        qr_code_base64: "",
+        direct_link: "https://mpago.la/24PgikU"
       });
     }
 
@@ -2315,7 +2319,7 @@ app.post("/api/mercadopago/create-pix", requireAuth, verifyUserMatch, async (req
         "X-Idempotency-Key": idempotencyKey
       },
       body: JSON.stringify({
-        transaction_amount: 29.90,
+        transaction_amount: 24.89,
         description: "Assinatura CycleCoach AI Premium",
         payment_method_id: "pix",
         payer: {
@@ -2342,7 +2346,8 @@ app.post("/api/mercadopago/create-pix", requireAuth, verifyUserMatch, async (req
       paymentId: mpData.id,
       qr_code: qrCode,
       qr_code_base64: qrCodeBase64,
-      status: mpData.status
+      status: mpData.status,
+      direct_link: "https://mpago.la/24PgikU"
     });
   } catch (error: any) {
     console.error("Erro ao gerar Pix integrado no Mercado Pago:", error);

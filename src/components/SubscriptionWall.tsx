@@ -48,7 +48,7 @@ export default function SubscriptionWall({ userEmail, userName, currentStatus, o
   const [mpPixData, setMpPixData] = useState<{ qr_code: string; qr_code_base64: string; paymentId?: number } | null>(null);
 
   // Single premium plan
-  const premiumPlan = { name: "Plano Pro", price: "29,90" };
+  const premiumPlan = { name: "Plano Pro", price: "24,89" };
 
   // Fetch integration status on mount
   useEffect(() => {
@@ -304,11 +304,56 @@ export default function SubscriptionWall({ userEmail, userName, currentStatus, o
         </div>
         <div className="space-y-1">
           <h3 className="font-heading font-extrabold text-amber-900 text-sm sm:text-base">
-            {currentStatus === "expired" ? "Sua Assinatura Expirou" : "Pagamento Pendente Confirmando"}
+            {currentStatus === "expired" ? "Sua Assinatura Expirou" : "Pagamento de Assinatura Pendente (R$ 24,89)"}
           </h3>
           <p className="text-xs text-amber-800 leading-relaxed font-sans">
-            Olá, <strong>{userName}</strong>. O seu fôlego e evolução de giro não podem parar! Porém, consta nos nossos registros que o seu período de assinatura expirou ou o pagamento de mensalidade está pendente. Regularize o faturamento abaixo para reativar seu treinador e planilhas.
+            Olá, <strong>{userName}</strong>. O seu fôlego e evolução no pedal não podem parar! Para liberar ou manter o seu acesso total ao treinador e às planilhas personalizadas, conclua o pagamento da mensalidade de R$ 24,89.
           </p>
+        </div>
+      </div>
+
+      {/* HIGHLIGHTED DIRECT MERCADO PAGO PAYMENT CARD (https://mpago.la/24PgikU) */}
+      <div className="bg-linear-to-r from-sky-500 via-sky-600 to-blue-700 rounded-3xl p-6 text-white shadow-xl space-y-4 relative overflow-hidden">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div className="space-y-1.5 max-w-lg">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/20 backdrop-blur-md rounded-full text-[10px] font-black uppercase tracking-wider text-white">
+              <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-spin" />
+              <span>Link Oficial Mercado Pago (R$ 24,89/mês)</span>
+            </div>
+            <h4 className="font-heading font-black text-lg sm:text-xl text-white">
+              Pagamento Rápido via Mercado Pago
+            </h4>
+            <p className="text-xs text-sky-100 font-sans leading-relaxed">
+              Clique no botão abaixo para abrir a página oficial de pagamento do Mercado Pago de forma 100% segura (Pix, Cartão em até 12x ou Conta MP).
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-2 w-full md:w-auto shrink-0">
+            <a
+              href="https://mpago.la/24PgikU"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-6 py-3.5 bg-amber-400 hover:bg-amber-300 text-slate-950 font-heading font-black text-xs uppercase tracking-wider rounded-2xl shadow-lg hover:shadow-xl transition-all text-center flex items-center justify-center gap-2 cursor-pointer group"
+            >
+              <span>Pagar R$ 24,89 no Mercado Pago</span>
+              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            </a>
+            <button
+              type="button"
+              onClick={handleSimulatePayment}
+              disabled={simulatingPayment}
+              className="px-6 py-2.5 bg-white/15 hover:bg-white/25 text-white font-sans font-bold text-[11px] rounded-xl border border-white/20 transition-all text-center cursor-pointer flex items-center justify-center gap-1.5"
+            >
+              {simulatingPayment ? (
+                <span>Ativando sua conta...</span>
+              ) : (
+                <>
+                  <CheckCircle className="w-3.5 h-3.5 text-emerald-300" />
+                  <span>Já fiz o pagamento / Ativar Conta</span>
+                </>
+              )}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -347,7 +392,7 @@ export default function SubscriptionWall({ userEmail, userName, currentStatus, o
                 </div>
                 <div className="pt-4 border-t border-slate-850 mt-6">
                   <span className="text-xs font-bold font-sans">R$</span>
-                  <strong className="text-3xl font-black font-heading leading-none px-1">29,90</strong>
+                  <strong className="text-3xl font-black font-heading leading-none px-1">24,89</strong>
                   <span className="text-xs opacity-75 font-sans">/mês</span>
                   <span className="block text-[10px] opacity-60 text-sans mt-0.5">Assinatura mensal sem fidelidade</span>
                 </div>
