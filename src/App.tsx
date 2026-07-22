@@ -16,6 +16,7 @@ import SubscriptionWall from "./components/SubscriptionWall";
 import VolumeEvolutionChart from "./components/VolumeEvolutionChart";
 import WeeklyCalorieChart from "./components/WeeklyCalorieChart";
 import AchievementsDashboard from "./components/AchievementsDashboard";
+import InstalledAppSplash from "./components/InstalledAppSplash";
 import { motion, AnimatePresence } from "motion/react";
 import { 
   Users,
@@ -156,17 +157,35 @@ export default function App() {
   const [submittingFeedback, setSubmittingFeedback] = useState(false);
   const [feedbackSuccess, setFeedbackSuccess] = useState(false);
 
-  // PWA installation states
+  // PWA installation & splash states
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isPortable, setIsPortable] = useState(false);
   const [showInstallGuide, setShowInstallGuide] = useState(false);
+  const [showSplash, setShowSplash] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    const isStandaloneMode = 
+      window.matchMedia("(display-mode: standalone)").matches || 
+      (window.navigator as any).standalone === true ||
+      localStorage.getItem("biker_app_installed") === "true";
+    const splashShown = sessionStorage.getItem("biker_splash_shown") === "true";
+    return isStandaloneMode && !splashShown;
+  });
 
   useEffect(() => {
     const checkStandalone = () => {
       const isStandaloneMode = 
         window.matchMedia("(display-mode: standalone)").matches || 
-        (window.navigator as any).standalone === true;
+        (window.navigator as any).standalone === true ||
+        localStorage.getItem("biker_app_installed") === "true";
+      
       setIsPortable(isStandaloneMode);
+
+      if (isStandaloneMode) {
+        localStorage.setItem("biker_app_installed", "true");
+        if (!sessionStorage.getItem("biker_splash_shown")) {
+          setShowSplash(true);
+        }
+      }
     };
 
     checkStandalone();
@@ -178,7 +197,11 @@ export default function App() {
 
     const handleAppInstalled = () => {
       setIsPortable(true);
+      localStorage.setItem("biker_app_installed", "true");
       setDeferredPrompt(null);
+      if (!sessionStorage.getItem("biker_splash_shown")) {
+        setShowSplash(true);
+      }
     };
 
     window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
@@ -198,6 +221,8 @@ export default function App() {
         if (outcome === "accepted") {
           setDeferredPrompt(null);
           setIsPortable(true);
+          localStorage.setItem("biker_app_installed", "true");
+          setShowSplash(true);
         }
       } catch (err) {
         console.error("Erro ao instalar PWA automaticamente:", err);
@@ -1107,6 +1132,18 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-transparent flex flex-col font-sans selection:bg-lime-200">
+      
+      {/* Installed PWA Splash Entrance Animation */}
+      <AnimatePresence>
+        {showSplash && (
+          <InstalledAppSplash
+            onComplete={() => {
+              setShowSplash(false);
+              sessionStorage.setItem("biker_splash_shown", "true");
+            }}
+          />
+        )}
+      </AnimatePresence>
       
       {/* Upper Navigation Bar */}
       <header id="main-header" className="bg-slate-900/95 backdrop-blur-md text-white shadow-xl border-b border-slate-800/80 sticky top-0 z-40">
