@@ -67,7 +67,7 @@ export function calculateWorkoutCalories(
   }
 }
 
-export default function WeeklyCalorieChart({ profile, plan }: WeeklyCalorieChartProps) {
+function WeeklyCalorieChartInner({ profile, plan }: WeeklyCalorieChartProps) {
   
   const chartData = useMemo<CalorieDataPoint[]>(() => {
     if (!plan || !plan.workouts) return [];
@@ -362,3 +362,6 @@ export default function WeeklyCalorieChart({ profile, plan }: WeeklyCalorieChart
     </div>
   );
 }
+
+const WeeklyCalorieChart = React.memo(WeeklyCalorieChartInner);
+export default WeeklyCalorieChart;

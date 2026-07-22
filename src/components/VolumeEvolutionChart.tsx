@@ -32,7 +32,7 @@ interface ChartDataPoint {
   isReal: boolean;
 }
 
-export default function VolumeEvolutionChart({ profile, plan }: VolumeEvolutionChartProps) {
+function VolumeEvolutionChartInner({ profile, plan }: VolumeEvolutionChartProps) {
   const [viewType, setViewType] = useState<"time" | "sessions">("time");
   const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
   const [hasCompletedWorkouts, setHasCompletedWorkouts] = useState(false);
@@ -449,3 +449,6 @@ export default function VolumeEvolutionChart({ profile, plan }: VolumeEvolutionC
     </div>
   );
 }
+
+const VolumeEvolutionChart = React.memo(VolumeEvolutionChartInner);
+export default VolumeEvolutionChart;

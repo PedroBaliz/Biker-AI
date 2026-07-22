@@ -181,64 +181,84 @@ function base64UrlDecode(str: string): string {
   return Buffer.from(base64, "base64").toString("utf8");
 }
 
+// Token verification cache to eliminate redundant crypto calculations
+const tokenVerificationCache = new Map<string, { decoded: any; exp: number }>();
+
 // Cryptographic verification of Firebase ID token signature & claims
 async function verifyFirebaseIdToken(token: string, projectId: string): Promise<any> {
+  const cached = tokenVerificationCache.get(token);
+  if (cached && cached.exp > Date.now()) {
+    return cached.decoded;
+  }
+
+  let decodedToken: any = null;
+
   // 1. Tentar verificação nativa usando o SDK de administração do Firebase
   try {
-    const decoded = await getAdminAuth().verifyIdToken(token);
-    return decoded;
+    decodedToken = await getAdminAuth().verifyIdToken(token);
   } catch (adminErr: any) {
     console.warn("[Firebase Admin] Falha na verificação de token nativa, tentando fallback manual:", adminErr.message);
   }
 
-  // 2. Fallback para verificação de token manual
-  const parts = token.split(".");
-  if (parts.length !== 3) {
-    throw new Error("Formato de token inválido");
+  // 2. Fallback para verificação de token manual se a verificação admin falhar
+  if (!decodedToken) {
+    const parts = token.split(".");
+    if (parts.length !== 3) {
+      throw new Error("Formato de token inválido");
+    }
+
+    const [headerB64, payloadB64, signatureB64] = parts;
+    const header = JSON.parse(base64UrlDecode(headerB64));
+    const payload = JSON.parse(base64UrlDecode(payloadB64));
+    const signature = Buffer.from(signatureB64, "base64url");
+
+    if (header.alg !== "RS256") {
+      throw new Error("Algoritmo de assinatura não suportado");
+    }
+
+    const keys = await fetchGooglePublicKeys();
+    const cert = keys[header.kid];
+    if (!cert) {
+      console.error(`[VerifyToken Error] Kid do token: ${header.kid}. Chaves disponíveis:`, Object.keys(keys));
+      throw new Error(`Chave pública não encontrada para o kid do token (${header.kid})`);
+    }
+
+    const verifier = crypto.createVerify("SHA256");
+    verifier.update(`${headerB64}.${payloadB64}`);
+    const isVerified = verifier.verify(cert, signature);
+
+    if (!isVerified) {
+      throw new Error("Assinatura do token inválida");
+    }
+
+    const now = Math.floor(Date.now() / 1000);
+    if (payload.exp < now) {
+      throw new Error("O token de autenticação expirou");
+    }
+
+    if (payload.iss !== `https://securetoken.google.com/${projectId}`) {
+      throw new Error("Emissor do token inválido");
+    }
+
+    if (payload.aud !== projectId) {
+      throw new Error("Audiência do token inválida");
+    }
+
+    if (!payload.sub) {
+      throw new Error("Token sem campo de identificador (uid)");
+    }
+
+    decodedToken = payload;
   }
 
-  const [headerB64, payloadB64, signatureB64] = parts;
-  const header = JSON.parse(base64UrlDecode(headerB64));
-  const payload = JSON.parse(base64UrlDecode(payloadB64));
-  const signature = Buffer.from(signatureB64, "base64url");
-
-  if (header.alg !== "RS256") {
-    throw new Error("Algoritmo de assinatura não suportado");
+  // Cache verified token for up to 60 seconds
+  const expMs = decodedToken.exp ? decodedToken.exp * 1000 : Date.now() + 60000;
+  tokenVerificationCache.set(token, { decoded: decodedToken, exp: Math.min(expMs, Date.now() + 60000) });
+  if (tokenVerificationCache.size > 200) {
+    tokenVerificationCache.clear();
   }
 
-  const keys = await fetchGooglePublicKeys();
-  const cert = keys[header.kid];
-  if (!cert) {
-    console.error(`[VerifyToken Error] Kid do token: ${header.kid}. Chaves disponíveis:`, Object.keys(keys));
-    throw new Error(`Chave pública não encontrada para o kid do token (${header.kid})`);
-  }
-
-  const verifier = crypto.createVerify("SHA256");
-  verifier.update(`${headerB64}.${payloadB64}`);
-  const isVerified = verifier.verify(cert, signature);
-
-  if (!isVerified) {
-    throw new Error("Assinatura do token inválida");
-  }
-
-  const now = Math.floor(Date.now() / 1000);
-  if (payload.exp < now) {
-    throw new Error("O token de autenticação expirou");
-  }
-
-  if (payload.iss !== `https://securetoken.google.com/${projectId}`) {
-    throw new Error("Emissor do token inválido");
-  }
-
-  if (payload.aud !== projectId) {
-    throw new Error("Audiência do token inválida");
-  }
-
-  if (!payload.sub) {
-    throw new Error("Token sem campo de identificador (uid)");
-  }
-
-  return payload;
+  return decodedToken;
 }
 
 // Middleware to enforce active Firebase Auth session
@@ -497,7 +517,16 @@ const BACKUPS_DIR = process.env.VERCEL
   ? path.join(os.tmpdir(), "db_backups")
   : path.join(process.cwd(), "db_backups");
 
+let lastAutomaticBackupTime = 0;
+
 async function triggerAutomaticBackup(db: Record<string, any>) {
+  const now = Date.now();
+  // Limit automatic backups to at most once every 10 minutes to prevent disk/CPU thrashing
+  if (now - lastAutomaticBackupTime < 10 * 60 * 1000) {
+    return;
+  }
+  lastAutomaticBackupTime = now;
+
   try {
     if (!fs.existsSync(BACKUPS_DIR)) {
       fs.mkdirSync(BACKUPS_DIR, { recursive: true });
@@ -507,7 +536,7 @@ async function triggerAutomaticBackup(db: Record<string, any>) {
     const filename = `users_db_backup_${timestamp}.json`;
     const backupPath = path.join(BACKUPS_DIR, filename);
 
-    fs.writeFileSync(backupPath, JSON.stringify(db, null, 2), "utf-8");
+    await fs.promises.writeFile(backupPath, JSON.stringify(db, null, 2), "utf-8");
     console.log(`[Backup Automático] Backup salvo com sucesso em: ${backupPath}`);
 
     // Rotacionar backups (manter apenas os últimos 10)
@@ -568,9 +597,9 @@ async function saveDatabase(db: Record<string, any>, targetEmail?: string, idTok
     }
   }
 
-  // Gravar arquivo local como cópia de segurança
+  // Gravar arquivo local como cópia de segurança de forma assíncrona
   try {
-    fs.writeFileSync(USERS_DB_PATH, JSON.stringify(db, null, 2), "utf-8");
+    await fs.promises.writeFile(USERS_DB_PATH, JSON.stringify(db, null, 2), "utf-8");
     console.log("[Banco Local] Cópia local persistida com sucesso.");
     
     // Dispara backup automático em plano de fundo sem travar a thread de resposta

@@ -7,7 +7,7 @@ interface ZoneCalculatorProps {
   isSimpleMode?: boolean;
 }
 
-export default function ZoneCalculator({ profile, isSimpleMode = false }: ZoneCalculatorProps) {
+function ZoneCalculatorInner({ profile, isSimpleMode = false }: ZoneCalculatorProps) {
   const ftp = profile.ftp || 200;
   const fcMax = profile.maxHeartRate || 180;
   const [showGlossary, setShowGlossary] = React.useState(true);
@@ -258,3 +258,6 @@ export default function ZoneCalculator({ profile, isSimpleMode = false }: ZoneCa
     </div>
   );
 }
+
+const ZoneCalculator = React.memo(ZoneCalculatorInner);
+export default ZoneCalculator;

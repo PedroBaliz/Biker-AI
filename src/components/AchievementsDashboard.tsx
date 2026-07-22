@@ -47,7 +47,7 @@ interface Achievement {
   icon: React.ReactNode;
 }
 
-export default function AchievementsDashboard({ profile, plan }: AchievementsDashboardProps) {
+function AchievementsDashboardInner({ profile, plan }: AchievementsDashboardProps) {
   
   // 1. Gather all plan history from localStorage
   const historyList = useMemo<TrainingPlan[]>(() => {
@@ -757,3 +757,6 @@ export default function AchievementsDashboard({ profile, plan }: AchievementsDas
     </div>
   );
 }
+
+const AchievementsDashboard = React.memo(AchievementsDashboardInner);
+export default AchievementsDashboard;

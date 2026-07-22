@@ -572,6 +572,7 @@ export default function App() {
 
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const workoutsSectionRef = useRef<HTMLDivElement>(null);
+  const saveTimeoutRef = useRef<any>(null);
   const [showAccountSettings, setShowAccountSettings] = useState(false);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [showAdminPasswordPrompt, setShowAdminPasswordPrompt] = useState(false);
@@ -696,55 +697,55 @@ export default function App() {
     window.scrollTo(0, 0);
   }, [currentUser?.email, profile?.subscriptionStatus]);
 
-  // Real-time synchronization back to central server
+  // Debounced real-time synchronization back to central server
   useEffect(() => {
     if (!currentUser) {
       return;
     }
+
+    const emailKey = currentUser.email.toLowerCase();
+    const fallbackPassword = emailKey === "pedro.bramos@sempreceub.com" ? "Pedro23072007" : "123456";
+    const preservedPassword = currentUser.password || fallbackPassword;
 
     const updatedUser: UserAccount = {
       email: currentUser.email,
       profile,
       chatHistory,
       plan,
-      feedbacks
+      feedbacks,
+      password: preservedPassword
     };
 
-    const emailKey = currentUser.email.toLowerCase();
-    const fallbackPassword = emailKey === "pedro.bramos@sempreceub.com" ? "Pedro23072007" : "123456";
-    const preservedPassword = currentUser.password || fallbackPassword;
-
-    // Update React state safely if they are deeply different to keep other views unified
-    if (
-      JSON.stringify(currentUser.profile) !== JSON.stringify(profile) ||
-      JSON.stringify(currentUser.chatHistory) !== JSON.stringify(chatHistory) ||
-      JSON.stringify(currentUser.plan) !== JSON.stringify(plan) ||
-      JSON.stringify(currentUser.feedbacks) !== JSON.stringify(feedbacks)
-    ) {
-      setCurrentUser({
-        ...updatedUser,
-        password: preservedPassword
-      });
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
     }
 
-    // Async background sync with Node.js server database
-    apiFetch("/api/auth/save-user", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        email: currentUser.email,
-        userAccount: updatedUser,
-        password: preservedPassword
+    // Debounce backend save by 1500ms to keep UI fast and avoid network thrashing
+    saveTimeoutRef.current = setTimeout(() => {
+      apiFetch("/api/auth/save-user", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: currentUser.email,
+          userAccount: updatedUser,
+          password: preservedPassword
+        })
       })
-    })
-    .then(res => {
-      if (!res.ok) {
-        console.warn("Retorno de erro na sincronização em tempo real");
+      .then(res => {
+        if (!res.ok) {
+          console.warn("Retorno de erro na sincronização em tempo real");
+        }
+      })
+      .catch((err) => {
+        console.warn("Erro de conexão ao sincronizar com servidor central:", err);
+      });
+    }, 1500);
+
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
       }
-    })
-    .catch((err) => {
-      console.warn("Erro de conexão ao sincronizar com servidor central:", err);
-    });
+    };
   }, [profile, chatHistory, plan, feedbacks, currentUser?.email]);
 
   useEffect(() => {

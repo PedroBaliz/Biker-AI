@@ -121,7 +121,7 @@ function parseBold(text: string) {
   });
 }
 
-export default function WorkoutCard({ workout, onUpdate, onDelete, profile, allWorkouts, isSimpleMode = true }: WorkoutCardProps) {
+function WorkoutCardInner({ workout, onUpdate, onDelete, profile, allWorkouts, isSimpleMode = true }: WorkoutCardProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [isCompleting, setIsCompleting] = useState(false);
   const [showLimitError, setShowLimitError] = useState(false);
@@ -1143,3 +1143,6 @@ export default function WorkoutCard({ workout, onUpdate, onDelete, profile, allW
     </div>
   );
 }
+
+const WorkoutCard = React.memo(WorkoutCardInner);
+export default WorkoutCard;
