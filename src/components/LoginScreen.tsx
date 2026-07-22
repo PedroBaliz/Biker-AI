@@ -63,6 +63,13 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
     }, 1250);
   };
 
+  const scrollToSection = (id: string) => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth" });
+    }
+  };
+
   // PWA installation states
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isPortable, setIsPortable] = useState(false);
@@ -202,6 +209,10 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
 
         setSuccessMsg(`Bem-vindo de volta, ${userObj.profile.name}!`);
         setTimeout(() => {
+          if (window.location.hash) {
+            window.history.replaceState(null, "", window.location.pathname + window.location.search);
+          }
+          window.scrollTo(0, 0);
           onLoginSuccess({
             email: userObj.email,
             profile: userObj.profile,
@@ -250,6 +261,10 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
 
         setSuccessMsg("Conta criada com sucesso! Redirecionando para a página de pagamento no Mercado Pago (R$ 24,89)...");
         setTimeout(() => {
+          if (window.location.hash) {
+            window.history.replaceState(null, "", window.location.pathname + window.location.search);
+          }
+          window.scrollTo(0, 0);
           onLoginSuccess({
             email: user.email,
             profile: user.profile,
@@ -299,23 +314,36 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
             </div>
           </div>
           <div className="hidden md:flex items-center gap-6">
-            <a href="#como-funciona" className="text-xs font-semibold text-slate-300 hover:text-lime-450 transition-colors">
+            <button 
+              type="button" 
+              onClick={() => scrollToSection("como-funciona")} 
+              className="text-xs font-semibold text-slate-300 hover:text-lime-450 transition-colors cursor-pointer bg-transparent border-none p-0"
+            >
               Como Funciona
-            </a>
-            <a href="#beneficios" className="text-xs font-semibold text-slate-300 hover:text-lime-450 transition-colors">
+            </button>
+            <button 
+              type="button" 
+              onClick={() => scrollToSection("beneficios")} 
+              className="text-xs font-semibold text-slate-300 hover:text-lime-450 transition-colors cursor-pointer bg-transparent border-none p-0"
+            >
               Benefícios
-            </a>
-            <a href="#precos" className="text-xs font-semibold text-slate-300 hover:text-lime-450 transition-colors">
+            </button>
+            <button 
+              type="button" 
+              onClick={() => scrollToSection("precos")} 
+              className="text-xs font-semibold text-slate-300 hover:text-lime-450 transition-colors cursor-pointer bg-transparent border-none p-0"
+            >
               Preços
-            </a>
+            </button>
           </div>
           <div>
-            <a 
-              href="#auth-section" 
-              className="px-4 py-2 bg-linear-to-r from-lime-500/10 to-emerald-500/10 hover:from-lime-500/20 hover:to-emerald-500/20 text-lime-400 border border-lime-500/30 hover:border-lime-400 rounded-xl text-xs font-black uppercase transition-all shadow-md shadow-lime-500/5"
+            <button 
+              type="button"
+              onClick={() => scrollToSection("auth-section")} 
+              className="px-4 py-2 bg-linear-to-r from-lime-500/10 to-emerald-500/10 hover:from-lime-500/20 hover:to-emerald-500/20 text-lime-400 border border-lime-500/30 hover:border-lime-400 rounded-xl text-xs font-black uppercase transition-all shadow-md shadow-lime-500/5 cursor-pointer"
             >
               Acessar Portal
-            </a>
+            </button>
           </div>
         </div>
       </header>
@@ -342,19 +370,21 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 pt-2 pb-4">
-            <a 
-              href="#auth-section"
-              className="inline-flex items-center justify-center gap-2.5 px-6 py-4 bg-linear-to-r from-lime-500 to-emerald-500 hover:from-lime-450 hover:to-emerald-450 active:scale-98 text-slate-950 text-xs font-black uppercase tracking-wider rounded-2xl shadow-lg shadow-lime-500/20 transition-all cursor-pointer"
+            <button 
+              type="button"
+              onClick={() => scrollToSection("auth-section")}
+              className="inline-flex items-center justify-center gap-2.5 px-6 py-4 bg-linear-to-r from-lime-500 to-emerald-500 hover:from-lime-450 hover:to-emerald-450 active:scale-98 text-slate-950 text-xs font-black uppercase tracking-wider rounded-2xl shadow-lg shadow-lime-500/20 transition-all cursor-pointer border-none"
             >
               <span>Criar Conta</span>
               <ChevronRight className="w-4 h-4" />
-            </a>
-            <a 
-              href="#como-funciona"
+            </button>
+            <button 
+              type="button"
+              onClick={() => scrollToSection("como-funciona")}
               className="inline-flex items-center justify-center gap-2 px-6 py-4 bg-slate-900/80 hover:bg-slate-850 text-white text-xs font-bold uppercase tracking-wider rounded-2xl border border-slate-800 hover:border-slate-700 transition-all cursor-pointer"
             >
               <span>Ver Como Funciona</span>
-            </a>
+            </button>
           </div>
 
           {/* Key Metrics grid */}
@@ -713,13 +743,14 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
 
               {/* Botão de CTA */}
               <div className="pt-4">
-                <a 
-                  href="#auth-section"
-                  className="w-full inline-flex items-center justify-center gap-2.5 py-4 px-4 bg-linear-to-r from-lime-500 to-emerald-500 hover:from-lime-450 hover:to-emerald-450 active:scale-98 text-slate-950 rounded-xl text-xs font-black uppercase tracking-wider shadow-lg shadow-lime-500/10 cursor-pointer"
+                <button 
+                  type="button"
+                  onClick={() => scrollToSection("auth-section")}
+                  className="w-full inline-flex items-center justify-center gap-2.5 py-4 px-4 bg-linear-to-r from-lime-500 to-emerald-500 hover:from-lime-450 hover:to-emerald-450 active:scale-98 text-slate-950 rounded-xl text-xs font-black uppercase tracking-wider shadow-lg shadow-lime-500/10 cursor-pointer border-none"
                 >
                   <span>Criar Conta</span>
                   <ChevronRight className="w-4 h-4" />
-                </a>
+                </button>
                 <p className="text-[10px] text-slate-400 text-center mt-2.5 font-sans leading-normal">
                   Pagamento seguro de R$ 24,89 processado via Mercado Pago (<a href="https://mpago.la/24PgikU" target="_blank" rel="noopener noreferrer" className="text-sky-400 underline hover:text-sky-300">link oficial</a>). Cancele quando quiser.
                 </p>
@@ -905,10 +936,10 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
             <p className="text-xs font-extrabold text-white">BIKER AI — Smart Assessment</p>
           </div>
           <div className="flex flex-wrap justify-center gap-6">
-            <a href="#como-funciona" className="hover:text-white transition-colors">Como funciona</a>
-            <a href="#beneficios" className="hover:text-white transition-colors">Benefícios</a>
-            <a href="#precos" className="hover:text-white transition-colors">Preços</a>
-            <a href="#auth-section" className="text-lime-400 hover:text-white transition-colors">Entrar no Portal</a>
+            <button type="button" onClick={() => scrollToSection("como-funciona")} className="hover:text-white transition-colors cursor-pointer bg-transparent border-none p-0 text-slate-400 text-xs">Como funciona</button>
+            <button type="button" onClick={() => scrollToSection("beneficios")} className="hover:text-white transition-colors cursor-pointer bg-transparent border-none p-0 text-slate-400 text-xs">Benefícios</button>
+            <button type="button" onClick={() => scrollToSection("precos")} className="hover:text-white transition-colors cursor-pointer bg-transparent border-none p-0 text-slate-400 text-xs">Preços</button>
+            <button type="button" onClick={() => scrollToSection("auth-section")} className="text-lime-400 hover:text-white transition-colors cursor-pointer bg-transparent border-none p-0 text-xs">Entrar no Portal</button>
           </div>
           <div className="text-[10px] text-slate-600 font-mono">
             <span>© 2026 Biker AI. Versão de Produção 2.1 • Todos os direitos reservados.</span>

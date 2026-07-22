@@ -687,6 +687,14 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
+  // Ensure page resets scroll position to top and cleans up URL hashes on authentication or subscription state change
+  useEffect(() => {
+    if (window.location.hash) {
+      window.history.replaceState(null, "", window.location.pathname + window.location.search);
+    }
+    window.scrollTo(0, 0);
+  }, [currentUser?.email, profile?.subscriptionStatus]);
+
   // Real-time synchronization back to central server
   useEffect(() => {
     if (!currentUser) {
@@ -915,6 +923,10 @@ export default function App() {
 
   // Success trigger from login screen
   const handleLoginSuccess = (user: UserAccount) => {
+    if (window.location.hash) {
+      window.history.replaceState(null, "", window.location.pathname + window.location.search);
+    }
+    window.scrollTo(0, 0);
     setCurrentUser(user);
     setProfile(user.profile);
     setChatHistory(user.chatHistory);

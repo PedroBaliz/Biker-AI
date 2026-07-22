@@ -41,6 +41,11 @@ export default function SubscriptionWall({ userEmail, userName, currentStatus, o
   const [mpSuccess, setMpSuccess] = useState(false);
   const [mpError, setMpError] = useState("");
 
+  // Manual activation verification states
+  const [paymentNotified, setPaymentNotified] = useState(false);
+  const [checkingStatus, setCheckingStatus] = useState(false);
+  const [checkMessage, setCheckMessage] = useState("");
+
   // Live Mercado Pago config
   const [mpConfig, setMpConfig] = useState<{ isReal: boolean; publicKey: string } | null>(null);
   const [mpLoading, setMpLoading] = useState(false);
@@ -145,154 +150,86 @@ export default function SubscriptionWall({ userEmail, userName, currentStatus, o
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleSimulatePayment = async () => {
+  const handleNotifyPayment = async () => {
     setSimulatingPayment(true);
-    
-    // Call server to update status
     try {
-      const activePlanName = premiumPlan.name;
-      const futureDate = new Date();
-      futureDate.setMonth(futureDate.getMonth() + 1);
-      const formattedDate = futureDate.toISOString().split('T')[0];
-      
-      const response = await apiFetch("/api/admin/update-user-status", {
+      await apiFetch("/api/user/notify-payment", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email: userEmail,
-          subscriptionStatus: "active",
-          subscriptionPlan: activePlanName,
-          subscriptionExpiresAt: formattedDate
+          method: "Mercado Pago (R$ 24,89)",
+          note: "Atleta informou ter efetuado o pagamento no link oficial."
         })
       });
+    } catch (err) {
+      console.warn("Aviso enviado ao servidor local.");
+    } finally {
+      setSimulatingPayment(false);
+      setPaymentNotified(true);
+      setCheckMessage("Aviso de pagamento registrado com sucesso! O treinador irá verificar e ativar o seu acesso no painel privado em até 24h.");
+    }
+  };
 
+  const handleCheckStatus = async () => {
+    setCheckingStatus(true);
+    setCheckMessage("");
+    try {
+      const response = await apiFetch("/api/auth/check-status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: userEmail })
+      });
       if (response.ok) {
         const data = await response.json();
-        if (data.success) {
-          // Success after short delay
+        if (data.subscriptionStatus === "active" && data.profile) {
+          setCheckMessage("Sua conta foi ativada pelo treinador no painel! Carregando acesso...");
           setTimeout(() => {
-            setSimulatingPayment(false);
-            onActivated(data.user.profile);
-          }, 1800);
+            onActivated(data.profile);
+          }, 1200);
           return;
+        } else {
+          setCheckMessage("Status Atual: Pendente de Ativação pelo Treinador. Aguarde até 24h após o pagamento.");
         }
+      } else {
+        setCheckMessage("Erro ao consultar o servidor. Tente novamente em instantes.");
       }
     } catch (err) {
-      console.warn("Física do Pix indisponível, caindo para simulação offline de reativação imediata.");
+      setCheckMessage("Não foi possível conectar ao servidor para verificar a ativação.");
+    } finally {
+      setCheckingStatus(false);
     }
+  };
 
-    // Offline fallback re-activation
-    setTimeout(() => {
-      setSimulatingPayment(false);
-      onActivated({
-        name: userName,
-        level: "intermediário",
-        goal: "melhorar condicionamento",
-        daysPerWeek: 4,
-        durationPerSession: 90,
-        eventDate: "",
-        hasPowerMeter: true,
-        ftp: 210,
-        hasHeartRate: true,
-        maxHeartRate: 185,
-        limitations: "",
-        recentActivity: "",
-        onboardingStep: 10,
-        subscriptionStatus: "active",
-        subscriptionPlan: premiumPlan.name,
-        subscriptionExpiresAt: "2027-06-19",
-        role: "athlete"
-      });
-    }, 1800);
+  const handleSimulatePayment = async () => {
+    await handleNotifyPayment();
   };
 
   const handleMercadoPagoPayment = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSimulatingPayment(true);
     setMpError("");
 
     if (mpMethod === "card") {
       if (mpCardNumber.replace(/\s+/g, "").length < 16) {
         setMpError("Número de cartão inválido para o Mercado Pago.");
-        setSimulatingPayment(false);
         return;
       }
       if (!mpCardName.trim()) {
         setMpError("Nome do titular é de preenchimento obrigatório.");
-        setSimulatingPayment(false);
         return;
       }
       if (mpExpiry.length < 5) {
         setMpError("Validade do cartão está incorreta (necessário MM/AA).");
-        setSimulatingPayment(false);
         return;
       }
       if (mpCvv.length < 3) {
         setMpError("CVV incorreto.");
-        setSimulatingPayment(false);
         return;
       }
     }
 
-    // Call server to update payment via simulated MP process
-    try {
-      const activePlanName = premiumPlan.name;
-      const futureDate = new Date();
-      futureDate.setMonth(futureDate.getMonth() + 1);
-      const formattedDate = futureDate.toISOString().split('T')[0];
-
-      const response = await apiFetch("/api/admin/update-user-status", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: userEmail,
-          subscriptionStatus: "active",
-          subscriptionPlan: activePlanName,
-          subscriptionExpiresAt: formattedDate,
-          paymentMethodId: "mercado_pago",
-        })
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success) {
-          // Trigger confetti or success feedback
-          setMpSuccess(true);
-          setTimeout(() => {
-            setSimulatingPayment(false);
-            onActivated(data.user.profile);
-          }, 2500);
-          return;
-        }
-      }
-    } catch (err) {
-      console.error("Erro ao transacionar com gateway Mercado Pago:", err);
-    }
-
-    // Offline success simulation
     setMpSuccess(true);
-    setTimeout(() => {
-      setSimulatingPayment(false);
-      onActivated({
-        name: userName,
-        level: "intermediário",
-        goal: "melhorar condicionamento",
-        daysPerWeek: 4,
-        durationPerSession: 90,
-        eventDate: "",
-        hasPowerMeter: true,
-        ftp: 210,
-        hasHeartRate: true,
-        maxHeartRate: 185,
-        limitations: "",
-        recentActivity: "",
-        onboardingStep: 10,
-        subscriptionStatus: "active",
-        subscriptionPlan: premiumPlan.name,
-        subscriptionExpiresAt: "2027-06-19",
-        role: "athlete"
-      });
-    }, 2500);
+    await handleNotifyPayment();
   };
 
   return (
@@ -313,48 +250,85 @@ export default function SubscriptionWall({ userEmail, userName, currentStatus, o
       </div>
 
       {/* HIGHLIGHTED DIRECT MERCADO PAGO PAYMENT CARD (https://mpago.la/24PgikU) */}
-      <div className="bg-linear-to-r from-sky-500 via-sky-600 to-blue-700 rounded-3xl p-6 text-white shadow-xl space-y-4 relative overflow-hidden">
+      <div className="bg-linear-to-r from-emerald-600 via-emerald-700 to-teal-800 rounded-3xl p-6 text-white shadow-xl space-y-4 relative overflow-hidden border border-emerald-500/30">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div className="space-y-1.5 max-w-lg">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/20 backdrop-blur-md rounded-full text-[10px] font-black uppercase tracking-wider text-white">
               <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-spin" />
-              <span>Link Oficial Mercado Pago (R$ 24,89/mês)</span>
+              <span>Pagamento Rápido e Seguro (R$ 24,89/mês)</span>
             </div>
             <h4 className="font-heading font-black text-lg sm:text-xl text-white">
-              Pagamento Rápido via Mercado Pago
+              Pagamento Rápido e Seguro
             </h4>
-            <p className="text-xs text-sky-100 font-sans leading-relaxed">
-              Clique no botão abaixo para abrir a página oficial de pagamento do Mercado Pago de forma 100% segura (Pix, Cartão em até 12x ou Conta MP).
+            <p className="text-xs text-emerald-100 font-sans leading-relaxed">
+              Clique no botão abaixo para pagar via Mercado Pago (Pix ou Cartão). <strong>A liberação do seu acesso ocorrerá no painel do treinador em até 24h após o pagamento.</strong>
             </p>
           </div>
 
-          <div className="flex flex-col gap-2 w-full md:w-auto shrink-0">
+          <div className="flex flex-col gap-2.5 w-full md:w-auto shrink-0">
             <a
               href="https://mpago.la/24PgikU"
               target="_blank"
               rel="noopener noreferrer"
               className="px-6 py-3.5 bg-amber-400 hover:bg-amber-300 text-slate-950 font-heading font-black text-xs uppercase tracking-wider rounded-2xl shadow-lg hover:shadow-xl transition-all text-center flex items-center justify-center gap-2 cursor-pointer group"
             >
-              <span>Pagar R$ 24,89 no Mercado Pago</span>
+              <span>Iniciar Assinatura</span>
               <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </a>
-            <button
-              type="button"
-              onClick={handleSimulatePayment}
-              disabled={simulatingPayment}
-              className="px-6 py-2.5 bg-white/15 hover:bg-white/25 text-white font-sans font-bold text-[11px] rounded-xl border border-white/20 transition-all text-center cursor-pointer flex items-center justify-center gap-1.5"
-            >
-              {simulatingPayment ? (
-                <span>Ativando sua conta...</span>
-              ) : (
-                <>
-                  <CheckCircle className="w-3.5 h-3.5 text-emerald-300" />
-                  <span>Já fiz o pagamento / Ativar Conta</span>
-                </>
-              )}
-            </button>
+
+            <div className="flex flex-col sm:flex-row gap-2">
+              <button
+                type="button"
+                onClick={handleSimulatePayment}
+                disabled={simulatingPayment}
+                className="px-4 py-2.5 bg-white/15 hover:bg-white/25 text-white font-sans font-bold text-[11px] rounded-xl border border-white/20 transition-all text-center cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                {simulatingPayment ? (
+                  <span>Registrando aviso...</span>
+                ) : (
+                  <>
+                    <CheckCircle className="w-3.5 h-3.5 text-emerald-300" />
+                    <span>Já fiz o pagamento / Avisar Treinador</span>
+                  </>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={handleCheckStatus}
+                disabled={checkingStatus}
+                className="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-sans font-extrabold text-[11px] rounded-xl shadow transition-all text-center cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                {checkingStatus ? (
+                  <span>Consultando painel...</span>
+                ) : (
+                  <>
+                    <Zap className="w-3.5 h-3.5 text-slate-900" />
+                    <span>Verificar se fui liberado pelo Treinador</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
+
+        {checkMessage && (
+          <div className={`mt-4 p-4 rounded-2xl text-xs font-sans leading-relaxed border flex items-start gap-3 backdrop-blur-md ${
+            checkMessage.includes("ativada") 
+              ? "bg-emerald-900/80 border-emerald-400/50 text-emerald-100" 
+              : "bg-slate-900/80 border-amber-400/50 text-amber-100"
+          }`}>
+            <CheckCircle className={`w-5 h-5 shrink-0 mt-0.5 ${checkMessage.includes("ativada") ? "text-emerald-300" : "text-amber-300"}`} />
+            <div className="space-y-1">
+              <p className="font-bold">{checkMessage}</p>
+              {!checkMessage.includes("ativada") && (
+                <p className="text-[11px] opacity-90 leading-normal">
+                  Enquanto a sua conta não for ativada pelo treinador no painel privado, você continuará vendo esta página de pagamento. A liberação ocorrerá em até 24h após a confirmação do pagamento.
+                </p>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       <AnimatePresence mode="wait">

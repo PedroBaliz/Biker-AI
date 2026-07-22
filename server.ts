@@ -627,7 +627,7 @@ runInitialMigration()
 
 async function ensureAllAthletesArePending() {
   try {
-    console.log("[Status Sync] Verificando, forçando status 'pending_payment' para atletas e atualizando planos para 'Plano Pro'...");
+    console.log("[Status Sync] Verificando novos atletas e garantindo atribuição do 'Plano Pro'...");
     const db = await getDatabase();
     let updatedCount = 0;
     
@@ -637,8 +637,13 @@ async function ensureAllAthletesArePending() {
         const isCoach = email.trim().toLowerCase() === "pedro.bramos@sempreceub.com" || user.profile.role === "coach";
         let changed = false;
         if (!isCoach) {
-          if (user.profile.subscriptionStatus !== "pending_payment") {
+          if (!user.profile.subscriptionStatus) {
             user.profile.subscriptionStatus = "pending_payment";
+            changed = true;
+          }
+        } else {
+          if (user.profile.subscriptionStatus !== "active") {
+            user.profile.subscriptionStatus = "active";
             changed = true;
           }
         }
@@ -654,7 +659,7 @@ async function ensureAllAthletesArePending() {
     
     if (updatedCount > 0) {
       await saveDatabase(db);
-      console.log(`[Status Sync] Sincronizados ${updatedCount} usuários para o status correto e Plano Pro.`);
+      console.log(`[Status Sync] Sincronizados ${updatedCount} usuários para o status inicial e Plano Pro.`);
     } else {
       console.log("[Status Sync] Todos os usuários já estão sincronizados.");
     }
@@ -838,6 +843,73 @@ app.post("/api/auth/session", requireAuth, verifyUserMatch, async (req, res) => 
     res.json({ success: true, user: responseUser });
   } catch (error: any) {
     console.error("Error in server session retrieval:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Quick check of subscription status for athletes waiting on payment activation
+app.post("/api/auth/check-status", async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ error: "E-mail é obrigatório." });
+    }
+    const db = await getDatabase();
+    const emailKey = email.trim().toLowerCase();
+    const user = db[emailKey];
+    if (!user) {
+      return res.status(404).json({ error: "Usuário não encontrado." });
+    }
+
+    const isCoach = emailKey === "pedro.bramos@sempreceub.com" || user.profile?.role === "coach";
+    const status = user.profile?.subscriptionStatus || (isCoach ? "active" : "pending_payment");
+
+    res.json({
+      success: true,
+      subscriptionStatus: status,
+      profile: user.profile
+    });
+  } catch (error: any) {
+    console.error("Error checking user status:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Notify payment from athlete to coach
+app.post("/api/user/notify-payment", async (req, res) => {
+  try {
+    const { email, method, note } = req.body;
+    if (!email) {
+      return res.status(400).json({ error: "E-mail é obrigatório." });
+    }
+    const db = await getDatabase();
+    const emailKey = email.trim().toLowerCase();
+    const user = db[emailKey];
+    if (!user) {
+      return res.status(404).json({ error: "Usuário não encontrado." });
+    }
+
+    if (!user.feedbacks) {
+      user.feedbacks = [];
+    }
+
+    const paymentFeedback = {
+      id: `pay_notify_${Date.now()}`,
+      userName: user.profile?.name || "Atleta",
+      userEmail: user.email,
+      text: `[AVISO DE PAGAMENTO - R$ 24,89 Via Mercado Pago] Atleta informou que concluiu o pagamento via ${method || "Mercado Pago"}. ${note ? `Obs: ${note}` : "Aguardando ativação no painel privado."}`,
+      timestamp: new Date().toISOString()
+    };
+
+    user.feedbacks.unshift(paymentFeedback);
+    await saveDatabase(db, emailKey);
+
+    res.json({
+      success: true,
+      message: "Aviso de pagamento registrado para análise do treinador."
+    });
+  } catch (error: any) {
+    console.error("Error notifying payment:", error);
     res.status(500).json({ error: error.message });
   }
 });
