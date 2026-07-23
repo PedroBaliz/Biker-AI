@@ -317,6 +317,29 @@ function requireAdmin(req: any, res: any, next: any) {
 const app = express();
 app.use(express.json());
 
+// Serving Google Site Verification file directly
+app.get("/googleef65b720b90cbd44.html", (req, res) => {
+  res.type("text/html").send("google-site-verification: googleef65b720b90cbd44.html");
+});
+
+// Serving robots.txt directly
+app.get("/robots.txt", (req, res) => {
+  res.type("text/plain").send("User-agent: *\nAllow: /\n\nSitemap: https://ais-pre-ig3xpt2tylya4dpumxckiy-403337948550.us-west2.run.app/sitemap.xml\n");
+});
+
+// Serving sitemap.xml directly
+app.get("/sitemap.xml", (req, res) => {
+  res.type("application/xml").send(`<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://ais-pre-ig3xpt2tylya4dpumxckiy-403337948550.us-west2.run.app/</loc>
+    <lastmod>2026-07-23</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+</urlset>`);
+});
+
 // Normalização de URLs de API no ambiente Vercel para compatibilidade de rotas (evitar 404)
 app.use((req, res, next) => {
   if (process.env.VERCEL && !req.url.startsWith("/api")) {
