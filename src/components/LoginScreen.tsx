@@ -624,7 +624,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
                 </div>
                 <h4 className="font-heading font-black text-base text-white">Zonas de Ritmo Claras</h4>
                 <p className="text-xs text-slate-400 font-sans leading-relaxed">
-                  Zonas de esforço sob medida para você (tanto pelo Modo Simples com sensações quanto pelo Modo Técnico com watts/frequência), evitando cansaço excessivo.
+                  Zonas de esforço sob medida para você, adaptadas para a sua frequência cardíaca e potência, evitando cansaço excessivo.
                 </p>
               </div>
               <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest font-mono">Guia de Zonas</span>
@@ -717,7 +717,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
                 </div>
 
                 <div className="inline-flex items-center gap-1.5 py-1.5 px-3 bg-lime-500/10 border border-lime-500/20 text-lime-400 rounded-lg text-[10px] font-black uppercase tracking-wider font-heading">
-                  Liberação Imediata Após Assinatura
+                  Liberação Após Assinatura
                 </div>
               </div>
 
@@ -728,7 +728,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
                 <ul className="space-y-2.5 text-xs text-slate-300">
                   <li className="flex items-start gap-2.5">
                     <Check className="w-4 h-4 text-lime-400 shrink-0 mt-0.5" />
-                    <span>Planilhas de Treino Adaptativas geradas por IA</span>
+                    <span>Planilhas de Treino Adaptativas</span>
                   </li>
                   <li className="flex items-start gap-2.5">
                     <Check className="w-4 h-4 text-lime-400 shrink-0 mt-0.5" />
