@@ -362,6 +362,97 @@ app.use((req, res, next) => {
   next();
 });
 
+// =============================================================
+// RATE LIMITING MIDDLEWARE (PROTEÇÃO CONTRA ABUSO DE API E DDOS)
+// =============================================================
+
+interface RateLimitRecord {
+  count: number;
+  resetTime: number;
+}
+
+const rateLimitStore = new Map<string, RateLimitRecord>();
+
+// Limpeza automática de registros expirados na memória a cada 5 minutos
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, record] of rateLimitStore.entries()) {
+    if (record.resetTime <= now) {
+      rateLimitStore.delete(key);
+    }
+  }
+}, 5 * 60 * 1000);
+
+function createRateLimiter(options: { windowMs: number; max: number; message: string; keyPrefix?: string }) {
+  const { windowMs, max, message, keyPrefix = "global" } = options;
+
+  return (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    // Aplicar limitação apenas a rotas de API
+    const path = req.originalUrl || req.url;
+    if (!path.startsWith("/api")) {
+      return next();
+    }
+
+    const clientIp = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || req.ip || req.socket.remoteAddress || "unknown";
+    const key = `${keyPrefix}:${clientIp}`;
+    const now = Date.now();
+
+    let record = rateLimitStore.get(key);
+
+    if (!record || record.resetTime <= now) {
+      record = { count: 1, resetTime: now + windowMs };
+      rateLimitStore.set(key, record);
+    } else {
+      record.count += 1;
+    }
+
+    const remaining = Math.max(0, max - record.count);
+    const resetSeconds = Math.ceil((record.resetTime - now) / 1000);
+
+    res.setHeader("X-RateLimit-Limit", max);
+    res.setHeader("X-RateLimit-Remaining", remaining);
+    res.setHeader("X-RateLimit-Reset", resetSeconds);
+
+    if (record.count > max) {
+      res.setHeader("Retry-After", resetSeconds);
+      console.warn(`[RateLimit] IP ${clientIp} excedeu o limite na rota ${path} (${record.count}/${max})`);
+      return res.status(429).json({ error: message, retryAfter: resetSeconds });
+    }
+
+    next();
+  };
+}
+
+// Definição dos limitadores por tipo de recurso
+const generalApiLimiter = createRateLimiter({
+  windowMs: 60 * 1000, // 1 minuto
+  max: 120, // 120 requisições por minuto por IP
+  message: "Muitas requisições enviadas em curto intervalo. Por favor, aguarde alguns instantes.",
+  keyPrefix: "api-general"
+});
+
+const authLimiter = createRateLimiter({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 30, // 30 tentativas a cada 15 minutos por IP
+  message: "Muitas tentativas de login ou registro. Por favor, aguarde 15 minutos para tentar novamente.",
+  keyPrefix: "api-auth"
+});
+
+const aiGenerationLimiter = createRateLimiter({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 25, // 25 gerações de IA a cada 15 minutos por IP
+  message: "Limite de solicitações de Inteligência Artificial atingido. Por favor, aguarde alguns minutos antes de gerar novos treinos.",
+  keyPrefix: "api-ai"
+});
+
+// Aplicação dos limitadores nas rotas de API
+app.use("/api/auth/login", authLimiter);
+app.use("/api/auth/register", authLimiter);
+app.use("/api/generate-plan", aiGenerationLimiter);
+app.use("/api/evaluate-workout", aiGenerationLimiter);
+app.use("/api/parse-strava", aiGenerationLimiter);
+app.use("/api", generalApiLimiter);
+
 // JSON file database path for local persistence
 
 // In-memory cache to keep performance high and prevent disk read fatigue
