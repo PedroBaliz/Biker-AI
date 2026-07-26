@@ -324,18 +324,37 @@ app.get("/googleef65b720b90cbd44.html", (req, res) => {
 
 // Serving robots.txt directly
 app.get("/robots.txt", (req, res) => {
-  res.type("text/plain").send("User-agent: *\nAllow: /\n\nSitemap: https://ais-pre-ig3xpt2tylya4dpumxckiy-403337948550.us-west2.run.app/sitemap.xml\n");
+  res.type("text/plain").send(`User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /admin/
+
+User-agent: Googlebot
+Allow: /
+
+User-agent: Googlebot-Image
+Allow: /
+
+Sitemap: https://ais-pre-ig3xpt2tylya4dpumxckiy-403337948550.us-west2.run.app/sitemap.xml
+`);
 });
 
 // Serving sitemap.xml directly
 app.get("/sitemap.xml", (req, res) => {
   res.type("application/xml").send(`<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1"
+        xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
     <loc>https://ais-pre-ig3xpt2tylya4dpumxckiy-403337948550.us-west2.run.app/</loc>
-    <lastmod>2026-07-23</lastmod>
+    <lastmod>2026-07-26</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
+    <image:image>
+      <image:loc>https://ais-pre-ig3xpt2tylya4dpumxckiy-403337948550.us-west2.run.app/biker_ai_icon.jpg</image:loc>
+      <image:title>Biker AI - Treinador de Ciclismo Inteligente</image:title>
+      <image:caption>Planilhas de treino de ciclismo adaptativas geradas por Inteligência Artificial</image:caption>
+    </image:image>
   </url>
 </urlset>`);
 });
