@@ -10,7 +10,7 @@ import {
   Dumbbell, ShieldAlert, Sparkles, Mail, Lock, User, Eye, EyeOff, Bike, 
   ChevronRight, CheckCircle, Download, Smartphone, Share, X, ExternalLink,
   Activity, TrendingUp, Zap, Award, MessageSquare, Calendar, Heart, Percent, Star, Check,
-  Play, Pause, Sliders, Gauge, Instagram
+  Play, Pause, Sliders, Gauge, Instagram, Loader2
 } from "lucide-react";
 // @ts-ignore
 import bikerHero from "../assets/images/biker_hero_1780860230528.png";
@@ -28,6 +28,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
   const [error, setError] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Estados para a seção de Preview Interativo do App
   const [previewTab, setPreviewTab] = useState<"planilha" | "desempenho" | "zonas" | "chat">("planilha");
@@ -153,6 +154,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
     }
 
     const emailKey = email.trim().toLowerCase();
+    setIsSubmitting(true);
 
     try {
       if (isLogin) {
@@ -207,19 +209,17 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
           userObj = sessionData.user;
         }
 
-        setSuccessMsg(`Bem-vindo de volta, ${userObj.profile.name}!`);
-        setTimeout(() => {
-          if (window.location.hash) {
-            window.history.replaceState(null, "", window.location.pathname + window.location.search);
-          }
-          window.scrollTo(0, 0);
-          onLoginSuccess({
-            email: userObj.email,
-            profile: userObj.profile,
-            chatHistory: userObj.chatHistory || [],
-            plan: userObj.plan || null
-          });
-        }, 800);
+        setSuccessMsg(`Bem-vindo de volta, ${userObj.profile?.name || "Atleta"}!`);
+        if (window.location.hash) {
+          window.history.replaceState(null, "", window.location.pathname + window.location.search);
+        }
+        window.scrollTo(0, 0);
+        onLoginSuccess({
+          email: userObj.email,
+          profile: userObj.profile,
+          chatHistory: userObj.chatHistory || [],
+          plan: userObj.plan || null
+        });
 
       } else {
         // Sign up path: Create Firebase Auth credential first
@@ -259,19 +259,17 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
         const data = await response.json();
         const user = data.user;
 
-        setSuccessMsg("Conta criada com sucesso! Redirecionando para a página de pagamento no Mercado Pago (R$ 24,89)...");
-        setTimeout(() => {
-          if (window.location.hash) {
-            window.history.replaceState(null, "", window.location.pathname + window.location.search);
-          }
-          window.scrollTo(0, 0);
-          onLoginSuccess({
-            email: user.email,
-            profile: user.profile,
-            chatHistory: user.chatHistory || [],
-            plan: user.plan || null
-          });
-        }, 1200);
+        setSuccessMsg("Conta criada com sucesso! Acessando portal...");
+        if (window.location.hash) {
+          window.history.replaceState(null, "", window.location.pathname + window.location.search);
+        }
+        window.scrollTo(0, 0);
+        onLoginSuccess({
+          email: user.email,
+          profile: user.profile,
+          chatHistory: user.chatHistory || [],
+          plan: user.plan || null
+        });
       }
     } catch (err: any) {
       console.error("Authentication error:", err);
@@ -287,6 +285,8 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
         displayError = "Falha de rede. Verifique se você está conectado à internet.";
       }
       setError(displayError);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -898,10 +898,20 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
 
               <button 
                 type="submit"
-                className="w-full bg-linear-to-r from-lime-500 to-emerald-500 hover:from-lime-450 hover:to-emerald-450 active:scale-98 text-slate-950 py-3.5 px-4 rounded-xl text-xs font-black font-heading uppercase tracking-wider flex items-center justify-center gap-2 transition-all mt-6 shadow-lg shadow-lime-500/20 cursor-pointer"
+                disabled={isSubmitting}
+                className={`w-full bg-linear-to-r from-lime-500 to-emerald-500 hover:from-lime-450 hover:to-emerald-450 active:scale-98 text-slate-950 py-3.5 px-4 rounded-xl text-xs font-black font-heading uppercase tracking-wider flex items-center justify-center gap-2 transition-all mt-6 shadow-lg shadow-lime-500/20 ${isSubmitting ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer'}`}
               >
-                <span>{isLogin ? "Acessar Portal do Atleta" : "Confirmar e Iniciar Cadastro"}</span>
-                <ChevronRight className="w-4 h-4" />
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+                    <span>{isLogin ? "Acessando Portal..." : "Criando Conta..."}</span>
+                  </>
+                ) : (
+                  <>
+                    <span>{isLogin ? "Acessar Portal do Atleta" : "Confirmar e Iniciar Cadastro"}</span>
+                    <ChevronRight className="w-4 h-4" />
+                  </>
+                )}
               </button>
             </form>
 

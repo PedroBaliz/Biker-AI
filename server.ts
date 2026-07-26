@@ -193,62 +193,50 @@ async function verifyFirebaseIdToken(token: string, projectId: string): Promise<
 
   let decodedToken: any = null;
 
-  // 1. Tentar verificação nativa usando o SDK de administração do Firebase
+  // 1. Fast-path: Verificação manual instantânea via chaves públicas do Google (0-1ms)
   try {
-    decodedToken = await getAdminAuth().verifyIdToken(token);
-  } catch (adminErr: any) {
-    console.warn("[Firebase Admin] Falha na verificação de token nativa, tentando fallback manual:", adminErr.message);
+    const parts = token.split(".");
+    if (parts.length === 3) {
+      const [headerB64, payloadB64, signatureB64] = parts;
+      const header = JSON.parse(base64UrlDecode(headerB64));
+      const payload = JSON.parse(base64UrlDecode(payloadB64));
+      const signature = Buffer.from(signatureB64, "base64url");
+
+      if (header.alg === "RS256") {
+        const keys = await fetchGooglePublicKeys();
+        const cert = keys[header.kid];
+        if (cert) {
+          const verifier = crypto.createVerify("SHA256");
+          verifier.update(`${headerB64}.${payloadB64}`);
+          if (verifier.verify(cert, signature)) {
+            const now = Math.floor(Date.now() / 1000);
+            if (
+              payload.exp > now &&
+              payload.iss === `https://securetoken.google.com/${projectId}` &&
+              payload.aud === projectId &&
+              payload.sub
+            ) {
+              decodedToken = payload;
+            }
+          }
+        }
+      }
+    }
+  } catch (fastErr) {
+    // Continuar para o fallback caso falhe a decodificação rápida
   }
 
-  // 2. Fallback para verificação de token manual se a verificação admin falhar
+  // 2. Fallback para verificação nativa usando o SDK de administração do Firebase
   if (!decodedToken) {
-    const parts = token.split(".");
-    if (parts.length !== 3) {
-      throw new Error("Formato de token inválido");
+    try {
+      decodedToken = await getAdminAuth().verifyIdToken(token);
+    } catch (adminErr: any) {
+      console.warn("[Firebase Admin] Falha na verificação de token nativa:", adminErr.message);
     }
+  }
 
-    const [headerB64, payloadB64, signatureB64] = parts;
-    const header = JSON.parse(base64UrlDecode(headerB64));
-    const payload = JSON.parse(base64UrlDecode(payloadB64));
-    const signature = Buffer.from(signatureB64, "base64url");
-
-    if (header.alg !== "RS256") {
-      throw new Error("Algoritmo de assinatura não suportado");
-    }
-
-    const keys = await fetchGooglePublicKeys();
-    const cert = keys[header.kid];
-    if (!cert) {
-      console.error(`[VerifyToken Error] Kid do token: ${header.kid}. Chaves disponíveis:`, Object.keys(keys));
-      throw new Error(`Chave pública não encontrada para o kid do token (${header.kid})`);
-    }
-
-    const verifier = crypto.createVerify("SHA256");
-    verifier.update(`${headerB64}.${payloadB64}`);
-    const isVerified = verifier.verify(cert, signature);
-
-    if (!isVerified) {
-      throw new Error("Assinatura do token inválida");
-    }
-
-    const now = Math.floor(Date.now() / 1000);
-    if (payload.exp < now) {
-      throw new Error("O token de autenticação expirou");
-    }
-
-    if (payload.iss !== `https://securetoken.google.com/${projectId}`) {
-      throw new Error("Emissor do token inválido");
-    }
-
-    if (payload.aud !== projectId) {
-      throw new Error("Audiência do token inválida");
-    }
-
-    if (!payload.sub) {
-      throw new Error("Token sem campo de identificador (uid)");
-    }
-
-    decodedToken = payload;
+  if (!decodedToken) {
+    throw new Error("Token de autenticação inválido ou expirado");
   }
 
   // Cache verified token for up to 60 seconds
@@ -260,6 +248,9 @@ async function verifyFirebaseIdToken(token: string, projectId: string): Promise<
 
   return decodedToken;
 }
+
+// Pre-fetch Google public keys on server startup for warm cache
+fetchGooglePublicKeys().catch(() => {});
 
 // Middleware to enforce active Firebase Auth session
 async function requireAuth(req: any, res: any, next: any) {
