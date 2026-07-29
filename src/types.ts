@@ -27,6 +27,10 @@ export interface Workout {
   targetZone: string; // Z1 - Z5 or Z1 - Z7, or % FCmax
   rpe: number; // Percepção Subjetiva de Esforço (1-10)
   tip: string;
+  title?: string;
+  description?: string;
+  durationMinutes?: number;
+  isLocked?: boolean; // True when user is in preview mode prior to payment
   completed?: boolean;
   actualDuration?: number;
   actualRpe?: number;
@@ -50,6 +54,8 @@ export interface TrainingPlan {
   weekNumber?: number;
   coachMessage?: string;
   geminiError?: string;
+  isLocked?: boolean; // Indicates if the plan execution details are locked behind paywall
+  totalWeeks?: number;
 }
 
 export interface ChatMessage {
@@ -81,16 +87,35 @@ export function isRestDay(workout: Workout): boolean {
   const typeLower = (workout.type || "").toLowerCase();
   const targetLower = (workout.targetZone || "").toLowerCase();
   const goalLower = (workout.goal || "").toLowerCase();
+  const titleLower = (workout.title || "").toLowerCase();
+  const descLower = (workout.description || "").toLowerCase();
+  const duration = workout.duration || workout.durationMinutes || 0;
 
   return (
     typeLower.includes("descanso") ||
     typeLower.includes("off") ||
     typeLower.includes("rest") ||
+    typeLower.includes("folga") ||
+    typeLower.includes("livre") ||
     targetLower.includes("descanso") ||
     targetLower.includes("off") ||
     targetLower.includes("rest") ||
+    targetLower.includes("folga") ||
     goalLower.includes("descanso") ||
     goalLower.includes("dia off") ||
-    goalLower.includes("recuperação passiva")
+    goalLower.includes("folga") ||
+    goalLower.includes("recuperação passiva") ||
+    goalLower.includes("sem treino") ||
+    titleLower.includes("descanso") ||
+    titleLower.includes("off") ||
+    titleLower.includes("folga") ||
+    titleLower.includes("rest") ||
+    titleLower.includes("sem treino") ||
+    titleLower.includes("dia livre") ||
+    descLower.includes("dia off") ||
+    descLower.includes("descanso total") ||
+    descLower.includes("folga total") ||
+    descLower.includes("sem treino") ||
+    (duration === 0 && !typeLower.includes("teste") && !titleLower.includes("teste"))
   );
 }

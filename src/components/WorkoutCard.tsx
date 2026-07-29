@@ -36,6 +36,7 @@ interface WorkoutCardProps {
   key?: string;
   allWorkouts?: Workout[];
   isSimpleMode?: boolean;
+  onUnlockClick?: () => void;
 }
 
 function getZoneExplanation(zone: string, isSimpleMode = false): string {
@@ -121,14 +122,66 @@ function parseBold(text: string) {
   });
 }
 
-function WorkoutCardInner({ workout, onUpdate, onDelete, profile, allWorkouts, isSimpleMode = true }: WorkoutCardProps) {
+function getCleanWorkoutTitle(type: string, isSimpleMode: boolean): string {
+  if (!type) return "Treino";
+  if (!isSimpleMode) return type;
+  
+  let title = type;
+  title = title.replace(/Z1\s*\(Recuperação\s*Ativa\)/gi, "Giro Regenerativo");
+  title = title.replace(/Z2\s*\(Endurance\)/gi, "Pedal de Endurance");
+  title = title.replace(/Z3\s*\(Tempo\/Ritmo\)/gi, "Treino de Ritmo");
+  title = title.replace(/Z4\s*\(Limiar\s*de\s*Lactato\)/gi, "Treino de Limiar");
+  title = title.replace(/Z5\s*\(VO2\s*M[aá]ximo\)/gi, "Intervalado Fôlego Máximo");
+  title = title.replace(/Z6\s*\(Capacidade\s+Anaer[oó]bica\)/gi, "Arrancadas / Sprints");
+  title = title.replace(/Z7\s*\(Pot[eê]ncia\s+Neuromuscular\)/gi, "Sprints Explosivos");
+  
+  return title;
+}
+
+function getShortZoneBadge(zone: string, isSimpleMode: boolean): string {
+  if (!zone) return "Z2";
+  if (!isSimpleMode) {
+    if (zone.length > 20) return zone.slice(0, 18) + "...";
+    return zone;
+  }
+  
+  const z = zone.toUpperCase();
+  if (z.includes("Z1") || z.includes("RECUPERAÇÃO") || z.includes("REGENERATIVO")) return "Z1 • Muito Leve 🟢";
+  if (z.includes("Z2") || z.includes("ENDURANCE") || z.includes("RESISTÊNCIA")) return "Z2 • Leve 🟢";
+  if (z.includes("Z3") || z.includes("TEMPO") || z.includes("RITMO")) return "Z3 • Moderado 🟡";
+  if (z.includes("Z4") || z.includes("LIMIAR") || z.includes("LACTATO") || z.includes("FTP")) return "Z4 • Forte 🟠";
+  if (z.includes("Z5") || z.includes("VO2") || z.includes("MÁXIMO")) return "Z5 • Muito Forte 🔴";
+  if (z.includes("Z6") || z.includes("ANAERÓBICA")) return "Z6 • Explosivo 🔥";
+  if (z.includes("Z7") || z.includes("NEUROMUSCULAR")) return "Z7 • Explosão 🔥";
+  
+  if (zone.length > 20) return zone.slice(0, 18) + "...";
+  return zone;
+}
+
+function getShortEffortLabel(rpe: number): string {
+  if (rpe <= 2) return "Muito Leve 🟢";
+  if (rpe <= 4) return "Leve 🟢";
+  if (rpe <= 6) return "Moderado 🟡";
+  if (rpe <= 8) return "Forte 🟠";
+  return "Máximo 🔥";
+}
+
+function getEffortSubtitle(rpe: number): string {
+  if (rpe <= 2) return "Sem cansaço, ritmo de passeio";
+  if (rpe <= 4) return "Confortável, ritmo de conversa";
+  if (rpe <= 6) return "Firme, fôlego sob controle";
+  if (rpe <= 8) return "Pesado, fôlego curto";
+  return "Extremo, fôlego no limite";
+}
+
+function WorkoutCardInner({ workout, onUpdate, onDelete, profile, allWorkouts, isSimpleMode = true, onUnlockClick }: WorkoutCardProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [isCompleting, setIsCompleting] = useState(false);
   const [showLimitError, setShowLimitError] = useState(false);
   const [showZoneExplanation, setShowZoneExplanation] = useState(false);
 
-  const displayType = isSimpleMode ? getSimplifiedText(workout.type) : workout.type;
-  const displayTargetZone = isSimpleMode ? getSimplifiedText(workout.targetZone) : workout.targetZone;
+  const displayType = getCleanWorkoutTitle(workout.type, isSimpleMode);
+  const displayTargetZone = getShortZoneBadge(workout.targetZone, isSimpleMode);
   const displayGoal = isSimpleMode ? getSimplifiedText(workout.goal) : workout.goal;
   const displayStructure = isSimpleMode ? getSimplifiedText(workout.structure) : workout.structure;
   const displayTip = isSimpleMode ? getSimplifiedText(workout.tip) : workout.tip;
@@ -260,8 +313,20 @@ function WorkoutCardInner({ workout, onUpdate, onDelete, profile, allWorkouts, i
     setIsEditing(false);
   };
 
+  const isPendingUser = Boolean(
+    workout.isLocked || 
+    (workout.structure && workout.structure.includes("🔒")) || 
+    (profile?.subscriptionStatus && profile.subscriptionStatus !== "active" && profile.role !== "coach")
+  );
+
   const toggleCompleted = () => {
     if (isPastAndUncompleted) {
+      return;
+    }
+    if (isPendingUser && !workout.completed) {
+      if (onUnlockClick) {
+        onUnlockClick();
+      }
       return;
     }
     if (workout.completed) {
@@ -729,9 +794,9 @@ function WorkoutCardInner({ workout, onUpdate, onDelete, profile, allWorkouts, i
         <div className="flex flex-col gap-2 pt-3 border-t border-sky-100">
           <button
             type="button"
-            disabled={isEvaluating}
+            disabled={isEvaluating || (isPendingUser && !workout.completed)}
             onClick={handleEvaluateAndSave}
-            className="w-full bg-slate-900 border border-slate-950 text-white hover:bg-slate-800 text-xs font-extrabold uppercase font-heading tracking-widest py-3 px-4 rounded-xl flex items-center justify-center gap-2 shadow-sm transition-all animate-pulse duration-700 disabled:opacity-50 cursor-pointer"
+            className="w-full bg-slate-900 border border-slate-950 text-white hover:bg-slate-800 text-xs font-extrabold uppercase font-heading tracking-widest py-3 px-4 rounded-xl flex items-center justify-center gap-2 shadow-sm transition-all animate-pulse duration-700 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
           >
             {isEvaluating ? (
               <>
@@ -752,9 +817,9 @@ function WorkoutCardInner({ workout, onUpdate, onDelete, profile, allWorkouts, i
           <div className="flex gap-2">
             <button
               type="button"
-              disabled={isEvaluating}
+              disabled={isEvaluating || (isPendingUser && !workout.completed)}
               onClick={handleSimpleSave}
-              className="flex-1 bg-sky-105 hover:bg-sky-200 text-sky-800 border border-sky-100 py-2 px-3 rounded-xl text-xs font-bold transition-colors cursor-pointer font-sans disabled:opacity-50"
+              className="flex-1 bg-sky-105 hover:bg-sky-200 text-sky-800 border border-sky-100 py-2 px-3 rounded-xl text-xs font-bold transition-colors cursor-pointer font-sans disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {workout.completed ? "Apenas Salvar Alterações" : "Concluir sem Feedback IA"}
             </button>
@@ -791,19 +856,19 @@ function WorkoutCardInner({ workout, onUpdate, onDelete, profile, allWorkouts, i
 
       <div id="card-top-header" className={workout.completed ? "opacity-95" : ""}>
         {/* Day & Label Badge */}
-        <div className="flex justify-between items-start gap-2 mb-4 pr-8">
-          <div>
+        <div className="flex justify-between items-start gap-2 mb-4 pr-6">
+          <div className="min-w-0 flex-1">
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono block leading-none mb-1.5">
               {workout.day}
             </span>
-            <h4 className={`font-heading font-black text-slate-800 text-lg sm:text-base leading-snug ${workout.completed ? 'text-slate-500 line-through' : ''}`}>
+            <h4 className={`font-heading font-black text-slate-800 text-lg sm:text-base leading-snug break-words ${workout.completed ? 'text-slate-500 line-through' : ''}`}>
               {displayType}
             </h4>
           </div>
           <button 
             type="button"
             onClick={() => setShowZoneExplanation(!showZoneExplanation)}
-            className={`px-3 py-1 text-[10px] font-mono font-bold rounded-full border shrink-0 transition-all flex items-center gap-1 active:scale-95 cursor-pointer ${rpeStyles.text}`}
+            className={`px-2.5 py-1 text-[10px] font-mono font-bold rounded-full border shrink-0 transition-all flex items-center gap-1 active:scale-95 cursor-pointer whitespace-nowrap ${rpeStyles.text}`}
             title="Clique para ver o que significa esta zona de esforço"
           >
             <span>{displayTargetZone}</span>
@@ -823,14 +888,14 @@ function WorkoutCardInner({ workout, onUpdate, onDelete, profile, allWorkouts, i
         )}
 
         {/* Duration & PSE Row */}
-        <div className="grid grid-cols-2 gap-3 border-y border-slate-100/60 py-3.5 my-4">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 bg-slate-50 text-slate-500 rounded-xl">
+        <div className="grid grid-cols-1 xs:grid-cols-2 gap-3 border-y border-slate-100/60 py-3.5 my-4">
+          <div className="flex items-start gap-2.5 min-w-0">
+            <div className="p-2 bg-slate-50 text-slate-500 rounded-xl shrink-0 mt-0.5">
               <Clock className="w-4 h-4" />
             </div>
-            <div className="flex flex-col">
+            <div className="flex flex-col min-w-0">
               <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider font-sans leading-none">DURAÇÃO</span>
-              <span className="text-xs font-mono font-extrabold text-slate-850 mt-1">
+              <span className="text-xs font-mono font-extrabold text-slate-850 mt-1 break-words">
                 {workout.completed ? (
                   <>
                     <span className="text-slate-400 line-through text-[10px] mr-1">{workout.duration}m</span>
@@ -842,21 +907,24 @@ function WorkoutCardInner({ workout, onUpdate, onDelete, profile, allWorkouts, i
               </span>
             </div>
           </div>
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 bg-slate-50 text-slate-500 rounded-xl">
+          <div className="flex items-start gap-2.5 min-w-0">
+            <div className="p-2 bg-slate-50 text-slate-500 rounded-xl shrink-0 mt-0.5">
               <Flame className="w-4 h-4" />
             </div>
-            <div className="flex flex-col">
+            <div className="flex flex-col min-w-0">
               <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider font-sans leading-none">ESFORÇO (PSE)</span>
-              <span className="text-xs font-heading font-black text-slate-850 mt-1 uppercase tracking-wide">
+              <span className="text-xs font-heading font-black text-slate-850 mt-1 uppercase tracking-wide break-words">
                 {workout.completed && workout.actualRpe ? (
                   <>
                     <span className="text-slate-400 line-through text-[10px] mr-1">RPE{workout.rpe}</span>
-                    <span className="text-emerald-600">{getSimpleEffortText(workout.actualRpe)}</span>
+                    <span className="text-emerald-600">{getShortEffortLabel(workout.actualRpe)}</span>
                   </>
                 ) : (
-                  `${getSimpleEffortText(workout.rpe || 5)} (Nota ${workout.rpe || 5}/10)`
+                  `${getShortEffortLabel(workout.rpe || 5)} (Nota ${workout.rpe || 5}/10)`
                 )}
+              </span>
+              <span className="text-[9.5px] text-slate-500 font-sans font-normal normal-case leading-tight mt-0.5 break-words">
+                {getEffortSubtitle(workout.completed && workout.actualRpe ? workout.actualRpe : (workout.rpe || 5))}
               </span>
             </div>
           </div>
@@ -988,36 +1056,66 @@ function WorkoutCardInner({ workout, onUpdate, onDelete, profile, allWorkouts, i
         )}
 
         {/* Goal */}
-        <div id="workout-goal-section" className="mb-4">
+        <div id="workout-goal-section" className="mb-4 min-w-0">
           <div className="flex items-center gap-1.5 text-slate-400 mb-1.5">
-            <Compass className="w-3.5 h-3.5" />
+            <Compass className="w-3.5 h-3.5 shrink-0" />
             <span className="text-[9px] font-extrabold uppercase tracking-widest font-heading">Foco do Treino</span>
           </div>
-          <p className="text-xs font-sans text-slate-655 leading-relaxed font-normal">{displayGoal}</p>
+          <p className="text-xs font-sans text-slate-655 leading-relaxed font-normal break-words">{displayGoal}</p>
         </div>
 
         {/* Structure */}
-        <div id="workout-structure-section" className="mb-5">
+        <div id="workout-structure-section" className="mb-5 min-w-0">
           <div className="flex items-center gap-1.5 text-slate-400 mb-1.5">
-            <Bike className="w-3.5 h-3.5" />
+            <Bike className="w-3.5 h-3.5 shrink-0" />
             <span className="text-[9px] font-extrabold uppercase tracking-widest font-heading">Estrutura de Ritmo</span>
           </div>
-          <div className="bg-slate-50/70 border border-slate-100 rounded-2xl p-3.5 shadow-2xs">
-            <p className="text-xs font-mono text-slate-700 leading-relaxed break-words font-medium">{displayStructure}</p>
-          </div>
+          {workout.isLocked || (workout.structure && workout.structure.includes("🔒")) || (profile?.subscriptionStatus && profile.subscriptionStatus !== "active" && profile.role !== "coach") ? (
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 text-white shadow-md space-y-2.5 min-w-0">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="flex items-center gap-2 text-lime-400 font-bold text-xs font-heading min-w-0">
+                  <Lock className="w-4 h-4 text-lime-400 shrink-0" />
+                  <span className="break-words">Estrutura Minuto a Minuto Bloqueada</span>
+                </div>
+                <span className="text-[9px] bg-slate-800 text-slate-300 font-mono px-2 py-0.5 rounded-full uppercase font-bold shrink-0">PREVIEW</span>
+              </div>
+              <p className="text-[11px] text-slate-300 font-sans leading-relaxed break-words">
+                Séries, % de FTP exato, cadência e intervalos de execução estão bloqueados no preview.
+              </p>
+              {onUnlockClick && (
+                <button
+                  type="button"
+                  onClick={onUnlockClick}
+                  className="w-full bg-linear-to-r from-lime-500 to-emerald-500 hover:from-lime-450 hover:to-emerald-450 active:scale-98 text-slate-950 font-extrabold text-xs py-2.5 px-3 rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm"
+                >
+                  <Zap className="w-4 h-4 fill-slate-950 shrink-0" />
+                  <span>Desbloquear Plano Completo</span>
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="bg-slate-50/70 border border-slate-100 rounded-2xl p-3.5 shadow-2xs min-w-0">
+              <p className="text-xs font-mono text-slate-700 leading-relaxed font-medium break-words whitespace-pre-line">{displayStructure}</p>
+            </div>
+          )}
         </div>
 
         {/* Dica do Treino */}
         {displayTip && (
-          <div id="workout-tip-bubble" className="mt-4 mb-5 p-3.5 rounded-2xl bg-amber-50/50 border border-amber-100/60 flex items-start gap-2.5">
+          <div id="workout-tip-bubble" className="mt-4 mb-5 p-3.5 rounded-2xl bg-amber-50/50 border border-amber-100/60 flex items-start gap-2.5 min-w-0">
             <MessageSquareCode className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-            <p className="text-[11px] font-sans font-medium text-slate-650 leading-relaxed italic">{displayTip}</p>
+            <p className="text-[11px] font-sans font-medium text-slate-650 leading-relaxed italic break-words min-w-0">{displayTip}</p>
           </div>
         )}
 
         {/* Smart Hydration Suggestion Component */}
         <div id={`hydration-advice-wrapper-${workout.day}`} className="mb-5">
-          <SmartHydrationTip workout={workout} isSimpleMode={isSimpleMode} />
+          <SmartHydrationTip 
+            workout={workout} 
+            isSimpleMode={isSimpleMode} 
+            isLocked={isPendingUser}
+            onUnlockClick={onUnlockClick}
+          />
         </div>
 
         {/* Saúde em Primeiro Lugar Banner */}
@@ -1065,6 +1163,16 @@ function WorkoutCardInner({ workout, onUpdate, onDelete, profile, allWorkouts, i
               <Lock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
               <span>Sem conclusão (Prazo expirado)</span>
             </div>
+          ) : isPendingUser && !workout.completed ? (
+            <button
+              type="button"
+              onClick={onUnlockClick}
+              className="flex-1 py-2.5 px-3 rounded-xl text-[10px] font-extrabold uppercase font-heading tracking-wider flex items-center justify-center gap-1.5 transition-all bg-slate-100 text-slate-400 border border-slate-200/80 cursor-pointer hover:bg-slate-200/60"
+              title="Assinatura pendente - Clique para desbloquear e concluir treinos"
+            >
+              <Lock className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+              <span>Concluir (Bloqueado)</span>
+            </button>
           ) : (
             <button
               type="button"

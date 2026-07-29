@@ -328,13 +328,6 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
             >
               Benefícios
             </button>
-            <button 
-              type="button" 
-              onClick={() => scrollToSection("precos")} 
-              className="text-xs font-semibold text-slate-300 hover:text-lime-450 transition-colors cursor-pointer bg-transparent border-none p-0"
-            >
-              Preços
-            </button>
           </div>
           <div>
             <button 
@@ -681,85 +674,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
 
 
 
-      {/* SEÇÃO DE PREÇOS TRANSPARENTE COM TRIAL */}
-      <section id="precos" className="relative py-24 px-4 sm:px-6 md:px-12 bg-slate-900/30 border-t border-slate-900 scroll-mt-24">
-        <div className="absolute inset-0 bg-radial-to-b from-emerald-500/5 via-transparent to-transparent opacity-40 pointer-events-none"></div>
-        <div className="max-w-7xl mx-auto w-full space-y-16 relative z-10">
-          
-          <div className="text-center space-y-4 max-w-3xl mx-auto">
-            <span className="text-[10px] bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 font-black px-3 py-1 rounded-full uppercase tracking-widest font-mono">
-              Preço Transparente
-            </span>
-            <h3 className="text-3xl sm:text-4xl font-heading font-black tracking-tight text-white">
-              Um único plano, sem surpresas na assinatura
-            </h3>
-            <p className="text-sm sm:text-base text-slate-400 font-sans leading-relaxed">
-              Você não precisa cadastrar cartão de crédito para ver o preço ou testar. Criamos uma política simples e focada em valor real para a sua evolução no pedal.
-            </p>
-          </div>
 
-          <div className="max-w-md mx-auto">
-            <div className="p-8 rounded-3xl bg-slate-900 border border-lime-500/30 relative flex flex-col justify-between space-y-8 text-left shadow-2xl shadow-lime-500/5 overflow-hidden font-sans">
-              <div className="absolute top-0 right-0 px-4 py-1.5 bg-lime-500 text-slate-950 font-black text-[9px] uppercase tracking-widest font-mono rounded-bl-2xl shadow-sm">
-                Melhor Escolha
-              </div>
-
-              <div className="space-y-4">
-                <div>
-                  <h4 className="font-heading font-black text-lg text-white uppercase tracking-wider">Plano Pro Completo</h4>
-                  <p className="text-xs text-slate-400 mt-1">Acesso ilimitado a todas as ferramentas e treinos inteligentes.</p>
-                </div>
-
-                <div className="pt-2 flex items-baseline gap-1">
-                  <span className="text-xl font-heading text-slate-400 font-medium">R$</span>
-                  <span className="text-5xl font-heading font-black text-white tracking-tight">24,89</span>
-                  <span className="text-xs text-slate-400 font-mono font-semibold">/ mês</span>
-                </div>
-
-                <div className="inline-flex items-center gap-1.5 py-1.5 px-3 bg-lime-500/10 border border-lime-500/20 text-lime-400 rounded-lg text-[10px] font-black uppercase tracking-wider font-heading">
-                  Liberação Após Assinatura
-                </div>
-              </div>
-
-              {/* Recursos inclusos */}
-              <div className="space-y-3.5 border-t border-slate-800 pt-6">
-                <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider font-mono">Tudo o que você recebe:</p>
-                
-                <ul className="space-y-2.5 text-xs text-slate-300">
-                  <li className="flex items-start gap-2.5">
-                    <Check className="w-4 h-4 text-lime-400 shrink-0 mt-0.5" />
-                    <span>Planilhas de Treino Adaptativas</span>
-                  </li>
-                  <li className="flex items-start gap-2.5">
-                    <Check className="w-4 h-4 text-lime-400 shrink-0 mt-0.5" />
-                    <span>Calculador de zonas simplificado e prático</span>
-                  </li>
-                  <li className="flex items-start gap-2.5">
-                    <Check className="w-4 h-4 text-lime-400 shrink-0 mt-0.5" />
-                    <span>Sem anúncios ou taxas ocultas de adesão</span>
-                  </li>
-                </ul>
-              </div>
-
-              {/* Botão de CTA */}
-              <div className="pt-4">
-                <button 
-                  type="button"
-                  onClick={() => scrollToSection("auth-section")}
-                  className="w-full inline-flex items-center justify-center gap-2.5 py-4 px-4 bg-linear-to-r from-lime-500 to-emerald-500 hover:from-lime-450 hover:to-emerald-450 active:scale-98 text-slate-950 rounded-xl text-xs font-black uppercase tracking-wider shadow-lg shadow-lime-500/10 cursor-pointer border-none"
-                >
-                  <span>Criar Conta</span>
-                  <ChevronRight className="w-4 h-4" />
-                </button>
-                <p className="text-[10px] text-slate-400 text-center mt-2.5 font-sans leading-normal">
-                  Pagamento seguro de R$ 24,89 processado via Mercado Pago (<a href="https://mpago.la/24PgikU" target="_blank" rel="noopener noreferrer" className="text-sky-400 underline hover:text-sky-300">link oficial</a>). Cancele quando quiser.
-                </p>
-              </div>
-            </div>
-          </div>
-
-        </div>
-      </section>
 
 
 
@@ -963,8 +878,6 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
             <button type="button" onClick={() => scrollToSection("como-funciona")} className="hover:text-white transition-colors cursor-pointer bg-transparent border-none p-0 text-slate-400">Como funciona</button>
             <span className="text-slate-800 hidden xs:inline">•</span>
             <button type="button" onClick={() => scrollToSection("beneficios")} className="hover:text-white transition-colors cursor-pointer bg-transparent border-none p-0 text-slate-400">Benefícios</button>
-            <span className="text-slate-800 hidden xs:inline">•</span>
-            <button type="button" onClick={() => scrollToSection("precos")} className="hover:text-white transition-colors cursor-pointer bg-transparent border-none p-0 text-slate-400">Preços</button>
             <span className="text-slate-800 hidden xs:inline">•</span>
             <button type="button" onClick={() => scrollToSection("auth-section")} className="text-lime-400 hover:text-lime-300 font-bold transition-colors cursor-pointer bg-transparent border-none p-0">Entrar no Portal</button>
           </div>

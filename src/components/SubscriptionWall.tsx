@@ -159,7 +159,7 @@ export default function SubscriptionWall({ userEmail, userName, currentStatus, o
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email: userEmail,
-          method: "Mercado Pago (R$ 24,89)",
+          method: "Mercado Pago",
           note: "Atleta informou ter efetuado o pagamento no link oficial."
         })
       });
@@ -242,10 +242,10 @@ export default function SubscriptionWall({ userEmail, userName, currentStatus, o
         </div>
         <div className="space-y-1">
           <h3 className="font-heading font-extrabold text-amber-900 text-xs sm:text-base">
-            {currentStatus === "expired" ? "Sua Assinatura Expirou" : "Pagamento de Assinatura Pendente (R$ 24,89)"}
+            {currentStatus === "expired" ? "Sua Assinatura Expirou" : "Pagamento de Assinatura Pendente"}
           </h3>
           <p className="text-[11px] sm:text-xs text-amber-800 leading-relaxed font-sans">
-            Olá, <strong>{userName}</strong>. O seu fôlego e evolução no pedal não podem parar! Para liberar ou manter o seu acesso total ao treinador e às planilhas personalizadas, conclua o pagamento da mensalidade de R$ 24,89.
+            Olá, <strong>{userName}</strong>. O seu fôlego e evolução no pedal não podem parar! Para liberar ou manter o seu acesso total ao treinador e às planilhas personalizadas, conclua o pagamento da sua assinatura.
           </p>
         </div>
       </div>
@@ -256,7 +256,7 @@ export default function SubscriptionWall({ userEmail, userName, currentStatus, o
           <div className="space-y-1.5 max-w-lg w-full">
             <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white/20 backdrop-blur-md rounded-full text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-white max-w-full">
               <Sparkles className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-amber-300 animate-spin shrink-0" />
-              <span className="truncate">Pagamento Rápido e Seguro (R$ 24,89/mês)</span>
+              <span className="truncate">Pagamento Rápido e Seguro</span>
             </div>
             <h4 className="font-heading font-black text-base sm:text-xl text-white">
               Pagamento Rápido e Seguro
@@ -288,39 +288,7 @@ export default function SubscriptionWall({ userEmail, userName, currentStatus, o
               <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </a>
 
-            <div className="flex flex-col sm:flex-row gap-2">
-              <button
-                type="button"
-                onClick={handleSimulatePayment}
-                disabled={simulatingPayment}
-                className="px-4 py-2.5 bg-white/15 hover:bg-white/25 text-white font-sans font-bold text-[11px] rounded-xl border border-white/20 transition-all text-center cursor-pointer flex items-center justify-center gap-1.5"
-              >
-                {simulatingPayment ? (
-                  <span>Registrando aviso...</span>
-                ) : (
-                  <>
-                    <CheckCircle className="w-3.5 h-3.5 text-emerald-300" />
-                    <span>Já fiz o pagamento / Avisar Treinador</span>
-                  </>
-                )}
-              </button>
 
-              <button
-                type="button"
-                onClick={handleCheckStatus}
-                disabled={checkingStatus}
-                className="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-sans font-extrabold text-[11px] rounded-xl shadow transition-all text-center cursor-pointer flex items-center justify-center gap-1.5"
-              >
-                {checkingStatus ? (
-                  <span>Consultando painel...</span>
-                ) : (
-                  <>
-                    <Zap className="w-3.5 h-3.5 text-slate-900" />
-                    <span>Verificar se fui liberado pelo Treinador</span>
-                  </>
-                )}
-              </button>
-            </div>
           </div>
         </div>
 
@@ -377,10 +345,7 @@ export default function SubscriptionWall({ userEmail, userName, currentStatus, o
                   </p>
                 </div>
                 <div className="pt-4 border-t border-slate-850 mt-6">
-                  <span className="text-xs font-bold font-sans">R$</span>
-                  <strong className="text-3xl font-black font-heading leading-none px-1">24,89</strong>
-                  <span className="text-xs opacity-75 font-sans">/mês</span>
-                  <span className="block text-[10px] opacity-60 text-sans mt-0.5">Assinatura mensal sem fidelidade</span>
+                  <span className="block text-[11px] font-bold text-lime-400 font-sans">Assinatura mensal sem fidelidade</span>
                 </div>
               </div>
             </div>
@@ -542,9 +507,6 @@ export default function SubscriptionWall({ userEmail, userName, currentStatus, o
                 </p>
               </div>
               <div className="pt-2 flex items-center gap-2">
-                <span className="text-[11px] bg-sky-600/60 font-mono px-2.5 py-1 rounded border border-white/15">
-                  Preço: R$ {premiumPlan.price} /mês
-                </span>
                 <span className="text-[11px] bg-emerald-500 font-bold px-2 py-0.5 rounded">Reconhecimento Imediato</span>
               </div>
             </div>

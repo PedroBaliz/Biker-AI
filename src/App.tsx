@@ -13,6 +13,7 @@ import LoginScreen from "./components/LoginScreen";
 import AccountSettings from "./components/AccountSettings";
 import AdminSubscribersPanel from "./components/AdminSubscribersPanel";
 import SubscriptionWall from "./components/SubscriptionWall";
+import WorkoutPlanPreview from "./components/WorkoutPlanPreview";
 import VolumeEvolutionChart from "./components/VolumeEvolutionChart";
 import WeeklyCalorieChart from "./components/WeeklyCalorieChart";
 import AchievementsDashboard from "./components/AchievementsDashboard";
@@ -48,6 +49,7 @@ import {
   Eye,
   EyeOff,
   Download,
+  Lock,
   Instagram,
   Smartphone,
   Share,
@@ -143,6 +145,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<"planilha" | "desempenho" | "zonas">("planilha");
   const [showMyWorkouts, setShowMyWorkouts] = useState(false);
   const [showPseExplanation, setShowPseExplanation] = useState(false);
+  const [showSubscriptionCheckout, setShowSubscriptionCheckout] = useState(false);
 
   // Simple / Technical display mode for workouts
   const [displayMode, setDisplayMode] = useState<"simples" | "tecnico">(() => {
@@ -214,6 +217,10 @@ export default function App() {
   const [isGeneratingPlan, setIsGeneratingPlan] = useState(false);
 
   // Derived training metrics (excluding rest/off sessions from training counts)
+  const isPendingUser = Boolean(
+    profile?.subscriptionStatus && profile.subscriptionStatus !== "active" && profile.role !== "coach"
+  );
+
   const derivedMetrics = useMemo(() => {
     const workouts = plan?.workouts || [];
     const total = workouts.filter(ws => !isRestDay(ws)).length;
@@ -236,6 +243,7 @@ export default function App() {
       workouts: updatedWorkouts
     };
     setPlan(updatedPlan);
+    setCurrentUser(prev => prev ? { ...prev, plan: updatedPlan } : prev);
 
     if (isNowCompleted) {
       try {
@@ -252,17 +260,21 @@ export default function App() {
 
   const handleDeleteWorkout = useCallback((index: number) => {
     if (!plan) return;
-    if (!window.confirm("Deseja realmente remover este treino da sua planilha?")) return;
     const updatedWorkouts = plan.workouts.filter((_, i) => i !== index);
     const updatedPlan = {
       ...plan,
       workouts: updatedWorkouts
     };
     setPlan(updatedPlan);
+    setCurrentUser(prev => prev ? { ...prev, plan: updatedPlan } : prev);
   }, [plan]);
 
   const handleExportPDF = useCallback(() => {
     if (!plan) return;
+    if (isPendingUser) {
+      setShowSubscriptionCheckout(true);
+      return;
+    }
     
     const doc = new jsPDF({
       orientation: "portrait",
@@ -488,7 +500,7 @@ export default function App() {
     }
 
     doc.save(`Planilha_Ciclismo_Semana_${weekNum}_${athleteName.replace(/\s+/g, "_")}.pdf`);
-  }, [plan, profile]);
+  }, [plan, profile, isPendingUser]);
 
   // Weekly Evolution States
   const [isGeneratingNextWeek, setIsGeneratingNextWeek] = useState(false);
@@ -498,6 +510,10 @@ export default function App() {
 
   const handleGenerateNextWeek = async () => {
     if (!plan) return;
+    if (isPendingUser) {
+      setShowSubscriptionCheckout(true);
+      return;
+    }
     setIsGeneratingNextWeek(true);
 
     const selectedFeeling = 
@@ -643,6 +659,28 @@ export default function App() {
     }
   };
 
+  const refreshUserSession = useCallback(async (emailKey: string) => {
+    try {
+      const response = await apiFetch("/api/auth/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: emailKey.toLowerCase() })
+      });
+      if (response.ok) {
+        const data = await response.json();
+        if (data.user) {
+          setCurrentUser(data.user);
+          setProfile(data.user.profile);
+          setChatHistory(data.user.chatHistory || []);
+          setPlan(data.user.plan || null);
+          setFeedbacks(data.user.feedbacks || []);
+        }
+      }
+    } catch (err) {
+      console.error("Erro ao sincronizar sessão:", err);
+    }
+  }, []);
+
   // Firebase Auth listener to automatically load/sync session
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -651,22 +689,7 @@ export default function App() {
         try {
           // Trigger localStorage migration to Firestore if legacy data exists
           await migrateLocalStorageToFirebase(emailKey);
-
-          const response = await apiFetch("/api/auth/session", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email: emailKey })
-          });
-          if (response.ok) {
-            const data = await response.json();
-            if (data.user) {
-              setCurrentUser(data.user);
-              setProfile(data.user.profile);
-              setChatHistory(data.user.chatHistory || []);
-              setPlan(data.user.plan || null);
-              setFeedbacks(data.user.feedbacks || []);
-            }
-          }
+          await refreshUserSession(emailKey);
         } catch (err) {
           console.error("Erro ao sincronizar sessão do Firebase:", err);
         }
@@ -1237,24 +1260,6 @@ export default function App() {
       {/* Main Body */}
       {!currentUser ? (
         <LoginScreen onLoginSuccess={handleLoginSuccess} />
-      ) : (profile.subscriptionStatus === "expired" || profile.subscriptionStatus === "pending_payment") && profile.role !== "coach" ? (
-        <main className="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-6 lg:p-8 flex flex-col gap-8">
-          <SubscriptionWall 
-            userEmail={currentUser.email}
-            userName={profile.name || currentUser.profile.name || "Atleta"}
-            currentStatus={profile.subscriptionStatus}
-            onActivated={(updatedProfile) => {
-              setProfile(updatedProfile);
-              if (currentUser) {
-                const refreshed = {
-                  ...currentUser,
-                  profile: updatedProfile
-                };
-                setCurrentUser(refreshed);
-              }
-            }}
-          />
-        </main>
       ) : showAccountSettings ? (
         <main className="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-6 lg:p-8 flex flex-col gap-8">
           <AccountSettings 
@@ -1741,6 +1746,15 @@ export default function App() {
                     transition={{ duration: 0.2 }}
                     className="space-y-8"
                   >
+                    {/* Render Preview Header if plan exists and user is non-subscriber */}
+                    {plan && profile.subscriptionStatus !== "active" && profile.role !== "coach" && (
+                      <WorkoutPlanPreview 
+                        plan={plan} 
+                        profile={profile} 
+                        onUnlockClick={() => setShowSubscriptionCheckout(true)} 
+                      />
+                    )}
+
                     {/* Before Starting Guide Banner */}
                     <motion.div 
                       initial={{ opacity: 0, y: -15 }}
@@ -1798,7 +1812,7 @@ export default function App() {
                     )}
 
                     {/* Weekly Plan summary card */}
-                    <div id="plan-block-summary" className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div id="plan-block-summary" className="w-full">
                       
                       {/* Summary text */}
                       <motion.div 
@@ -1806,7 +1820,7 @@ export default function App() {
                         whileInView={{ opacity: 1, y: 0 }}
                         viewport={{ once: true }}
                         transition={{ duration: 0.5 }}
-                        className="bg-slate-900 text-white p-6 rounded-2xl md:col-span-2 shadow-xs border border-slate-800 flex flex-col justify-between gap-4"
+                        className="bg-slate-900 text-white p-6 rounded-2xl w-full shadow-xs border border-slate-800 flex flex-col justify-between gap-4"
                       >
                         <div className="space-y-3">
                           <h3 className="font-heading font-extrabold text-sm uppercase tracking-widest text-lime-400 flex items-center gap-1.5">
@@ -1852,35 +1866,6 @@ export default function App() {
                         </div>
                       </motion.div>
 
-                      {/* Observations metrics boxes */}
-                      <motion.div 
-                        initial={{ opacity: 0, y: 25 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        viewport={{ once: true }}
-                        transition={{ duration: 0.5, delay: 0.1 }}
-                        className="bg-white rounded-2xl border border-slate-100 p-5 shadow-xs space-y-3 flex flex-col justify-between"
-                      >
-                        <div>
-                          <span className="text-[9px] font-bold font-heading text-slate-400 uppercase tracking-widest font-sans">Ciclo de Evolução</span>
-                          <h4 className="font-heading font-extrabold text-emerald-600 text-base mt-0.5">Semana {plan?.weekNumber || 1}</h4>
-                        </div>
-                        <div className="grid grid-cols-2 gap-3 py-2 border-y border-slate-50 my-1 font-mono text-xs">
-                          <div>
-                            <span className="text-[10px] text-slate-400 block font-sans">VOLUME TOTAL</span>
-                            <span className="text-sm font-bold text-slate-700">{profile.daysPerWeek} treinos / sem</span>
-                          </div>
-                          <div>
-                            <span className="text-[10px] text-slate-400 block font-sans">DIFICULDADE DA SEMANA</span>
-                            <span className="text-sm font-bold text-amber-550 flex items-center gap-0.5">
-                              Nível Moderado
-                            </span>
-                          </div>
-                        </div>
-                        <div className="text-[10.5px] text-slate-550 leading-normal font-sans">
-                          Siga a estrutura e os tempos propostos de cada treino para melhorar sua resistência continuamente.
-                        </div>
-                      </motion.div>
-
                     </div>
 
                     {/* Progress Tracker Panel & Worksheet Actions */}
@@ -1910,22 +1895,42 @@ export default function App() {
                               <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
                                 <button
                                   type="button"
-                                  onClick={() => setShowNextWeekForm(prev => !prev)}
+                                  onClick={() => {
+                                    if (isPendingUser) {
+                                      setShowSubscriptionCheckout(true);
+                                    } else {
+                                      setShowNextWeekForm(prev => !prev);
+                                    }
+                                  }}
                                   className={`px-4 py-2 rounded-xl text-xs font-black font-heading flex items-center gap-1.5 transition-all shadow-sm cursor-pointer ${
                                     showNextWeekForm 
                                       ? "bg-rose-600 hover:bg-rose-700 text-white" 
+                                      : isPendingUser
+                                      ? "bg-amber-400 hover:bg-amber-500 text-slate-950 hover:shadow-md active:scale-95"
                                       : "bg-gradient-to-r from-lime-500 to-emerald-500 text-slate-950 hover:shadow-md hover:brightness-105 active:scale-95"
                                   }`}
                                 >
-                                  <Sparkles className="w-3.5 h-3.5 shrink-0" />
+                                  {isPendingUser ? (
+                                    <Lock className="w-3.5 h-3.5 shrink-0" />
+                                  ) : (
+                                    <Sparkles className="w-3.5 h-3.5 shrink-0" />
+                                  )}
                                   <span>{showNextWeekForm ? "Fechar Configuração" : "Evoluir de Semana"}</span>
                                 </button>
                                 <button
                                   type="button"
                                   onClick={handleExportPDF}
-                                  className="px-3.5 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-xl text-xs font-bold font-heading flex items-center gap-1.5 transition-all shadow-xs cursor-pointer focus:outline-hidden"
+                                  className={`px-3.5 py-2 text-white rounded-xl text-xs font-bold font-heading flex items-center gap-1.5 transition-all shadow-xs cursor-pointer focus:outline-hidden ${
+                                    isPendingUser
+                                      ? "bg-slate-700 hover:bg-slate-800"
+                                      : "bg-sky-600 hover:bg-sky-700"
+                                  }`}
                                 >
-                                  <Download className="w-3.5 h-3.5" />
+                                  {isPendingUser ? (
+                                    <Lock className="w-3.5 h-3.5 shrink-0 text-amber-300" />
+                                  ) : (
+                                    <Download className="w-3.5 h-3.5" />
+                                  )}
                                   <span>Exportar PDF</span>
                                 </button>
                                 {completedW > 0 && (
@@ -2059,13 +2064,24 @@ export default function App() {
                                       <button
                                         type="button"
                                         disabled={isGeneratingNextWeek}
-                                        onClick={handleGenerateNextWeek}
+                                        onClick={() => {
+                                          if (isPendingUser) {
+                                            setShowSubscriptionCheckout(true);
+                                            return;
+                                          }
+                                          handleGenerateNextWeek();
+                                        }}
                                         className="w-full sm:w-auto px-6 py-2.5 bg-slate-900 hover:bg-slate-850 text-lime-450 hover:text-lime-400 rounded-xl text-xs font-black font-heading tracking-wide flex items-center justify-center gap-2 transition-all disabled:opacity-50 cursor-pointer shadow-sm active:scale-98"
                                       >
                                         {isGeneratingNextWeek ? (
                                           <>
                                             <RefreshCw className="w-4 h-4 animate-spin text-lime-400" />
                                             <span>Montando Nova Planilha e Cargas...</span>
+                                          </>
+                                        ) : isPendingUser ? (
+                                          <>
+                                            <Lock className="w-4 h-4 text-amber-400" />
+                                            <span>Desbloquear Assinatura p/ Evoluir</span>
                                           </>
                                         ) : (
                                           <>
@@ -2080,29 +2096,7 @@ export default function App() {
                               )}
                             </AnimatePresence>
 
-                            {/* Progress bar and metrics */}
-                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center bg-slate-50 rounded-2xl p-4 border border-slate-100">
-                              <div className="md:col-span-3 space-y-2">
-                                <div className="flex justify-between text-xs font-sans">
-                                  <span className="text-slate-500 font-medium">Progresso de Conclusão Semanal</span>
-                                  <span className="font-mono font-bold text-slate-800">{completedW} de {totalW} treinos concluidos ({pctW}%)</span>
-                                </div>
-                                <div className="w-full h-3 bg-slate-200 rounded-full overflow-hidden shadow-inner relative">
-                                  <div 
-                                    className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all duration-500"
-                                    style={{ width: `${pctW}%` }}
-                                  />
-                                </div>
-                              </div>
-                              <div className="bg-white p-3 rounded-xl border border-slate-100 flex items-center justify-between text-center md:col-span-1 shadow-2xs">
-                                <div className="w-full">
-                                  <span className="text-[10px] text-slate-400 font-sans block uppercase font-bold tracking-wider">Rendimento</span>
-                                  <span className="text-xl font-heading font-black text-emerald-600">
-                                    {pctW === 100 ? "100%" : pctW >= 75 ? "Excelente" : pctW >= 50 ? "Bom" : pctW > 0 ? "Em progresso" : "Falta começar"}
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
+
                           </motion.div>
                         );
                       })()
@@ -2290,6 +2284,7 @@ export default function App() {
                                   onUpdate={(updatedWorkout) => handleUpdateWorkout(index, updatedWorkout)}
                                   onDelete={() => handleDeleteWorkout(index)}
                                   isSimpleMode={displayMode === "simples"}
+                                  onUnlockClick={() => setShowSubscriptionCheckout(true)}
                                 />
                               </motion.div>
                             ))}
@@ -2732,6 +2727,41 @@ export default function App() {
                   </div>
                 </form>
               )}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Subscription Checkout Modal Dialog */}
+      <AnimatePresence>
+        {showSubscriptionCheckout && currentUser && (
+          <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ duration: 0.25 }}
+              className="relative w-full max-w-4xl bg-slate-900 rounded-3xl border border-slate-800 p-2 sm:p-6 shadow-2xl my-auto max-h-[92vh] overflow-y-auto"
+            >
+              <button
+                onClick={() => setShowSubscriptionCheckout(false)}
+                className="absolute top-4 right-4 z-20 w-9 h-9 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center transition-all cursor-pointer border border-slate-700"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              <SubscriptionWall 
+                userEmail={currentUser.email}
+                userName={profile.name || currentUser.profile?.name || "Atleta"}
+                currentStatus={profile.subscriptionStatus === "active" ? "pending_payment" : (profile.subscriptionStatus || "pending_payment")}
+                onActivated={(updatedProfile) => {
+                  setProfile(updatedProfile);
+                  if (currentUser) {
+                    refreshUserSession(currentUser.email);
+                  }
+                  setShowSubscriptionCheckout(false);
+                }}
+              />
             </motion.div>
           </div>
         )}

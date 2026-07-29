@@ -6,12 +6,16 @@ import {
   Info, 
   ChevronDown, 
   ChevronUp, 
+  Lock,
+  Zap
 } from "lucide-react";
 import { getSimplifiedText } from "../utils/translation";
 
 interface SmartHydrationTipProps {
   workout: Workout;
   isSimpleMode?: boolean;
+  isLocked?: boolean;
+  onUnlockClick?: () => void;
 }
 
 interface HydrationResult {
@@ -115,7 +119,12 @@ export function calculateHydration(durationMinutes: number, targetZone: string, 
   };
 }
 
-export default function SmartHydrationTip({ workout, isSimpleMode = false }: SmartHydrationTipProps) {
+export default function SmartHydrationTip({ 
+  workout, 
+  isSimpleMode = false,
+  isLocked = false,
+  onUnlockClick
+}: SmartHydrationTipProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   // Compute calculated recommendations
@@ -145,23 +154,30 @@ export default function SmartHydrationTip({ workout, isSimpleMode = false }: Sma
         className="w-full flex items-center justify-between p-3.5 text-left cursor-pointer transition-colors focus:outline-hidden"
       >
         <div className="flex items-center gap-2">
-          <div className="p-1.5 bg-sky-100 text-sky-600 rounded-lg">
+          <div className="p-1.5 bg-sky-100 text-sky-600 rounded-lg shrink-0">
             <Droplet className={`w-3.5 h-3.5 ${isOpen ? "fill-sky-500 animate-bounce" : ""}`} />
           </div>
           <div>
             <span className="text-[10px] font-bold text-slate-400 block tracking-widest uppercase font-mono leading-none mb-0.5">
               {isSimpleMode ? "Guia Fácil de Hidratação 💧" : "Calculadora Fisiológica"}
             </span>
-            <span className="text-xs font-heading font-extrabold text-slate-800 flex items-center gap-1">
+            <span className="text-xs font-heading font-extrabold text-slate-800 flex items-center gap-1.5 flex-wrap">
               {isSimpleMode ? "Como se Hidratar no Pedal" : "Hidratação Inteligente"}
-              <span className="text-[9px] bg-sky-100 text-sky-700 font-bold px-1.5 py-0.2 rounded-md font-sans">
-                {recommendation.waterMl}ml
-              </span>
+              {isLocked ? (
+                <span className="text-[9px] bg-amber-100 text-amber-800 font-bold px-1.5 py-0.5 rounded-md font-sans flex items-center gap-1 shrink-0">
+                  <Lock className="w-2.5 h-2.5 text-amber-600" />
+                  Bloqueado
+                </span>
+              ) : (
+                <span className="text-[9px] bg-sky-100 text-sky-700 font-bold px-1.5 py-0.2 rounded-md font-sans shrink-0">
+                  {recommendation.waterMl}ml
+                </span>
+              )}
             </span>
           </div>
         </div>
         
-        <div className="flex items-center gap-1.5 text-slate-400 hover:text-slate-600">
+        <div className="flex items-center gap-1.5 text-slate-400 hover:text-slate-600 shrink-0">
           <span className="text-[10px] font-mono font-bold hidden sm:inline-block">
             {isOpen ? "Ocultar" : "Expandir Guia"}
           </span>
@@ -171,115 +187,145 @@ export default function SmartHydrationTip({ workout, isSimpleMode = false }: Sma
 
       {/* Expandable Body */}
       {isOpen && (
-        <div className="px-4 pb-4.5 pt-1.5 space-y-4 border-t border-slate-100 animate-fadeIn text-xs text-slate-600 font-sans leading-relaxed">
-          
-          {/* Quick Stats Grid */}
-          <div className="grid grid-cols-2 gap-3">
-            
-            {/* Water Block */}
-            <div className="bg-white rounded-xl p-3 border border-slate-100 flex flex-col justify-between h-20 shadow-2xs">
-              <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block font-sans">
-                {isSimpleMode ? "GARRAFA DE ÁGUA 💧" : "VOLUME DE ÁGUA"}
-              </span>
-              <div className="flex items-baseline gap-1 mt-1">
-                <span className="text-base font-mono font-black text-sky-600">{recommendation.waterMl}</span>
-                <span className="text-[10px] text-slate-500 font-bold font-mono">ml</span>
+        isLocked ? (
+          <div className="px-4 pb-4.5 pt-1.5 animate-fadeIn">
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 text-white shadow-md space-y-2.5 min-w-0">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="flex items-center gap-2 text-lime-400 font-bold text-xs font-heading min-w-0">
+                  <Lock className="w-4 h-4 text-lime-400 shrink-0" />
+                  <span className="break-words">Guia de Hidratação Bloqueado</span>
+                </div>
+                <span className="text-[9px] bg-slate-800 text-slate-300 font-mono px-2 py-0.5 rounded-full uppercase font-bold shrink-0">PREVIEW</span>
               </div>
-              <span className="text-[10px] text-slate-400 font-medium">
-                {isSimpleMode 
-                  ? `≈ ${recommendation.bottlesCount} garrafa(s) de 750ml` 
-                  : `≈ ${recommendation.bottlesCount} caramanhola(s) (garrafa comum de 750ml)`
-                }
-              </span>
-            </div>
-
-            {/* Sodium Block */}
-            <div className="bg-white rounded-xl p-3 border border-slate-100 flex flex-col justify-between h-20 shadow-2xs">
-              <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block font-sans">
-                {isSimpleMode ? "SAL E MINERAIS 🧂" : "REPOSIÇÃO DE SAL (SÓDIO)"}
-              </span>
-              {isSimpleMode ? (
-                <>
-                  <div className="flex items-baseline gap-1 mt-1">
-                    <span className="text-sm font-sans font-black text-amber-600">Sais Eletrolíticos</span>
-                  </div>
-                  <span className="text-[9px] text-slate-400 font-medium leading-none">
-                    {workout.duration > 60 
-                      ? "Recomendado levar cápsula ou sachê" 
-                      : "Apenas água basta para este pedal!"}
-                  </span>
-                </>
-              ) : (
-                <>
-                  <div className="flex items-baseline gap-1 mt-1">
-                    <span className="text-base font-mono font-black text-amber-600">{recommendation.sodiumMg}</span>
-                    <span className="text-[10px] text-slate-500 font-bold font-mono">mg</span>
-                  </div>
-                  <span className="text-[10px] text-slate-400 font-medium">
-                    + {recommendation.potassiumMg}mg Potássio (Eletrolíticos)
-                  </span>
-                </>
+              <p className="text-[11px] text-slate-300 font-sans leading-relaxed break-words">
+                As recomendações personalizadas de reposição de água, sais minerais e carboidratos para este treino estão bloqueadas no preview.
+              </p>
+              {onUnlockClick && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onUnlockClick();
+                  }}
+                  className="w-full bg-linear-to-r from-lime-500 to-emerald-500 hover:from-lime-450 hover:to-emerald-450 active:scale-98 text-slate-950 font-extrabold text-xs py-2.5 px-3 rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm"
+                >
+                  <Zap className="w-4 h-4 fill-slate-950 shrink-0" />
+                  <span>Desbloquear Plano Completo</span>
+                </button>
               )}
             </div>
-
-            {/* Carb Block */}
-            <div className="bg-white rounded-xl p-3 border border-slate-100 flex flex-col justify-between h-20 shadow-2xs">
-              <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block font-sans">
-                {isSimpleMode ? "COMIDA / ENERGIA 🍌" : "CARBOIDRATOS RECOMENDADOS"}
-              </span>
-              <div className="flex items-baseline gap-1 mt-1">
-                <span className="text-base font-mono font-black text-lime-600">{recommendation.carbsG}</span>
-                <span className="text-[10px] text-slate-500 font-extrabold font-mono">g</span>
-              </div>
-              <span className="text-[10px] text-slate-400 font-medium leading-none">
-                {recommendation.gelEstimate > 0 
-                  ? `≈ ${recommendation.gelEstimate} gel ou banana` 
-                  : "Pedal curto: desnecessário levar comida"}
-              </span>
-            </div>
-
-            {/* Sip Frequency Block */}
-            <div className="bg-white rounded-xl p-3 border border-slate-100 flex flex-col justify-between h-20 shadow-2xs">
-              <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block font-sans">
-                {isSimpleMode ? "QUANDO BEBER ⏱️" : "FREQUÊNCIA DE GOLES"}
-              </span>
-              <div className="flex items-baseline gap-1 mt-1">
-                <span className="text-[10px] font-sans font-bold text-slate-400 shrink-0">A cada</span>
-                <span className="text-base font-mono font-black text-slate-800">{recommendation.sipInterval}</span>
-                <span className="text-[10px] text-slate-500 font-extrabold">min</span>
-              </div>
-              <span className="text-[10px] text-slate-400 font-medium">
-                {isSimpleMode ? "Dê um gole regular!" : "Configure alertas no seu GPS! ⏱️"}
-              </span>
-            </div>
-
           </div>
+        ) : (
+          <div className="px-4 pb-4.5 pt-1.5 space-y-4 border-t border-slate-100 animate-fadeIn text-xs text-slate-600 font-sans leading-relaxed">
+            
+            {/* Quick Stats Grid */}
+            <div className="grid grid-cols-2 gap-3">
+              
+              {/* Water Block */}
+              <div className="bg-white rounded-xl p-3 border border-slate-100 flex flex-col justify-between h-20 shadow-2xs">
+                <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block font-sans">
+                  {isSimpleMode ? "GARRAFA DE ÁGUA 💧" : "VOLUME DE ÁGUA"}
+                </span>
+                <div className="flex items-baseline gap-1 mt-1">
+                  <span className="text-base font-mono font-black text-sky-600">{recommendation.waterMl}</span>
+                  <span className="text-[10px] text-slate-500 font-bold font-mono">ml</span>
+                </div>
+                <span className="text-[10px] text-slate-400 font-medium">
+                  {isSimpleMode 
+                    ? `≈ ${recommendation.bottlesCount} garrafa(s) de 750ml` 
+                    : `≈ ${recommendation.bottlesCount} caramanhola(s) (garrafa comum de 750ml)`
+                  }
+                </span>
+              </div>
 
-          {/* Highlight coaching tip based on intensity */}
-          <div className="p-3 bg-sky-500/5 rounded-xl border border-sky-500/10 flex items-start gap-2 text-[11px] leading-relaxed">
-            <Sparkles className="w-4 h-4 text-sky-500 shrink-0 mt-0.5" />
-            <div>
-              <span className="font-heading font-black text-[10px] text-sky-700 block uppercase tracking-wider mb-0.5">
-                {isSimpleMode ? "DICA DE INTENSIDADE DO COACH:" : `Alerta de Desgaste: ${recommendation.intensityLevel}`}
-              </span>
-              <p className="text-slate-600 font-medium font-sans italic">
-                "{isSimpleMode ? getSimplifiedText(recommendation.advice) : recommendation.advice}"
+              {/* Sodium Block */}
+              <div className="bg-white rounded-xl p-3 border border-slate-100 flex flex-col justify-between h-20 shadow-2xs">
+                <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block font-sans">
+                  {isSimpleMode ? "SAL E MINERAIS 🧂" : "REPOSIÇÃO DE SAL (SÓDIO)"}
+                </span>
+                {isSimpleMode ? (
+                  <>
+                    <div className="flex items-baseline gap-1 mt-1">
+                      <span className="text-sm font-sans font-black text-amber-600">Sais Eletrolíticos</span>
+                    </div>
+                    <span className="text-[9px] text-slate-400 font-medium leading-none">
+                      {workout.duration > 60 
+                        ? "Recomendado levar cápsula ou sachê" 
+                        : "Apenas água basta para este pedal!"}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex items-baseline gap-1 mt-1">
+                      <span className="text-base font-mono font-black text-amber-600">{recommendation.sodiumMg}</span>
+                      <span className="text-[10px] text-slate-500 font-bold font-mono">mg</span>
+                    </div>
+                    <span className="text-[10px] text-slate-400 font-medium">
+                      + {recommendation.potassiumMg}mg Potássio (Eletrolíticos)
+                    </span>
+                  </>
+                )}
+              </div>
+
+              {/* Carb Block */}
+              <div className="bg-white rounded-xl p-3 border border-slate-100 flex flex-col justify-between h-20 shadow-2xs">
+                <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block font-sans">
+                  {isSimpleMode ? "COMIDA / ENERGIA 🍌" : "CARBOIDRATOS RECOMENDADOS"}
+                </span>
+                <div className="flex items-baseline gap-1 mt-1">
+                  <span className="text-base font-mono font-black text-lime-600">{recommendation.carbsG}</span>
+                  <span className="text-[10px] text-slate-500 font-extrabold font-mono">g</span>
+                </div>
+                <span className="text-[10px] text-slate-400 font-medium leading-none">
+                  {recommendation.gelEstimate > 0 
+                    ? `≈ ${recommendation.gelEstimate} gel ou banana` 
+                    : "Pedal curto: desnecessário levar comida"}
+                </span>
+              </div>
+
+              {/* Sip Frequency Block */}
+              <div className="bg-white rounded-xl p-3 border border-slate-100 flex flex-col justify-between h-20 shadow-2xs">
+                <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block font-sans">
+                  {isSimpleMode ? "QUANDO BEBER ⏱️" : "FREQUÊNCIA DE GOLES"}
+                </span>
+                <div className="flex items-baseline gap-1 mt-1">
+                  <span className="text-[10px] font-sans font-bold text-slate-400 shrink-0">A cada</span>
+                  <span className="text-base font-mono font-black text-slate-800">{recommendation.sipInterval}</span>
+                  <span className="text-[10px] text-slate-500 font-extrabold">min</span>
+                </div>
+                <span className="text-[10px] text-slate-400 font-medium">
+                  {isSimpleMode ? "Dê um gole regular!" : "Configure alertas no seu GPS! ⏱️"}
+                </span>
+              </div>
+
+            </div>
+
+            {/* Highlight coaching tip based on intensity */}
+            <div className="p-3 bg-sky-500/5 rounded-xl border border-sky-500/10 flex items-start gap-2 text-[11px] leading-relaxed">
+              <Sparkles className="w-4 h-4 text-sky-500 shrink-0 mt-0.5" />
+              <div>
+                <span className="font-heading font-black text-[10px] text-sky-700 block uppercase tracking-wider mb-0.5">
+                  {isSimpleMode ? "DICA DE INTENSIDADE DO COACH:" : `Alerta de Desgaste: ${recommendation.intensityLevel}`}
+                </span>
+                <p className="text-slate-600 font-medium font-sans italic">
+                  "{isSimpleMode ? getSimplifiedText(recommendation.advice) : recommendation.advice}"
+                </p>
+              </div>
+            </div>
+
+            {/* Scientific Disclaimer text with info note */}
+            <div className="flex items-start gap-1.5 text-[9.5px] text-slate-400/90 leading-tight">
+              <Info className="w-3.5 h-3.5 text-slate-350 shrink-0 mt-0.5" />
+              <p className="font-sans">
+                {isSimpleMode 
+                  ? "Esses valores são calculados de forma segura para você treinar com saúde e sem cansaço excessivo. Beber água e comer corretamente evita cãibras, tontura e estafa precoce!"
+                  : "As taxas são baseadas nas diretrizes internacionais do ACSM (American College of Sports Medicine - Colégio Americano de Medicina do Esporte) para ciclismo em temperaturas normais (~21°C). Ajuste para mais se estiver quente ou se você suar bastante."
+                }
               </p>
             </div>
-          </div>
 
-          {/* Scientific Disclaimer text with info note */}
-          <div className="flex items-start gap-1.5 text-[9.5px] text-slate-400/90 leading-tight">
-            <Info className="w-3.5 h-3.5 text-slate-350 shrink-0 mt-0.5" />
-            <p className="font-sans">
-              {isSimpleMode 
-                ? "Esses valores são calculados de forma segura para você treinar com saúde e sem cansaço excessivo. Beber água e comer corretamente evita cãibras, tontura e estafa precoce!"
-                : "As taxas são baseadas nas diretrizes internacionais do ACSM (American College of Sports Medicine - Colégio Americano de Medicina do Esporte) para ciclismo em temperaturas normais (~21°C). Ajuste para mais se estiver quente ou se você suar bastante."
-              }
-            </p>
           </div>
-
-        </div>
+        )
       )}
 
     </div>

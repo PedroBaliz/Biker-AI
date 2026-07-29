@@ -293,6 +293,34 @@ function verifyUserMatch(req: any, res: any, next: any) {
   next();
 }
 
+// Helper to scrub/lock sensitive execution details for non-subscribers
+function sanitizePlanForUser(plan: any, profile: any) {
+  if (!plan) return null;
+  const isSubscriber = profile?.subscriptionStatus === "active" || profile?.role === "coach";
+  
+  if (isSubscriber) {
+    return {
+      ...plan,
+      isLocked: false
+    };
+  }
+
+  return {
+    ...plan,
+    isLocked: true,
+    workouts: (plan.workouts || []).map((w: any) => ({
+      ...w,
+      // Keep title (day), duration, targetZone, type, and rpe visible in preview
+      // Scrub minute-by-minute execution structure & tips to protect paywall
+      structure: "🔒 [Conteúdo Exclusivo - Assine o Biker AI para desbloquear a estrutura minuto a minuto e % de FTP]",
+      tip: "🔒 [Assine o Biker AI para acessar as instruções fisiológicas e dicas do treinador]",
+      isLocked: true
+    })),
+    observations: plan.observations ? "🔒 Assine o Biker AI para visualizar as observações técnicas completas do treinador." : "",
+    evaluation: plan.evaluation ? "🔒 Assine o Biker AI para visualizar a avaliação fisiológica completa." : ""
+  };
+}
+
 // Middleware to restrict access to coach/admin only
 function requireAdmin(req: any, res: any, next: any) {
   if (!req.user) {
@@ -934,6 +962,9 @@ app.post("/api/auth/login", async (req, res) => {
 
     const responseUser = { ...user };
     delete (responseUser as any).password; // Sanitize for privacy
+    if (responseUser.plan) {
+      responseUser.plan = sanitizePlanForUser(responseUser.plan, responseUser.profile);
+    }
 
     res.json({ success: true, user: responseUser });
   } catch (error: any) {
@@ -992,6 +1023,9 @@ app.post("/api/auth/session", requireAuth, verifyUserMatch, async (req, res) => 
     
     const responseUser = { ...user };
     delete (responseUser as any).password; // Sanitize for privacy
+    if (responseUser.plan) {
+      responseUser.plan = sanitizePlanForUser(responseUser.plan, responseUser.profile);
+    }
 
     res.json({ success: true, user: responseUser });
   } catch (error: any) {
@@ -1799,12 +1833,34 @@ Atividade recente cadastrada: ${profile?.recentActivity || "Nenhuma registrada"}
     if (!resultText) {
       throw new Error("No response from Gemini API");
     }
-    res.json(cleanAndParseJson(resultText));
+    const fullPlanData = cleanAndParseJson(resultText);
+
+    // Save full unscrubbed plan in DB for user
+    const userEmailKey = (profile?.email || (req as any).user?.email || "").trim().toLowerCase();
+    if (userEmailKey) {
+      const db = await getDatabase();
+      if (db[userEmailKey]) {
+        db[userEmailKey].plan = fullPlanData;
+        await saveDatabase(db, userEmailKey, getAuthToken(req));
+      }
+    }
+
+    res.json(sanitizePlanForUser(fullPlanData, profile));
   } catch (error: any) {
     console.warn("Fadiga periférica na chamada do Gemini para plano personalizado. Ativando treinador local resiliente:", error.message);
     const data = fallbackGeneratePlan(profile, 1);
     data.geminiError = error.message;
-    res.json(data);
+
+    const userEmailKey = (profile?.email || (req as any).user?.email || "").trim().toLowerCase();
+    if (userEmailKey) {
+      const db = await getDatabase();
+      if (db[userEmailKey]) {
+        db[userEmailKey].plan = data;
+        await saveDatabase(db, userEmailKey, getAuthToken(req));
+      }
+    }
+
+    res.json(sanitizePlanForUser(data, profile));
   }
 });
 
