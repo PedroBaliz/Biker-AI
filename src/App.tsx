@@ -2267,14 +2267,14 @@ export default function App() {
                           </AnimatePresence>
 
                           {/* Bento Grid of workouts (standard vertical stacking grid, no mobile lateral displacement) */}
-                          <div id="weekly-workouts-grid" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6 pt-2">
+                          <div id="weekly-workouts-grid" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 pt-2">
                             {plan?.workouts.map((wk, index) => (
                               <motion.div
                                 key={`${wk.day}-${index}`}
                                 initial={{ opacity: 0, y: 30 }}
                                 whileInView={{ opacity: 1, y: 0 }}
                                 viewport={{ once: true, margin: "-30px" }}
-                                transition={{ duration: 0.45, delay: (index % 4) * 0.08 }}
+                                transition={{ duration: 0.45, delay: (index % 3) * 0.08 }}
                                 className="w-full flex"
                               >
                                 <WorkoutCard 
