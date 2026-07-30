@@ -312,12 +312,12 @@ function sanitizePlanForUser(plan: any, profile: any) {
       ...w,
       // Keep title (day), duration, targetZone, type, and rpe visible in preview
       // Scrub minute-by-minute execution structure & tips to protect paywall
-      structure: "🔒 [Conteúdo Exclusivo - Assine o Biker AI para desbloquear a estrutura minuto a minuto e % de FTP]",
-      tip: "🔒 [Assine o Biker AI para acessar as instruções fisiológicas e dicas do treinador]",
+      structure: "[Conteúdo Exclusivo - Assine o Biker AI para desbloquear a estrutura minuto a minuto e % de FTP]",
+      tip: "[Assine o Biker AI para acessar as instruções fisiológicas e dicas do treinador]",
       isLocked: true
     })),
-    observations: plan.observations ? "🔒 Assine o Biker AI para visualizar as observações técnicas completas do treinador." : "",
-    evaluation: plan.evaluation ? "🔒 Assine o Biker AI para visualizar a avaliação fisiológica completa." : ""
+    observations: plan.observations ? "[Conteúdo Exclusivo - Assine o Biker AI para visualizar as observações técnicas completas do treinador.]" : "",
+    evaluation: plan.evaluation ? "[Conteúdo Exclusivo - Assine o Biker AI para visualizar a avaliação fisiológica completa.]" : ""
   };
 }
 

@@ -43,27 +43,27 @@ function getZoneExplanation(zone: string, isSimpleMode = false): string {
   const z = zone.toUpperCase();
   if (z.includes("Z1") || z.includes("RECUPERAÇÃO") || z.includes("REGENERATIVO")) {
     return isSimpleMode
-      ? "Muito Leve 🟢 (Giro super leve, sem peso algum nos pedais). Ideal para descansar as pernas, recuperar a energia e aquecer suavemente sem cansar nada."
+      ? "Muito Leve (Giro super leve, sem peso algum nos pedais). Ideal para descansar as pernas, recuperar a energia e aquecer suavemente sem cansar nada."
       : "Zona 1 (Giro Regenerativo): Intensidade super leve para soltar as pernas e recuperar os músculos de treinos anteriores. Sem cansaço ou fôlego curto.";
   }
   if (z.includes("Z2") || z.includes("ENDURANCE") || z.includes("RESISTÊNCIA")) {
     return isSimpleMode
-      ? "Leve 🟢 (Ritmo confortável que você aguenta pedalar por horas). Dá para bater um papo inteiro com os amigos ou cantar normalmente sem perder o fôlego."
+      ? "Leve (Ritmo confortável que você aguenta pedalar por horas). Dá para bater um papo inteiro com os amigos ou cantar normalmente sem perder o fôlego."
       : "Zona 2 (Ritmo de Viagem): Intensidade confortável que você consegue manter por horas. Ideal para construir resistência aeróbica básica e queimar gordura.";
   }
   if (z.includes("Z3") || z.includes("TEMPO") || z.includes("RITMO")) {
     return isSimpleMode
-      ? "Moderado 🟡 (Esforço firme e focado, respiração um pouco mais profunda). Você sente as pernas trabalhando de forma constante, mas ainda consegue falar frases inteiras se precisar."
+      ? "Moderado (Esforço firme e focado, respiração um pouco mais profunda). Você sente as pernas trabalhando de forma constante, mas ainda consegue falar frases inteiras se precisar."
       : "Zona 3 (Ritmo Firme): Intensidade moderadamente forte. Respiração fica profunda e constante. Exige foco para manter, mas ainda é possível falar.";
   }
   if (z.includes("Z4") || z.includes("LIMIAR") || z.includes("FTP") || z.includes("LACTATO")) {
     return isSimpleMode
-      ? "Forte 🟠 (Esforço pesado de alto rendimento). As pernas começam a queimar e a respiração fica bem ofegante; você só consegue falar poucas palavras curtas por vez."
+      ? "Forte (Esforço pesado de alto rendimento). As pernas começam a queimar e a respiração fica bem ofegante; você só consegue falar poucas palavras curtas por vez."
       : "Zona 4 (Limiar / Força): Intensidade forte e cansativa. Pernas começam a arder devido ao esforço e só dá para falar frases muito curtas.";
   }
   if (z.includes("Z5") || z.includes("VO2") || z.includes("MÁXIMO")) {
     return isSimpleMode
-      ? "Muito Forte 🔴 (Esforço extremo no seu limite de fôlego). Coração disparado e respiração totalmente ofegante. É um ritmo muito pesado para sustentar por poucos minutos."
+      ? "Muito Forte (Esforço extremo no seu limite de fôlego). Coração disparado e respiração totalmente ofegante. É um ritmo muito pesado para sustentar por poucos minutos."
       : "Zona 5 (VO2 Máximo): Intensidade extrema e exaustiva. Fôlego no limite e respiração ofegante total. Sustentável por poucos minutos.";
   }
   return isSimpleMode
@@ -146,24 +146,24 @@ function getShortZoneBadge(zone: string, isSimpleMode: boolean): string {
   }
   
   const z = zone.toUpperCase();
-  if (z.includes("Z1") || z.includes("RECUPERAÇÃO") || z.includes("REGENERATIVO")) return "Z1 • Muito Leve 🟢";
-  if (z.includes("Z2") || z.includes("ENDURANCE") || z.includes("RESISTÊNCIA")) return "Z2 • Leve 🟢";
-  if (z.includes("Z3") || z.includes("TEMPO") || z.includes("RITMO")) return "Z3 • Moderado 🟡";
-  if (z.includes("Z4") || z.includes("LIMIAR") || z.includes("LACTATO") || z.includes("FTP")) return "Z4 • Forte 🟠";
-  if (z.includes("Z5") || z.includes("VO2") || z.includes("MÁXIMO")) return "Z5 • Muito Forte 🔴";
-  if (z.includes("Z6") || z.includes("ANAERÓBICA")) return "Z6 • Explosivo 🔥";
-  if (z.includes("Z7") || z.includes("NEUROMUSCULAR")) return "Z7 • Explosão 🔥";
+  if (z.includes("Z1") || z.includes("RECUPERAÇÃO") || z.includes("REGENERATIVO")) return "Z1 • Muito Leve";
+  if (z.includes("Z2") || z.includes("ENDURANCE") || z.includes("RESISTÊNCIA")) return "Z2 • Leve";
+  if (z.includes("Z3") || z.includes("TEMPO") || z.includes("RITMO")) return "Z3 • Moderado";
+  if (z.includes("Z4") || z.includes("LIMIAR") || z.includes("LACTATO") || z.includes("FTP")) return "Z4 • Forte";
+  if (z.includes("Z5") || z.includes("VO2") || z.includes("MÁXIMO")) return "Z5 • Muito Forte";
+  if (z.includes("Z6") || z.includes("ANAERÓBICA")) return "Z6 • Explosivo";
+  if (z.includes("Z7") || z.includes("NEUROMUSCULAR")) return "Z7 • Explosão";
   
   if (zone.length > 20) return zone.slice(0, 18) + "...";
   return zone;
 }
 
 function getShortEffortLabel(rpe: number): string {
-  if (rpe <= 2) return "Muito Leve 🟢";
-  if (rpe <= 4) return "Leve 🟢";
-  if (rpe <= 6) return "Moderado 🟡";
-  if (rpe <= 8) return "Forte 🟠";
-  return "Máximo 🔥";
+  if (rpe <= 2) return "Muito Leve";
+  if (rpe <= 4) return "Leve";
+  if (rpe <= 6) return "Moderado";
+  if (rpe <= 8) return "Forte";
+  return "Máximo";
 }
 
 function getEffortSubtitle(rpe: number): string {
@@ -279,11 +279,11 @@ function WorkoutCardInner({ workout, onUpdate, onDelete, profile, allWorkouts, i
   };
 
   const getSimpleEffortText = (rpe: number) => {
-    if (rpe <= 2) return "Muito Leve 🟢 (Sem cansaço, ritmo de passeio)";
-    if (rpe <= 4) return "Leve 🟢 (Confortável, ritmo de conversa)";
-    if (rpe <= 6) return "Moderado 🟡 (Firme, fôlego presente e sob controle)";
-    if (rpe <= 8) return "Forte 🟠 (Pesado, fôlego curto, pernas cansando)";
-    return "Máximo 🔥 (Extremo, fôlego no limite)";
+    if (rpe <= 2) return "Muito Leve (Sem cansaço, ritmo de passeio)";
+    if (rpe <= 4) return "Leve (Confortável, ritmo de conversa)";
+    if (rpe <= 6) return "Moderado (Firme, fôlego presente e sob controle)";
+    if (rpe <= 8) return "Forte (Pesado, fôlego curto, pernas cansando)";
+    return "Máximo (Extremo, fôlego no limite)";
   };
 
   const rpeStyles = getRpeStyles(workout.rpe || 5);
@@ -315,7 +315,7 @@ function WorkoutCardInner({ workout, onUpdate, onDelete, profile, allWorkouts, i
 
   const isPendingUser = Boolean(
     workout.isLocked || 
-    (workout.structure && workout.structure.includes("🔒")) || 
+    (workout.structure && (workout.structure.includes("🔒") || workout.structure.includes("[Conteúdo Exclusivo]"))) || 
     (profile?.subscriptionStatus && profile.subscriptionStatus !== "active" && profile.role !== "coach")
   );
 
@@ -1070,7 +1070,7 @@ function WorkoutCardInner({ workout, onUpdate, onDelete, profile, allWorkouts, i
             <Bike className="w-3.5 h-3.5 shrink-0" />
             <span className="text-[9px] font-extrabold uppercase tracking-widest font-heading">Estrutura de Ritmo</span>
           </div>
-          {workout.isLocked || (workout.structure && workout.structure.includes("🔒")) || (profile?.subscriptionStatus && profile.subscriptionStatus !== "active" && profile.role !== "coach") ? (
+          {workout.isLocked || (workout.structure && (workout.structure.includes("🔒") || workout.structure.includes("[Conteúdo Exclusivo]"))) || (profile?.subscriptionStatus && profile.subscriptionStatus !== "active" && profile.role !== "coach") ? (
             <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 text-white shadow-md space-y-2.5 min-w-0">
               <div className="flex items-center justify-between gap-2 flex-wrap">
                 <div className="flex items-center gap-2 text-lime-400 font-bold text-xs font-heading min-w-0">

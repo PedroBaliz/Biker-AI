@@ -4,6 +4,8 @@ import { apiFetch } from "../firebase";
 import { motion, AnimatePresence } from "motion/react";
 import { 
   ShieldAlert, 
+  ShieldCheck,
+  RefreshCw,
   CheckCircle, 
   Lock, 
   Sparkles, 
@@ -339,13 +341,49 @@ export default function SubscriptionWall({ userEmail, userName, currentStatus, o
                     <span className="text-[10px] uppercase font-bold tracking-wider text-lime-400">Plano Único e Completo</span>
                     <Zap className="w-4 h-4 text-lime-400" />
                   </div>
-                  <h5 className="font-heading font-black text-lg mt-2">Plano Pro (Mensal)</h5>
-                  <p className="text-[11px] mt-1.5 text-slate-300">
-                    Acesso completo a todas as ferramentas, gráficos e treinador AI, sem barreiras de uso nem limitações de fôlego!
+                  <h5 className="font-heading font-black text-lg mt-2">Plano Pro</h5>
+                  <div className="flex items-baseline gap-1 mt-2">
+                    <span className="text-xs font-bold text-slate-400">R$</span>
+                    <span className="text-3xl font-mono font-black text-lime-400">24,89</span>
+                    <span className="text-xs text-slate-400 font-sans">/ mês</span>
+                  </div>
+                  <p className="text-[11px] mt-2 text-slate-300 leading-relaxed">
+                    Acesso completo a todas as ferramentas, gráficos e treinador AI. Sem pegadinhas nem taxas adicionais.
                   </p>
                 </div>
-                <div className="pt-4 border-t border-slate-850 mt-6">
-                  <span className="block text-[11px] font-bold text-lime-400 font-sans">Assinatura mensal sem fidelidade</span>
+                <div className="pt-4 border-t border-slate-800 mt-5 flex items-center justify-between text-[11px] font-bold text-lime-400 font-sans">
+                  <span>Cancele quando quiser em 1 clique</span>
+                  <CheckCircle className="w-4 h-4 text-lime-400 shrink-0" />
+                </div>
+              </div>
+            </div>
+
+            {/* Guarantees & Trust Badges */}
+            <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-4 text-slate-700 text-xs font-sans space-y-3">
+              <div className="flex items-start gap-3">
+                <div className="p-2 bg-emerald-500 text-slate-950 rounded-xl shrink-0 mt-0.5 shadow-xs">
+                  <ShieldCheck className="w-5 h-5" />
+                </div>
+                <div className="space-y-1 text-left">
+                  <h6 className="font-heading font-black text-emerald-900 text-xs uppercase tracking-wide">Garantia Incondicional de 7 Dias</h6>
+                  <p className="text-[11px] text-slate-600 leading-relaxed">
+                    Teste a plataforma por 7 dias inteiros. Se por qualquer motivo você não se adaptar ao seu plano de treinos, devolvemos 100% do seu dinheiro sem burocracia nem perguntas.
+                  </p>
+                </div>
+              </div>
+
+              <div className="pt-2.5 border-t border-emerald-500/15 grid grid-cols-2 sm:grid-cols-3 gap-2 text-[10px] font-extrabold text-slate-700 uppercase tracking-wider">
+                <div className="flex items-center gap-1.5">
+                  <Lock className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                  <span>Ambiente Criptografado</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <RefreshCw className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                  <span>Sem Fidelidade</span>
+                </div>
+                <div className="flex items-center gap-1.5 col-span-2 sm:col-span-1">
+                  <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                  <span>Mercado Pago Seguro</span>
                 </div>
               </div>
             </div>
@@ -544,8 +582,8 @@ export default function SubscriptionWall({ userEmail, userName, currentStatus, o
             {/* Mercado Pago Payment Screen Content */}
             {mpSuccess ? (
               <div className="bg-emerald-50 border border-emerald-200 rounded-3xl p-8 text-center space-y-4 py-12 animate-fadeIn">
-                <div className="w-14 h-14 bg-emerald-500 text-white rounded-full flex items-center justify-center mx-auto text-3xl font-black shadow-md">
-                  ✓
+                <div className="w-14 h-14 bg-emerald-500 text-white rounded-full flex items-center justify-center mx-auto shadow-md">
+                  <CheckCircle className="w-8 h-8" />
                 </div>
                 <div className="space-y-1">
                   <h5 className="font-heading font-black text-emerald-800 text-sm sm:text-base">Pagamento Confirmado no Mercado Pago!</h5>

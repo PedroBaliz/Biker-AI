@@ -10,7 +10,7 @@ export function getSimplifiedText(text: string | undefined): string {
   // 1. Specific zone pattern replacements (longest/most specific first to avoid partial replacements)
   
   // Z1
-  const z1Repl = "Muito Leve 🟢 (Passeio bem calmo para girar as pernas, sem fazer nenhuma força)";
+  const z1Repl = "Muito Leve (Passeio bem calmo para girar as pernas, sem fazer nenhuma força)";
   result = result.replace(/Z1\s*\(Recuperação\s*Ativa\)/gi, z1Repl);
   result = result.replace(/Z1\s*\(Recuperação\)/gi, z1Repl);
   result = result.replace(/Z1\s*\(Regenerativo\)/gi, z1Repl);
@@ -21,7 +21,7 @@ export function getSimplifiedText(text: string | undefined): string {
   result = result.replace(/Zona\s*Z1/gi, z1Repl);
 
   // Z2
-  const z2Repl = "Leve 🟢 (Giro confortável onde você consegue conversar normalmente ou cantar sem perder o fôlego)";
+  const z2Repl = "Leve (Giro confortável onde você consegue conversar normalmente ou cantar sem perder o fôlego)";
   result = result.replace(/Z2\s*\(Endurance\)/gi, z2Repl);
   result = result.replace(/Z2\s*\(Resistência\)/gi, z2Repl);
   result = result.replace(/\bZ2\b/g, z2Repl);
@@ -31,7 +31,7 @@ export function getSimplifiedText(text: string | undefined): string {
   result = result.replace(/Zona\s*Z2/gi, z2Repl);
 
   // Z3
-  const z3Repl = "Moderado 🟡 (Esforço firme, o fôlego fica mais fundo e focado, mas você ainda tem total controle)";
+  const z3Repl = "Moderado (Esforço firme, o fôlego fica mais fundo e focado, mas você ainda tem total controle)";
   result = result.replace(/Z3\s*\(Tempo\/Ritmo\)/gi, z3Repl);
   result = result.replace(/Z3\s*\(Tempo\)/gi, z3Repl);
   result = result.replace(/Z3\s*\(Ritmo\)/gi, z3Repl);
@@ -42,7 +42,7 @@ export function getSimplifiedText(text: string | undefined): string {
   result = result.replace(/Zona\s*Z3/gi, z3Repl);
 
   // Z4
-  const z4Repl = "Forte 🟠 (Esforço pesado e pernas ardendo de cansaço. Respiração acelerada, você só consegue falar poucas palavras seguidas)";
+  const z4Repl = "Forte (Esforço pesado e pernas ardendo de cansaço. Respiração acelerada, você só consegue falar poucas palavras seguidas)";
   result = result.replace(/Z4\s*\(Limiar\s*de\s*Lactato\)/gi, z4Repl);
   result = result.replace(/Z4\s*\(Limiar\)/gi, z4Repl);
   result = result.replace(/\bZ4\b/g, z4Repl);
@@ -52,7 +52,7 @@ export function getSimplifiedText(text: string | undefined): string {
   result = result.replace(/Zona\s*Z4/gi, z4Repl);
 
   // Z5
-  const z5Repl = "Muito Forte 🔴 (Fôlego extremo e coração batendo muito forte. Ritmo ofegante que você aguenta por no máximo alguns minutos)";
+  const z5Repl = "Muito Forte (Fôlego extremo e coração batendo muito forte. Ritmo ofegante que você aguenta por no máximo alguns minutos)";
   result = result.replace(/Z5\s*\(VO2\s*M[aá]ximo\)/gi, z5Repl);
   result = result.replace(/Z5\s*\(VO2\s*Max\)/gi, z5Repl);
   result = result.replace(/\bZ5\b/g, z5Repl);
@@ -61,14 +61,14 @@ export function getSimplifiedText(text: string | undefined): string {
   result = result.replace(/Zona\s*Z5/gi, z5Repl);
 
   // Z6
-  const z6Repl = "Explosivo 🔥 (Força total nas pernas para arrancadas rápidas ou subidas muito curtas de menos de 2 minutos)";
+  const z6Repl = "Explosivo (Força total nas pernas para arrancadas rápidas ou subidas muito curtas de menos de 2 minutos)";
   result = result.replace(/Z6\s*\(Capacidade\s+Anaer[oó]bica\)/gi, z6Repl);
   result = result.replace(/\bZ6\b/g, z6Repl);
   result = result.replace(/Zona\s*6/gi, z6Repl);
   result = result.replace(/Zona\s*Z6/gi, z6Repl);
 
   // Z7
-  const z7Repl = "Explosão Máxima 🔥 (Esforço de arrancada total com toda a força do seu corpo de poucos segundos)";
+  const z7Repl = "Explosão Máxima (Esforço de arrancada total com toda a força do seu corpo de poucos segundos)";
   result = result.replace(/Z7\s*\(Pot[eê]ncia\s+Neuromuscular\)/gi, z7Repl);
   result = result.replace(/\bZ7\b/g, z7Repl);
   result = result.replace(/Zona\s*7/gi, z7Repl);

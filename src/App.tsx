@@ -1373,9 +1373,9 @@ export default function App() {
                     </label>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       {[
-                        { id: "iniciante", title: "Iniciante", desc: "Recém no pedal (0 a 1 ano)", icon: "🚴" },
-                        { id: "intermediário", title: "Intermediário", desc: "Pedalo com frequência", icon: "🚵" },
-                        { id: "avançado", title: "Avançado", desc: "Treinos fortes / Provas", icon: "⚡" },
+                        { id: "iniciante", title: "Iniciante", desc: "Recém no pedal (0 a 1 ano)" },
+                        { id: "intermediário", title: "Intermediário", desc: "Pedalo com frequência" },
+                        { id: "avançado", title: "Avançado", desc: "Treinos fortes / Provas" },
                       ].map((lvl) => {
                         const isSelected = (profile.level || "intermediário") === lvl.id;
                         return (
@@ -1389,7 +1389,6 @@ export default function App() {
                                 : "bg-slate-50 hover:bg-slate-100 border-slate-200/80 text-slate-800"
                             }`}
                           >
-                            <span className="text-2xl">{lvl.icon}</span>
                             <div>
                               <div className="font-heading font-extrabold text-sm">{lvl.title}</div>
                               <div className={`text-[11px] ${isSelected ? "text-slate-300" : "text-slate-500"}`}>{lvl.desc}</div>
@@ -1407,10 +1406,10 @@ export default function App() {
                     </label>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                       {[
-                        { id: "melhorar condicionamento", title: "Condicionamento", desc: "Ganhar fôlego", icon: "🎯" },
-                        { id: "perder peso", title: "Emagrecer", desc: "Queimar calorias", icon: "⚖️" },
-                        { id: "completar um evento", title: "Evento / Prova", desc: "Desafio com data", icon: "🏁" },
-                        { id: "competir", title: "Performance", desc: "Subir no pódio", icon: "🏆" },
+                        { id: "melhorar condicionamento", title: "Condicionamento", desc: "Ganhar fôlego" },
+                        { id: "perder peso", title: "Emagrecer", desc: "Queimar calorias" },
+                        { id: "completar um evento", title: "Evento / Prova", desc: "Desafio com data" },
+                        { id: "competir", title: "Performance", desc: "Subir no pódio" },
                       ].map((g) => {
                         const isSelected = (profile.goal || "melhorar condicionamento") === g.id;
                         return (
@@ -1424,7 +1423,6 @@ export default function App() {
                                 : "bg-slate-50 hover:bg-slate-100 border-slate-200/80 text-slate-800"
                             }`}
                           >
-                            <span className="text-xl">{g.icon}</span>
                             <div>
                               <div className="font-heading font-extrabold text-xs">{g.title}</div>
                               <div className={`text-[10px] ${isSelected ? "text-slate-300" : "text-slate-500"}`}>{g.desc}</div>
@@ -1496,7 +1494,7 @@ export default function App() {
                       className="text-xs font-extrabold text-slate-600 hover:text-slate-900 flex items-center gap-1.5 transition-colors cursor-pointer"
                     >
                       <Settings className="w-3.5 h-3.5 text-slate-500" />
-                      <span>{showAdvancedOnboarding ? "Ocultar Ajustes Avançados" : "⚙️ Ajustes Avançados (Potência, FCmáx e Limitações - Opcional)"}</span>
+                      <span>{showAdvancedOnboarding ? "Ocultar Ajustes Avançados" : "Ajustes Avançados (Potência, FCmáx e Limitações - Opcional)"}</span>
                       <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showAdvancedOnboarding ? "rotate-180" : ""}`} />
                     </button>
 
@@ -1551,7 +1549,7 @@ export default function App() {
                       ) : (
                         <>
                           <Sparkles className="w-5 h-5 text-lime-400 animate-pulse" />
-                          <span>🚀 Gerar Minha Planilha Semanal Grátis</span>
+                          <span>Gerar Minha Planilha Semanal Grátis</span>
                         </>
                       )}
                     </button>
@@ -1810,7 +1808,7 @@ export default function App() {
                         </div>
                         <div>
                           <span className="text-[9px] font-black tracking-widest uppercase text-sky-600 block mb-1 font-mono">
-                            Passo Essencial 🚀
+                            Passo Essencial
                           </span>
                           <h4 className="font-heading font-extrabold text-slate-800 text-sm flex items-center gap-1.5">
                             Antes de começar o treino de hoje, leia o seu Guia!

@@ -159,7 +159,7 @@ export default function SmartHydrationTip({
           </div>
           <div>
             <span className="text-[10px] font-bold text-slate-400 block tracking-widest uppercase font-mono leading-none mb-0.5">
-              {isSimpleMode ? "Guia Fácil de Hidratação 💧" : "Calculadora Fisiológica"}
+              {isSimpleMode ? "Guia Fácil de Hidratação" : "Calculadora Fisiológica"}
             </span>
             <span className="text-xs font-heading font-extrabold text-slate-800 flex items-center gap-1.5 flex-wrap">
               {isSimpleMode ? "Como se Hidratar no Pedal" : "Hidratação Inteligente"}
@@ -224,7 +224,7 @@ export default function SmartHydrationTip({
               {/* Water Block */}
               <div className="bg-white rounded-xl p-3 border border-slate-100 flex flex-col justify-between h-20 shadow-2xs">
                 <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block font-sans">
-                  {isSimpleMode ? "GARRAFA DE ÁGUA 💧" : "VOLUME DE ÁGUA"}
+                  {isSimpleMode ? "GARRAFA DE ÁGUA" : "VOLUME DE ÁGUA"}
                 </span>
                 <div className="flex items-baseline gap-1 mt-1">
                   <span className="text-base font-mono font-black text-sky-600">{recommendation.waterMl}</span>
@@ -241,7 +241,7 @@ export default function SmartHydrationTip({
               {/* Sodium Block */}
               <div className="bg-white rounded-xl p-3 border border-slate-100 flex flex-col justify-between h-20 shadow-2xs">
                 <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block font-sans">
-                  {isSimpleMode ? "SAL E MINERAIS 🧂" : "REPOSIÇÃO DE SAL (SÓDIO)"}
+                  {isSimpleMode ? "SAL E MINERAIS" : "REPOSIÇÃO DE SAL (SÓDIO)"}
                 </span>
                 {isSimpleMode ? (
                   <>
@@ -270,7 +270,7 @@ export default function SmartHydrationTip({
               {/* Carb Block */}
               <div className="bg-white rounded-xl p-3 border border-slate-100 flex flex-col justify-between h-20 shadow-2xs">
                 <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block font-sans">
-                  {isSimpleMode ? "COMIDA / ENERGIA 🍌" : "CARBOIDRATOS RECOMENDADOS"}
+                  {isSimpleMode ? "COMIDA / ENERGIA" : "CARBOIDRATOS RECOMENDADOS"}
                 </span>
                 <div className="flex items-baseline gap-1 mt-1">
                   <span className="text-base font-mono font-black text-lime-600">{recommendation.carbsG}</span>
