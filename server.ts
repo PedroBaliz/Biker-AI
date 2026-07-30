@@ -1161,7 +1161,7 @@ app.get("/api/diagnostics", async (req, res) => {
     apiKeyLength: process.env.GEMINI_API_KEY ? process.env.GEMINI_API_KEY.length : 0,
     apiKeySnippet: process.env.GEMINI_API_KEY ? `${process.env.GEMINI_API_KEY.substring(0, 6)}...${process.env.GEMINI_API_KEY.substring(process.env.GEMINI_API_KEY.length - 4)}` : null,
     nodeEnv: process.env.NODE_ENV,
-    modelName: "gemini-3.5-flash",
+    modelName: "gemini-2.5-flash",
     useFirestore,
     firestoreInitialized: useFirestore,
     firestoreDatabaseId: firebaseAppletConfig?.firestoreDatabaseId || null
@@ -1191,7 +1191,7 @@ app.get("/api/diagnostics", async (req, res) => {
     }
     const client = getAiClient();
     const testCall = await client.models.generateContent({
-      model: "gemini-3.5-flash",
+      model: "gemini-2.5-flash",
       contents: "Hi, please answer with exactly 'OK'."
     });
     responses.geminiConnection = "SUCCESS";
@@ -1658,7 +1658,7 @@ Se o ciclista já respondeu a tudo, diga que o perfil está completo e que ele p
 
     const response = await withTimeout(
       getAiClient().models.generateContent({
-        model: "gemini-3.5-flash",
+        model: "gemini-2.5-flash",
         contents: updatedPrompt,
         config: {
           systemInstruction,
@@ -1792,7 +1792,7 @@ Atividade recente cadastrada: ${profile?.recentActivity || "Nenhuma registrada"}
 
     const response = await withTimeout(
       getAiClient().models.generateContent({
-        model: "gemini-3.5-flash",
+        model: "gemini-2.5-flash",
         contents: userBrief,
         config: {
           systemInstruction,
@@ -1835,14 +1835,17 @@ Atividade recente cadastrada: ${profile?.recentActivity || "Nenhuma registrada"}
     }
     const fullPlanData = cleanAndParseJson(resultText);
 
-    // Save full unscrubbed plan in DB for user
+    // Save full unscrubbed plan in DB for user (non-blocking for fast UI response)
     const userEmailKey = (profile?.email || (req as any).user?.email || "").trim().toLowerCase();
     if (userEmailKey) {
-      const db = await getDatabase();
-      if (db[userEmailKey]) {
-        db[userEmailKey].plan = fullPlanData;
-        await saveDatabase(db, userEmailKey, getAuthToken(req));
-      }
+      getDatabase().then(db => {
+        if (db[userEmailKey]) {
+          db[userEmailKey].plan = fullPlanData;
+          saveDatabase(db, userEmailKey, getAuthToken(req)).catch(err => 
+            console.warn("[Async Save Plan Error]:", err.message)
+          );
+        }
+      }).catch(err => console.warn("[Async Get DB Error]:", err.message));
     }
 
     res.json(sanitizePlanForUser(fullPlanData, profile));
@@ -1853,11 +1856,14 @@ Atividade recente cadastrada: ${profile?.recentActivity || "Nenhuma registrada"}
 
     const userEmailKey = (profile?.email || (req as any).user?.email || "").trim().toLowerCase();
     if (userEmailKey) {
-      const db = await getDatabase();
-      if (db[userEmailKey]) {
-        db[userEmailKey].plan = data;
-        await saveDatabase(db, userEmailKey, getAuthToken(req));
-      }
+      getDatabase().then(db => {
+        if (db[userEmailKey]) {
+          db[userEmailKey].plan = data;
+          saveDatabase(db, userEmailKey, getAuthToken(req)).catch(err => 
+            console.warn("[Async Save Fallback Plan Error]:", err.message)
+          );
+        }
+      }).catch(err => console.warn("[Async Get DB Error]:", err.message));
     }
 
     res.json(sanitizePlanForUser(data, profile));
@@ -1931,7 +1937,7 @@ Gere o planejamento estruturado completo para a Semana ${nextWeekNumber} seguind
 
     const response = await withTimeout(
       getAiClient().models.generateContent({
-        model: "gemini-3.5-flash",
+        model: "gemini-2.5-flash",
         contents: userBrief,
         config: {
           systemInstruction,
@@ -2038,7 +2044,7 @@ Faça uma avaliação amigável de coach de alto nível, comentando detalhadamen
 
     const response = await withTimeout(
       getAiClient().models.generateContent({
-        model: "gemini-3.5-flash",
+        model: "gemini-2.5-flash",
         contents: prompt,
         config: {
           systemInstruction,
@@ -2175,7 +2181,7 @@ Por favor, gere e retorne o JSON estruturado com os dados reais e sensações ex
 
     const response = await withTimeout(
       getAiClient().models.generateContent({
-        model: "gemini-3.5-flash",
+        model: "gemini-2.5-flash",
         contents: prompt,
         config: {
           systemInstruction,
@@ -2257,7 +2263,7 @@ Histórico Recente: ${JSON.stringify(messageHistory?.slice(-10) || [])}
 
     const response = await withTimeout(
       getAiClient().models.generateContent({
-        model: "gemini-3.5-flash",
+        model: "gemini-2.5-flash",
         contents: userBrief,
         config: {
           systemInstruction,

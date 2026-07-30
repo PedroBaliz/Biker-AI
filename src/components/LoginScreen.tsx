@@ -875,7 +875,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
                   </>
                 ) : (
                   <>
-                    <span>{isLogin ? "Acessar Portal do Atleta" : "Confirmar e Iniciar Cadastro"}</span>
+                    <span>{isLogin ? "Acessar Portal do Atleta" : "Confirmar e Gerar Planilha"}</span>
                     <ChevronRight className="w-4 h-4" />
                   </>
                 )}
