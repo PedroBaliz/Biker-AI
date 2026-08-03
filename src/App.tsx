@@ -717,13 +717,18 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // Ensure page resets scroll position to top and cleans up URL hashes on authentication or subscription state change
+  // Reset scroll on user login or authentication change
   useEffect(() => {
     if (window.location.hash) {
       window.history.replaceState(null, "", window.location.pathname + window.location.search);
     }
     window.scrollTo(0, 0);
-  }, [currentUser?.email, profile?.subscriptionStatus]);
+  }, [currentUser?.email]);
+
+  // Smooth scroll to top when changing main navigation tabs
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [activeTab]);
 
   // Debounced real-time synchronization back to central server
   useEffect(() => {

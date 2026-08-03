@@ -70,32 +70,36 @@ try {
       } catch (keyErr: any) {
         console.error("[Firebase Admin] Erro ao carregar service-account.json:", keyErr.message);
       }
-    } else {
+    } else if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
       try {
         adminConfig.credential = applicationDefault();
         console.log("[Firebase Admin] Inicializando com Application Default Credentials (ADC)...");
       } catch (adcErr: any) {
-        console.warn("[Firebase Admin] ADC não disponível no ambiente atual, usando inicialização base do projeto:", adcErr.message);
+        console.warn("[Firebase Admin] ADC não disponível no ambiente atual:", adcErr.message);
       }
     }
 
-    initializeAdminApp(adminConfig);
-    let firestoreInstance: any;
-    try {
-      if (firebaseAppletConfig.firestoreDatabaseId) {
-        firestoreInstance = getAdminFirestore(getAdminApp(), firebaseAppletConfig.firestoreDatabaseId);
-      } else {
+    if (adminConfig.credential) {
+      initializeAdminApp(adminConfig);
+      let firestoreInstance: any;
+      try {
+        if (firebaseAppletConfig.firestoreDatabaseId) {
+          firestoreInstance = getAdminFirestore(getAdminApp(), firebaseAppletConfig.firestoreDatabaseId);
+        } else {
+          firestoreInstance = getAdminFirestore(getAdminApp());
+        }
+      } catch (e: any) {
+        console.warn("[Firebase Admin] Falha ao iniciar firestore com databaseId, tentando padrão:", e.message);
         firestoreInstance = getAdminFirestore(getAdminApp());
       }
-    } catch (e: any) {
-      console.warn("[Firebase Admin] Falha ao iniciar firestore com databaseId, tentando padrão:", e.message);
-      firestoreInstance = getAdminFirestore(getAdminApp());
+      adminFirestoreDb = firestoreInstance;
+      console.log("[Firebase Admin] Inicializado com sucesso para o projeto:", firebaseAppletConfig.projectId);
+    } else {
+      console.log("[Firebase Admin] Credenciais de conta de serviço não encontradas. Usando Firestore Lite SDK.");
     }
-    adminFirestoreDb = firestoreInstance;
-    console.log("[Firebase Admin] Inicializado com sucesso para o projeto:", firebaseAppletConfig.projectId);
   }
 } catch (err: any) {
-  console.warn("[Firebase Admin] Falha ao inicializar Admin SDK (esperado no desenvolvimento offline):", err.message);
+  console.warn("[Firebase Admin] Falha ao inicializar Admin SDK:", err.message);
 }
 
 
@@ -507,7 +511,10 @@ async function fetchFirestoreUsers(): Promise<Record<string, any>> {
       });
       return users;
     } catch (err: any) {
-      console.warn("[Firebase Admin] Falha ao obter todos os usuários no Firestore Admin, tentando fallback:", err.message);
+      if (err.message && (err.message.includes("default credentials") || err.message.includes("UNAUTHENTICATED"))) {
+        adminFirestoreDb = null;
+      }
+      console.warn("[Firebase Admin] Falha ao obter usuários no Firestore Admin, usando fallback:", err.message);
     }
   }
 
