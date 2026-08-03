@@ -23,21 +23,31 @@ export async function apiFetch(input: RequestInfo | URL, init?: RequestInit): Pr
   
   let newInit = init ? { ...init } : {};
   if (url.startsWith("/api/")) {
+    const headers = new Headers(newInit.headers || {});
     const user = auth.currentUser;
+
     if (user) {
       try {
         const token = await user.getIdToken();
-        if (token) {
-          const headers = new Headers(newInit.headers || {});
-          if (!headers.has("Authorization")) {
-            headers.set("Authorization", `Bearer ${token}`);
-          }
-          newInit.headers = headers;
+        if (token && !headers.has("Authorization")) {
+          headers.set("Authorization", `Bearer ${token}`);
+        }
+        if (user.email && !headers.has("X-User-Email")) {
+          headers.set("X-User-Email", user.email);
         }
       } catch (e) {
         console.error("Failed to append Firebase Auth ID token to API request:", e);
       }
     }
+
+    if (!headers.has("X-User-Email")) {
+      const storedEmail = localStorage.getItem("biker_ai_user_email");
+      if (storedEmail) {
+        headers.set("X-User-Email", storedEmail);
+      }
+    }
+
+    newInit.headers = headers;
   }
   return fetch(input, newInit);
 }

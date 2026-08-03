@@ -66,7 +66,9 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
   const fetchBackups = async () => {
     setBackupsLoading(true);
     try {
-      const response = await apiFetch("/api/admin/backups");
+      const response = await apiFetch(`/api/admin/backups?email=${encodeURIComponent(currentUserEmail)}`, {
+        headers: { "X-User-Email": currentUserEmail }
+      });
       if (response.ok) {
         const data = await response.json();
         if (data.success) {
@@ -87,7 +89,11 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
     setSuccess("");
     setError("");
     try {
-      const response = await apiFetch("/api/admin/backups/create", { method: "POST" });
+      const response = await apiFetch("/api/admin/backups/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-User-Email": currentUserEmail },
+        body: JSON.stringify({ email: currentUserEmail })
+      });
       if (response.ok) {
         const data = await response.json();
         if (data.success) {
@@ -118,8 +124,8 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
     try {
       const response = await apiFetch("/api/admin/backups/restore", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ filename })
+        headers: { "Content-Type": "application/json", "X-User-Email": currentUserEmail },
+        body: JSON.stringify({ filename, email: currentUserEmail })
       });
       if (response.ok) {
         const data = await response.json();
@@ -157,7 +163,9 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
     setLoading(true);
     setError("");
     try {
-      const response = await apiFetch("/api/admin/users");
+      const response = await apiFetch(`/api/admin/users?email=${encodeURIComponent(currentUserEmail)}`, {
+        headers: { "X-User-Email": currentUserEmail }
+      });
       if (response.ok) {
         const data = await response.json();
         if (data.success && data.users) {
@@ -186,7 +194,7 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
 
   useEffect(() => {
     loadSubscribers();
-  }, []);
+  }, [currentUserEmail]);
 
   // Set edit form values when selectedUser changes
   useEffect(() => {
@@ -210,8 +218,9 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
     try {
       const response = await apiFetch("/api/admin/update-user-status", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "X-User-Email": currentUserEmail },
         body: JSON.stringify({
+          adminEmail: currentUserEmail,
           email: selectedUser.email,
           subscriptionStatus: editStatus,
           subscriptionPlan: editPlan,
@@ -252,8 +261,9 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
     try {
       const response = await apiFetch("/api/admin/update-user-status", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "X-User-Email": currentUserEmail },
         body: JSON.stringify({
+          adminEmail: currentUserEmail,
           email: user.email,
           subscriptionStatus: newStat
         })

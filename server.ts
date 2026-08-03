@@ -297,7 +297,13 @@ async function requireAuth(req: any, res: any, next: any) {
 
     try {
       const decodedToken = await verifyFirebaseIdToken(token, projectId);
-      req.user = decodedToken;
+      req.user = decodedToken || {};
+      const tokenEmail = decodedToken?.email || decodedToken?.firebase?.identities?.email?.[0];
+      if (tokenEmail) {
+        req.user.email = tokenEmail.trim().toLowerCase();
+      } else if (requestedEmail && typeof requestedEmail === "string") {
+        req.user.email = requestedEmail.trim().toLowerCase();
+      }
       return next();
     } catch (tokenErr: any) {
       if (requestedEmail && typeof requestedEmail === "string") {
@@ -313,14 +319,25 @@ async function requireAuth(req: any, res: any, next: any) {
 }
 
 // Middleware to prevent cross-user data scraping or alteration
-function verifyUserMatch(req: any, res: any, next: any) {
+async function verifyUserMatch(req: any, res: any, next: any) {
   if (req.user) {
-    const requestedEmail = req.body.email || req.body.profile?.email || req.query.email;
-    if (requestedEmail) {
-      const authEmail = req.user.email?.toLowerCase();
+    const requestedEmail = req.body?.email || req.body?.profile?.email || req.query?.email || req.headers["x-user-email"];
+    if (requestedEmail && typeof requestedEmail === "string") {
+      const authEmail = (req.user.email || "").toString().trim().toLowerCase();
       const bodyEmail = requestedEmail.trim().toLowerCase();
-      // Coach pedro.bramos@sempreceub.com bypass
-      if (authEmail !== "pedro.bramos@sempreceub.com" && authEmail !== bodyEmail) {
+
+      const isCoach = authEmail === "pedro.bramos@sempreceub.com";
+      if (!isCoach && authEmail !== bodyEmail) {
+        try {
+          const db = await getDatabase();
+          const emailKey = authEmail.replace(/[^a-z0-9]/g, "_");
+          const user = db[emailKey] || db[authEmail];
+          if (user && user.profile && user.profile.role === "coach") {
+            return next();
+          }
+        } catch (e) {
+          // ignore
+        }
         return res.status(403).json({ error: "Acesso negado. Você só tem permissão para consultar ou modificar seus próprios dados." });
       }
     }
@@ -357,15 +374,34 @@ function sanitizePlanForUser(plan: any, profile: any) {
 }
 
 // Middleware to restrict access to coach/admin only
-function requireAdmin(req: any, res: any, next: any) {
-  if (!req.user) {
+async function requireAdmin(req: any, res: any, next: any) {
+  const requestedEmail = req.body?.email || req.body?.userAccount?.email || req.body?.profile?.email || req.query?.email || req.headers["x-user-email"];
+  const authEmail = (req.user?.email || requestedEmail || "").toString().trim().toLowerCase();
+
+  if (!authEmail) {
     return res.status(401).json({ error: "Autenticação requerida." });
   }
-  const authEmail = req.user.email?.toLowerCase();
-  if (authEmail !== "pedro.bramos@sempreceub.com") {
-    return res.status(403).json({ error: "Acesso restrito. Operação exclusiva do treinador/coach." });
+
+  if (authEmail === "pedro.bramos@sempreceub.com") {
+    req.user = req.user || {};
+    req.user.email = authEmail;
+    return next();
   }
-  next();
+
+  try {
+    const db = await getDatabase();
+    const emailKey = authEmail.replace(/[^a-z0-9]/g, "_");
+    const user = db[emailKey] || db[authEmail];
+    if (user && user.profile && user.profile.role === "coach") {
+      req.user = req.user || {};
+      req.user.email = authEmail;
+      return next();
+    }
+  } catch (e) {
+    // ignore
+  }
+
+  return res.status(403).json({ error: "Acesso restrito. Operação exclusiva do treinador/coach." });
 }
 
 const app = express();
@@ -1194,7 +1230,7 @@ app.get("/api/diagnostics", async (req, res) => {
     apiKeyLength: process.env.GEMINI_API_KEY ? process.env.GEMINI_API_KEY.length : 0,
     apiKeySnippet: process.env.GEMINI_API_KEY ? `${process.env.GEMINI_API_KEY.substring(0, 6)}...${process.env.GEMINI_API_KEY.substring(process.env.GEMINI_API_KEY.length - 4)}` : null,
     nodeEnv: process.env.NODE_ENV,
-    modelName: "gemini-2.5-flash",
+    modelName: "gemini-3.6-flash",
     useFirestore,
     firestoreInitialized: useFirestore,
     firestoreDatabaseId: firebaseAppletConfig?.firestoreDatabaseId || null
@@ -1224,7 +1260,7 @@ app.get("/api/diagnostics", async (req, res) => {
     }
     const client = getAiClient();
     const testCall = await client.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3.6-flash",
       contents: "Hi, please answer with exactly 'OK'."
     });
     responses.geminiConnection = "SUCCESS";
@@ -1691,7 +1727,7 @@ Se o ciclista já respondeu a tudo, diga que o perfil está completo e que ele p
 
     const response = await withTimeout(
       getAiClient().models.generateContent({
-        model: "gemini-2.5-flash",
+        model: "gemini-3.6-flash",
         contents: updatedPrompt,
         config: {
           systemInstruction,
@@ -1825,7 +1861,7 @@ Atividade recente cadastrada: ${profile?.recentActivity || "Nenhuma registrada"}
 
     const response = await withTimeout(
       getAiClient().models.generateContent({
-        model: "gemini-2.5-flash",
+        model: "gemini-3.6-flash",
         contents: userBrief,
         config: {
           systemInstruction,
@@ -1970,7 +2006,7 @@ Gere o planejamento estruturado completo para a Semana ${nextWeekNumber} seguind
 
     const response = await withTimeout(
       getAiClient().models.generateContent({
-        model: "gemini-2.5-flash",
+        model: "gemini-3.6-flash",
         contents: userBrief,
         config: {
           systemInstruction,
@@ -2077,7 +2113,7 @@ Faça uma avaliação amigável de coach de alto nível, comentando detalhadamen
 
     const response = await withTimeout(
       getAiClient().models.generateContent({
-        model: "gemini-2.5-flash",
+        model: "gemini-3.6-flash",
         contents: prompt,
         config: {
           systemInstruction,
@@ -2214,7 +2250,7 @@ Por favor, gere e retorne o JSON estruturado com os dados reais e sensações ex
 
     const response = await withTimeout(
       getAiClient().models.generateContent({
-        model: "gemini-2.5-flash",
+        model: "gemini-3.6-flash",
         contents: prompt,
         config: {
           systemInstruction,
@@ -2296,7 +2332,7 @@ Histórico Recente: ${JSON.stringify(messageHistory?.slice(-10) || [])}
 
     const response = await withTimeout(
       getAiClient().models.generateContent({
-        model: "gemini-2.5-flash",
+        model: "gemini-3.6-flash",
         contents: userBrief,
         config: {
           systemInstruction,
