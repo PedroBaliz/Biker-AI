@@ -313,7 +313,9 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
         const data = await response.json();
         if (data.success) {
           setSuccess(`Usuário ${userToDelete.profile?.name || userToDelete.email} foi excluído com sucesso.`);
-          if (selectedUser?.email === userToDelete.email) {
+          const targetEmail = userToDelete.email.toLowerCase();
+          setUsers((prev) => prev.filter((u) => u.email.toLowerCase() !== targetEmail));
+          if (selectedUser?.email.toLowerCase() === targetEmail) {
             setSelectedUser(null);
           }
           await loadSubscribers();
