@@ -67,7 +67,7 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
     setBackupsLoading(true);
     try {
       const response = await apiFetch(`/api/admin/backups?email=${encodeURIComponent(currentUserEmail)}`, {
-        headers: { "X-User-Email": currentUserEmail }
+        headers: { "X-User-Email": currentUserEmail, "X-Admin-Password": "Pedro23072007" }
       });
       if (response.ok) {
         const data = await response.json();
@@ -91,8 +91,8 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
     try {
       const response = await apiFetch("/api/admin/backups/create", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "X-User-Email": currentUserEmail },
-        body: JSON.stringify({ email: currentUserEmail })
+        headers: { "Content-Type": "application/json", "X-User-Email": currentUserEmail, "X-Admin-Password": "Pedro23072007" },
+        body: JSON.stringify({ email: currentUserEmail, adminPassword: "Pedro23072007" })
       });
       if (response.ok) {
         const data = await response.json();
@@ -124,8 +124,8 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
     try {
       const response = await apiFetch("/api/admin/backups/restore", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "X-User-Email": currentUserEmail },
-        body: JSON.stringify({ filename, email: currentUserEmail })
+        headers: { "Content-Type": "application/json", "X-User-Email": currentUserEmail, "X-Admin-Password": "Pedro23072007" },
+        body: JSON.stringify({ filename, email: currentUserEmail, adminPassword: "Pedro23072007" })
       });
       if (response.ok) {
         const data = await response.json();
@@ -158,13 +158,17 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
   const [editFtp, setEditFtp] = useState<number | "">("");
   const [editMaxHr, setEditMaxHr] = useState<number | "">("");
 
+  // Delete user confirmation state
+  const [userToDelete, setUserToDelete] = useState<AdminUser | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   // Load subscribers list
   const loadSubscribers = async () => {
     setLoading(true);
     setError("");
     try {
       const response = await apiFetch(`/api/admin/users?email=${encodeURIComponent(currentUserEmail)}`, {
-        headers: { "X-User-Email": currentUserEmail }
+        headers: { "X-User-Email": currentUserEmail, "X-Admin-Password": "Pedro23072007" }
       });
       if (response.ok) {
         const data = await response.json();
@@ -218,9 +222,10 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
     try {
       const response = await apiFetch("/api/admin/update-user-status", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "X-User-Email": currentUserEmail },
+        headers: { "Content-Type": "application/json", "X-User-Email": currentUserEmail, "X-Admin-Password": "Pedro23072007" },
         body: JSON.stringify({
           adminEmail: currentUserEmail,
+          adminPassword: "Pedro23072007",
           email: selectedUser.email,
           subscriptionStatus: editStatus,
           subscriptionPlan: editPlan,
@@ -261,9 +266,10 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
     try {
       const response = await apiFetch("/api/admin/update-user-status", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "X-User-Email": currentUserEmail },
+        headers: { "Content-Type": "application/json", "X-User-Email": currentUserEmail, "X-Admin-Password": "Pedro23072007" },
         body: JSON.stringify({
           adminEmail: currentUserEmail,
+          adminPassword: "Pedro23072007",
           email: user.email,
           subscriptionStatus: newStat
         })
@@ -280,6 +286,50 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
       }
     } catch (err) {
       setError("Falha ao salvar alteração rápida de status.");
+    }
+  };
+
+  // Delete user API call
+  const handleDeleteUser = async () => {
+    if (!userToDelete) return;
+
+    if (userToDelete.email.toLowerCase() === currentUserEmail.toLowerCase()) {
+      setError("Você não pode excluir sua própria conta de treinador principal.");
+      setUserToDelete(null);
+      return;
+    }
+
+    setIsDeleting(true);
+    setError("");
+    setSuccess("");
+    try {
+      const response = await apiFetch("/api/admin/delete-user", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-User-Email": currentUserEmail, "X-Admin-Password": "Pedro23072007" },
+        body: JSON.stringify({ email: userToDelete.email, adminPassword: "Pedro23072007" })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          setSuccess(`Usuário ${userToDelete.profile?.name || userToDelete.email} foi excluído com sucesso.`);
+          if (selectedUser?.email === userToDelete.email) {
+            setSelectedUser(null);
+          }
+          await loadSubscribers();
+        } else {
+          setError(data.error || "Falha ao excluir o usuário.");
+        }
+      } else {
+        const data = await response.json().catch(() => ({}));
+        setError(data.error || "Erro no servidor ao tentar excluir o usuário.");
+      }
+    } catch (err) {
+      console.error(err);
+      setError("Erro de rede ao solicitar a exclusão do usuário.");
+    } finally {
+      setIsDeleting(false);
+      setUserToDelete(null);
     }
   };
 
@@ -564,7 +614,7 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
                         )}
 
                         {/* Direct testing Switch status triggers */}
-                        <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-1">
                           {subStatus === 'active' ? (
                             <button
                               type="button"
@@ -573,7 +623,7 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
                                 handleQuickToggleStatus(user, 'expired');
                               }}
                               className="text-[9px] font-black text-rose-600 hover:text-rose-800 bg-rose-50 hover:bg-rose-100 border border-rose-100 rounded px-1.5 py-0.5 cursor-pointer transition-all"
-                              title="Clique para suspender o acesso imediatamente para testar tela de bloqueio"
+                              title="Clique para suspender o acesso imediatamente"
                             >
                               Bloquear
                             </button>
@@ -588,6 +638,20 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
                               title="Clique para liberar acesso imediato"
                             >
                               Ativar
+                            </button>
+                          )}
+
+                          {user.email.toLowerCase() !== currentUserEmail.toLowerCase() && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setUserToDelete(user);
+                              }}
+                              className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-all cursor-pointer"
+                              title="Excluir este usuário"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
                             </button>
                           )}
                         </div>
@@ -783,14 +847,25 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
                   </div>
 
                   {/* Action buttons */}
-                  <div className="pt-2">
+                  <div className="pt-2 flex gap-2">
                     <button
                       type="submit"
-                      className="w-full bg-slate-900 hover:bg-slate-800 text-lime-400 rounded-xl py-3 text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer transition-all hover:shadow-md"
+                      className="flex-1 bg-slate-900 hover:bg-slate-800 text-lime-400 rounded-xl py-3 text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer transition-all hover:shadow-md"
                     >
                       <Save className="w-4 h-4" />
-                      <span>Salvar Ajustes do Aluno</span>
+                      <span>Salvar Ajustes</span>
                     </button>
+                    {selectedUser.email.toLowerCase() !== currentUserEmail.toLowerCase() && (
+                      <button
+                        type="button"
+                        onClick={() => setUserToDelete(selectedUser)}
+                        className="bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 hover:text-rose-800 rounded-xl px-3 py-3 text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer transition-all shrink-0"
+                        title="Excluir este usuário permanentemente"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        <span>Excluir</span>
+                      </button>
+                    )}
                   </div>
                 </form>
 
@@ -1068,6 +1143,71 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
           </AnimatePresence>
         </div>
       </div>
+
+      {/* MODAL CONFIRMAÇÃO DE EXCLUSÃO DE USUÁRIO */}
+      <AnimatePresence>
+        {userToDelete && (
+          <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white border border-slate-200 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4"
+            >
+              <div className="flex items-center gap-3 text-rose-600">
+                <div className="p-3 bg-rose-100 rounded-2xl">
+                  <Trash2 className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="font-heading font-extrabold text-base text-slate-900">Excluir Usuário</h3>
+                  <p className="text-xs text-slate-500">Esta ação é irreversível!</p>
+                </div>
+              </div>
+
+              <p className="text-xs text-slate-600 font-sans leading-relaxed">
+                Tem certeza que deseja excluir permanentemente a conta do usuário{" "}
+                <strong className="text-slate-900 font-bold">{userToDelete.profile?.name || userToDelete.email}</strong>{" "}
+                (<span className="font-mono text-slate-700">{userToDelete.email}</span>)?
+              </p>
+
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 text-[11px] text-slate-500 space-y-1">
+                <p>• O perfil e dados fisiológicos serão removidos.</p>
+                <p>• O histórico de conversas e planos cadastrados serão excluídos.</p>
+                <p>• O acesso deste atleta ao aplicativo será revogado imediatamente.</p>
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setUserToDelete(null)}
+                  disabled={isDeleting}
+                  className="flex-1 py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDeleteUser}
+                  disabled={isDeleting}
+                  className="flex-1 py-2.5 px-4 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md disabled:opacity-50"
+                >
+                  {isDeleting ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <span>Excluindo...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="w-4 h-4" />
+                      <span>Confirmar Exclusão</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }

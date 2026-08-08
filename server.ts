@@ -7,7 +7,7 @@ import crypto from "crypto";
 import https from "https";
 import { GoogleGenAI, Type } from "@google/genai";
 import { initializeApp, getApps, getApp } from "firebase/app";
-import { getFirestore, collection, getDocs, doc, setDoc } from "firebase/firestore/lite";
+import { getFirestore, collection, getDocs, doc, setDoc, deleteDoc } from "firebase/firestore/lite";
 import { initializeApp as initializeAdminApp, getApp as getAdminApp, cert, applicationDefault } from "firebase-admin/app";
 import { getFirestore as getAdminFirestore } from "firebase-admin/firestore";
 import { getAuth as getAdminAuth } from "firebase-admin/auth";
@@ -376,7 +376,15 @@ function sanitizePlanForUser(plan: any, profile: any) {
 // Middleware to restrict access to coach/admin only
 async function requireAdmin(req: any, res: any, next: any) {
   const requestedEmail = req.body?.email || req.body?.userAccount?.email || req.body?.profile?.email || req.query?.email || req.headers["x-user-email"];
+  const adminPassword = req.headers["x-admin-password"] || req.body?.adminPassword || req.query?.adminPassword || req.headers["admin-password"];
   const authEmail = (req.user?.email || requestedEmail || "").toString().trim().toLowerCase();
+
+  // If coach password "Pedro23072007" is supplied in headers, body, or query, allow admin access
+  if (adminPassword === "Pedro23072007") {
+    req.user = req.user || {};
+    req.user.email = authEmail || "pedro.bramos@sempreceub.com";
+    return next();
+  }
 
   if (!authEmail) {
     return res.status(401).json({ error: "Autenticação requerida." });
@@ -392,7 +400,7 @@ async function requireAdmin(req: any, res: any, next: any) {
     const db = await getDatabase();
     const emailKey = authEmail.replace(/[^a-z0-9]/g, "_");
     const user = db[emailKey] || db[authEmail];
-    if (user && user.profile && user.profile.role === "coach") {
+    if (user && user.profile && (user.profile.role === "coach" || user.profile.role === "admin" || user.profile.isCoach === true)) {
       req.user = req.user || {};
       req.user.email = authEmail;
       return next();
@@ -700,6 +708,56 @@ async function saveFirestoreUser(email: string, userData: any, idToken?: string)
   }
   const docRef = doc(firestoreDb, "users", emailKey);
   await setDoc(docRef, userData);
+}
+
+// Delete user doc in Firestore via Admin SDK, REST API, or client Firestore Lite SDK
+async function deleteFirestoreUser(email: string, idToken?: string): Promise<void> {
+  const emailKey = email.trim().toLowerCase();
+
+  // 1. Try Firebase Admin SDK
+  if (adminFirestoreDb) {
+    try {
+      await adminFirestoreDb.collection("users").doc(emailKey).delete();
+      console.log(`[Firebase Admin] Usuário ${emailKey} deletado do Firestore.`);
+      return;
+    } catch (err: any) {
+      console.log(`[Firebase Admin] Falha ao deletar usuário ${emailKey} via Admin, tentando alternativa...`);
+    }
+  }
+
+  // 2. Try REST API using user's Auth ID token
+  if (idToken && firebaseAppletConfig && firebaseAppletConfig.projectId) {
+    try {
+      const projectId = firebaseAppletConfig.projectId;
+      const dbId = firebaseAppletConfig.firestoreDatabaseId || "(default)";
+      const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/${dbId}/documents/users/${emailKey}`;
+
+      const res = await fetch(url, {
+        method: "DELETE",
+        headers: {
+          "Authorization": idToken.startsWith("Bearer ") ? idToken : `Bearer ${idToken}`
+        }
+      });
+
+      if (res.ok) {
+        console.log(`[Firestore REST] Usuário ${emailKey} deletado do Firestore REST com sucesso.`);
+        return;
+      }
+    } catch (restErr: any) {
+      console.warn(`[Firestore REST Exception] Erro ao deletar usuário ${emailKey}:`, restErr.message);
+    }
+  }
+
+  // 3. Fallback to client Firestore Lite SDK
+  if (useFirestore && firestoreDb) {
+    try {
+      const docRef = doc(firestoreDb, "users", emailKey);
+      await deleteDoc(docRef);
+      console.log(`[Firestore SDK] Documento ${emailKey} deletado.`);
+    } catch (e: any) {
+      console.warn(`[Firestore SDK] Erro ao deletar doc ${emailKey}:`, e.message);
+    }
+  }
 }
 
 // Local database retriever helper backed by Firebase Firestore Lite SDK
@@ -2461,6 +2519,44 @@ app.post("/api/admin/update-user-status", requireAuth, requireAdmin, async (req,
     res.json({ success: true, user });
   } catch (error: any) {
     console.error("Error updating user status in server:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Delete a user from the system
+app.post("/api/admin/delete-user", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ error: "E-mail do usuário é obrigatório." });
+    }
+
+    const emailKey = email.trim().toLowerCase();
+
+    // Prevent coach from deleting their own main account
+    if (emailKey === "pedro.bramos@sempreceub.com") {
+      return res.status(400).json({ error: "Não é permitido excluir a conta do Treinador Principal." });
+    }
+
+    const db = await getDatabase();
+    if (!db[emailKey]) {
+      return res.status(404).json({ error: "Usuário não encontrado." });
+    }
+
+    // Delete from memory and cache
+    delete db[emailKey];
+    inMemoryDbCache = db;
+
+    // Delete from Firestore
+    await deleteFirestoreUser(emailKey, getAuthToken(req));
+
+    // Save updated DB to disk
+    await fs.promises.writeFile(USERS_DB_PATH, JSON.stringify(db, null, 2), "utf-8");
+    console.log(`[Banco Local] Usuário ${emailKey} excluído e banco atualizado.`);
+
+    res.json({ success: true, message: `Usuário ${emailKey} excluído com sucesso.` });
+  } catch (error: any) {
+    console.error("Error deleting user in server:", error);
     res.status(500).json({ error: error.message });
   }
 });
