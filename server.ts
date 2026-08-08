@@ -376,18 +376,14 @@ function sanitizePlanForUser(plan: any, profile: any) {
 // Middleware to restrict access to coach/admin only
 async function requireAdmin(req: any, res: any, next: any) {
   const requestedEmail = req.body?.email || req.body?.userAccount?.email || req.body?.profile?.email || req.query?.email || req.headers["x-user-email"];
-  const adminPassword = req.headers["x-admin-password"] || req.body?.adminPassword || req.query?.adminPassword || req.headers["admin-password"];
+  const adminPassword = req.headers["x-admin-password"] || req.body?.adminPassword || req.query?.adminPassword || req.headers["admin-password"] || req.headers["x-coach-password"] || req.query?.pass;
   const authEmail = (req.user?.email || requestedEmail || "").toString().trim().toLowerCase();
 
   // If coach password "Pedro23072007" is supplied in headers, body, or query, allow admin access
-  if (adminPassword === "Pedro23072007") {
+  if (adminPassword === "Pedro23072007" || req.headers["x-admin-password"] === "Pedro23072007") {
     req.user = req.user || {};
     req.user.email = authEmail || "pedro.bramos@sempreceub.com";
     return next();
-  }
-
-  if (!authEmail) {
-    return res.status(401).json({ error: "Autenticação requerida." });
   }
 
   if (authEmail === "pedro.bramos@sempreceub.com") {
@@ -396,17 +392,19 @@ async function requireAdmin(req: any, res: any, next: any) {
     return next();
   }
 
-  try {
-    const db = await getDatabase();
-    const emailKey = authEmail.replace(/[^a-z0-9]/g, "_");
-    const user = db[emailKey] || db[authEmail];
-    if (user && user.profile && (user.profile.role === "coach" || user.profile.role === "admin" || user.profile.isCoach === true)) {
-      req.user = req.user || {};
-      req.user.email = authEmail;
-      return next();
+  if (authEmail) {
+    try {
+      const db = await getDatabase();
+      const emailKey = authEmail.replace(/[^a-z0-9]/g, "_");
+      const user = db[emailKey] || db[authEmail];
+      if (user && user.profile && (user.profile.role === "coach" || user.profile.role === "admin" || user.profile.isCoach === true)) {
+        req.user = req.user || {};
+        req.user.email = authEmail;
+        return next();
+      }
+    } catch (e) {
+      // ignore
     }
-  } catch (e) {
-    // ignore
   }
 
   return res.status(403).json({ error: "Acesso restrito. Operação exclusiva do treinador/coach." });

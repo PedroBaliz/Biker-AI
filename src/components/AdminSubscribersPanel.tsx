@@ -66,7 +66,7 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
   const fetchBackups = async () => {
     setBackupsLoading(true);
     try {
-      const response = await apiFetch(`/api/admin/backups?email=${encodeURIComponent(currentUserEmail)}`, {
+      const response = await apiFetch(`/api/admin/backups?email=${encodeURIComponent(currentUserEmail)}&adminPassword=Pedro23072007`, {
         headers: { "X-User-Email": currentUserEmail, "X-Admin-Password": "Pedro23072007" }
       });
       if (response.ok) {
@@ -167,7 +167,7 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
     setLoading(true);
     setError("");
     try {
-      const response = await apiFetch(`/api/admin/users?email=${encodeURIComponent(currentUserEmail)}`, {
+      const response = await apiFetch(`/api/admin/users?email=${encodeURIComponent(currentUserEmail)}&adminPassword=Pedro23072007`, {
         headers: { "X-User-Email": currentUserEmail, "X-Admin-Password": "Pedro23072007" }
       });
       if (response.ok) {
