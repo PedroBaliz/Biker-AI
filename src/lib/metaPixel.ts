@@ -13,7 +13,7 @@ let isPixelInitialized = false;
  * Initializes Meta Pixel with the provided Pixel ID or environment variable VITE_FACEBOOK_PIXEL_ID
  */
 export function initMetaPixel(pixelIdOverride?: string): void {
-  if (isPixelInitialized && window.fbq) return;
+  if (isPixelInitialized || (window as any).__metaPixelInitialized) return;
 
   const pixelId = pixelIdOverride || (import.meta as any).env?.VITE_FACEBOOK_PIXEL_ID || (window as any).FACEBOOK_PIXEL_ID;
 
@@ -22,31 +22,38 @@ export function initMetaPixel(pixelIdOverride?: string): void {
     return;
   }
 
-  /* eslint-disable */
-  if (!window.fbq) {
-    (function (f: any, b: any, e: any, v: any, n?: any, t?: any, s?: any) {
-      if (f.fbq) return;
-      n = f.fbq = function () {
-        n.callMethod ? n.callMethod.apply(n, arguments) : n.queue.push(arguments);
-      };
-      if (!f._fbq) f._fbq = n;
-      n.push = n;
-      n.loaded = !0;
-      n.version = '2.0';
-      n.queue = [];
-      t = b.createElement(e);
-      t.async = !0;
-      t.src = v;
-      s = b.getElementsByTagName(e)[0];
-      s.parentNode.insertBefore(t, s);
-    })(window, document, 'script', 'https://connect.facebook.net/en_US/fbevents.js');
+  // Se o script do index.html já inicializou o window.fbq e executou fbq('init', ...)
+  if (window.fbq && typeof window.fbq === 'function') {
+    isPixelInitialized = true;
+    (window as any).__metaPixelInitialized = true;
+    console.log(`[Meta Pixel] Já inicializado no HTML para o ID: ${pixelId}`);
+    return;
   }
+
+  /* eslint-disable */
+  (function (f: any, b: any, e: any, v: any, n?: any, t?: any, s?: any) {
+    if (f.fbq) return;
+    n = f.fbq = function () {
+      n.callMethod ? n.callMethod.apply(n, arguments) : n.queue.push(arguments);
+    };
+    if (!f._fbq) f._fbq = n;
+    n.push = n;
+    n.loaded = !0;
+    n.version = '2.0';
+    n.queue = [];
+    t = b.createElement(e);
+    t.async = !0;
+    t.src = v;
+    s = b.getElementsByTagName(e)[0];
+    s.parentNode.insertBefore(t, s);
+  })(window, document, 'script', 'https://connect.facebook.net/en_US/fbevents.js');
   /* eslint-enable */
 
   try {
     window.fbq('init', pixelId);
     window.fbq('track', 'PageView');
     isPixelInitialized = true;
+    (window as any).__metaPixelInitialized = true;
     console.log(`[Meta Pixel] Inicializado com sucesso para o ID: ${pixelId}`);
   } catch (err) {
     console.error("[Meta Pixel] Erro ao inicializar:", err);
