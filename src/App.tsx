@@ -18,6 +18,7 @@ import VolumeEvolutionChart from "./components/VolumeEvolutionChart";
 import WeeklyCalorieChart from "./components/WeeklyCalorieChart";
 import AchievementsDashboard from "./components/AchievementsDashboard";
 import OnboardingForm from "./components/OnboardingForm";
+import { MetaPixelEvents } from "./lib/metaPixel";
 import { motion, AnimatePresence } from "motion/react";
 import { 
   Users,
@@ -803,6 +804,7 @@ export default function App() {
     };
 
     setChatHistory(prev => [...prev, userMsg]);
+    MetaPixelEvents.contact();
     const messageToSend = inputMessage;
     setInputMessage("");
     setIsTyping(true);
@@ -1528,7 +1530,10 @@ export default function App() {
                 {/* Tab select Buttons with Sporty design */}
                 <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-1.5 bg-slate-100/90 p-1.5 rounded-2xl w-full md:w-auto border border-slate-200/60 shadow-inner">
                   <button 
-                    onClick={() => setActiveTab("planilha")}
+                    onClick={() => {
+                      setActiveTab("planilha");
+                      MetaPixelEvents.viewContent("Planilha de Treinos", "Navegação do Atleta");
+                    }}
                     className={`flex items-center justify-center gap-1.5 px-3 py-2.5 sm:px-4 text-[11px] sm:text-xs font-black leading-none font-heading uppercase rounded-xl transition-all cursor-pointer ${
                       activeTab === "planilha" ? "bg-slate-900 text-lime-400 shadow-sm" : "text-slate-600 hover:bg-slate-200 hover:text-slate-900"
                     }`}
@@ -1537,7 +1542,10 @@ export default function App() {
                     <span className="truncate">Planilha</span>
                   </button>
                   <button 
-                    onClick={() => setActiveTab("desempenho")}
+                    onClick={() => {
+                      setActiveTab("desempenho");
+                      MetaPixelEvents.viewContent("Evolução e Métricas", "Navegação do Atleta");
+                    }}
                     className={`flex items-center justify-center gap-1.5 px-3 py-2.5 sm:px-4 text-[11px] sm:text-xs font-black leading-none font-heading uppercase rounded-xl transition-all cursor-pointer ${
                       activeTab === "desempenho" ? "bg-slate-900 text-lime-400 shadow-sm" : "text-slate-600 hover:bg-slate-200 hover:text-slate-900"
                     }`}
@@ -1546,7 +1554,10 @@ export default function App() {
                     <span className="truncate">Evolução</span>
                   </button>
                   <button 
-                    onClick={() => setActiveTab("zonas")}
+                    onClick={() => {
+                      setActiveTab("zonas");
+                      MetaPixelEvents.viewContent("Guia de Zonas de Treino", "Navegação do Atleta");
+                    }}
                     className={`flex items-center justify-center gap-1.5 px-3 py-2.5 sm:px-4 text-[11px] sm:text-xs font-black leading-none font-heading uppercase rounded-xl transition-all cursor-pointer ${
                       activeTab === "zonas" ? "bg-slate-900 text-lime-400 shadow-sm" : "text-slate-600 hover:bg-slate-200 hover:text-slate-900"
                     }`}

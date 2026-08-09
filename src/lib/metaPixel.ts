@@ -84,7 +84,12 @@ export function trackCustomPixelEvent(customEventName: string, params?: Record<s
 export const MetaPixelEvents = {
   pageView: () => trackPixelEvent('PageView'),
   lead: (data?: Record<string, any>) => trackPixelEvent('Lead', data),
-  initiateCheckout: (value = 29.90, currency = 'BRL') => trackPixelEvent('InitiateCheckout', { value, currency }),
-  purchase: (value = 29.90, currency = 'BRL', orderId?: string) => trackPixelEvent('Purchase', { value, currency, content_name: 'Assinatura Biker AI', order_id: orderId }),
-  completeRegistration: () => trackPixelEvent('CompleteRegistration'),
+  completeRegistration: (data?: Record<string, any>) => trackPixelEvent('CompleteRegistration', data),
+  initiateCheckout: (value = 24.89, currency = 'BRL') => trackPixelEvent('InitiateCheckout', { value: Number(value).toFixed(2), currency }),
+  purchase: (value = 24.89, currency = 'BRL', orderId?: string) => trackPixelEvent('Purchase', { value: Number(value).toFixed(2), currency, content_name: 'Assinatura Biker AI', order_id: orderId }),
+  subscribe: (value = 24.89, currency = 'BRL', ltv = 298.68) => trackPixelEvent('Subscribe', { value: Number(value).toFixed(2), currency, predicted_ltv: Number(ltv).toFixed(2) }),
+  addPaymentInfo: () => trackPixelEvent('AddPaymentInfo'),
+  viewContent: (contentName: string, category?: string) => trackPixelEvent('ViewContent', { content_name: contentName, content_category: category }),
+  contact: () => trackPixelEvent('Contact'),
+  search: (searchString: string) => trackPixelEvent('Search', { search_string: searchString }),
 };

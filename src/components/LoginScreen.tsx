@@ -6,6 +6,7 @@ import {
   createUserWithEmailAndPassword 
 } from "firebase/auth";
 import { auth, apiFetch } from "../firebase";
+import { MetaPixelEvents } from "../lib/metaPixel";
 import { 
   Dumbbell, ShieldAlert, ShieldCheck, Sparkles, Mail, Lock, User, Eye, EyeOff, Bike, 
   ChevronRight, CheckCircle, Download, Smartphone, Share, X, ExternalLink,
@@ -258,6 +259,9 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
 
         const data = await response.json();
         const user = data.user;
+
+        MetaPixelEvents.lead({ email: emailKey, name });
+        MetaPixelEvents.completeRegistration({ email: emailKey });
 
         setSuccessMsg("Conta criada com sucesso! Acessando portal...");
         if (window.location.hash) {

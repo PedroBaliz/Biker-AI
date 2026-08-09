@@ -157,6 +157,7 @@ export default function SubscriptionWall({ userEmail, userName, currentStatus, o
   const handleNotifyPayment = async () => {
     setSimulatingPayment(true);
     MetaPixelEvents.purchase(24.89, "BRL");
+    MetaPixelEvents.subscribe(24.89, "BRL");
     try {
       await apiFetch("/api/user/notify-payment", {
         method: "POST",
@@ -414,7 +415,10 @@ export default function SubscriptionWall({ userEmail, userName, currentStatus, o
             <div className="flex justify-center pt-3">
               <button
                 type="button"
-                onClick={() => setCheckoutStep("choose-payment")}
+                onClick={() => {
+                  setCheckoutStep("choose-payment");
+                  MetaPixelEvents.initiateCheckout(24.89, "BRL");
+                }}
                 className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-4 bg-slate-900 border border-slate-850 hover:bg-slate-800 text-lime-400 font-extrabold uppercase rounded-xl text-xs transition-all cursor-pointer shadow-md"
               >
                 <span>Ir para Forma de Pagamento</span>
@@ -447,6 +451,7 @@ export default function SubscriptionWall({ userEmail, userName, currentStatus, o
                   setMpMethod("card");
                   setMpError("");
                   loadMpPreference();
+                  MetaPixelEvents.addPaymentInfo();
                 }}
                 className="p-6 rounded-3xl border-2 border-sky-250 hover:border-sky-500 bg-sky-50/20 hover:bg-sky-50/55 text-left transition-all cursor-pointer space-y-4 group relative flex flex-col justify-between"
               >
@@ -478,7 +483,10 @@ export default function SubscriptionWall({ userEmail, userName, currentStatus, o
               {/* Option 2: PIX DIRETO */}
               <button
                 type="button"
-                onClick={() => setCheckoutStep("pix")}
+                onClick={() => {
+                  setCheckoutStep("pix");
+                  MetaPixelEvents.addPaymentInfo();
+                }}
                 className="p-6 rounded-3xl border-2 border-slate-150 hover:border-slate-350 bg-slate-50/40 hover:bg-slate-50 text-left transition-all cursor-pointer space-y-4 group flex flex-col justify-between"
               >
                 <div className="space-y-3">
