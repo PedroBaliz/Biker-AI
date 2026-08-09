@@ -3,6 +3,10 @@ import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
 import ErrorBoundary from './components/ErrorBoundary.tsx';
 import './index.css';
+import { initMetaPixel } from './lib/metaPixel.ts';
+
+// Inicializa o Meta (Facebook) Pixel
+initMetaPixel();
 
 // Register PWA Service Worker
 if ('serviceWorker' in navigator) {

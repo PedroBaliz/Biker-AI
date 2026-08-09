@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { UserProfile } from "../types";
 import { apiFetch } from "../firebase";
+import { MetaPixelEvents } from "../lib/metaPixel";
 import { motion, AnimatePresence } from "motion/react";
 import { 
   ShieldAlert, 
@@ -155,6 +156,7 @@ export default function SubscriptionWall({ userEmail, userName, currentStatus, o
 
   const handleNotifyPayment = async () => {
     setSimulatingPayment(true);
+    MetaPixelEvents.purchase(24.89, "BRL");
     try {
       await apiFetch("/api/user/notify-payment", {
         method: "POST",
