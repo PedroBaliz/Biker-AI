@@ -63,7 +63,8 @@ import {
   BookOpen,
   ArrowRight,
   Settings,
-  ChevronDown
+  ChevronDown,
+  Menu
 } from "lucide-react";
 
 export default function App() {
@@ -594,12 +595,26 @@ export default function App() {
 
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const workoutsSectionRef = useRef<HTMLDivElement>(null);
+  const userMenuRef = useRef<HTMLDivElement>(null);
   const saveTimeoutRef = useRef<any>(null);
   const [showAccountSettings, setShowAccountSettings] = useState(false);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [showAdminPasswordPrompt, setShowAdminPasswordPrompt] = useState(false);
   const [adminPasswordInput, setAdminPasswordInput] = useState("");
   const [adminPasswordError, setAdminPasswordError] = useState("");
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+        setIsUserMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   // Helper to migrate legacy offline data from localStorage to Firebase Firestore
   const migrateLocalStorageToFirebase = async (email: string) => {
@@ -1185,36 +1200,135 @@ export default function App() {
             </div>
           </div>
 
-          <div className="flex items-center justify-end gap-1.5 sm:gap-2 animate-fadeInUp shrink-0">
-            {currentUser && (profile.subscriptionStatus !== "expired" && profile.subscriptionStatus !== "pending_payment" || profile.role === "coach") && (
-              <button 
-                onClick={() => {
-                  setShowAccountSettings(!showAccountSettings);
-                  setShowAdminPanel(false);
-                }}
-                className={`flex items-center gap-1 sm:gap-1.5 px-2 py-1.5 sm:px-3 sm:py-2 rounded-xl border text-[11px] sm:text-xs font-bold font-heading uppercase tracking-wider transition-all cursor-pointer ${
-                  showAccountSettings 
-                    ? "bg-lime-400 text-slate-950 border-lime-400 hover:bg-lime-350" 
-                    : "border-slate-800 bg-slate-800 text-lime-400 hover:bg-slate-750"
-                }`}
-                title="Sua Conta e Dados de Acesso"
-              >
-                <User className="w-3.5 h-3.5 shrink-0" />
-                <span className="max-w-[65px] xs:max-w-[90px] sm:max-w-[130px] truncate">
-                  {profile.name || currentUser.profile.name || "Atleta"}
-                </span>
-              </button>
-            )}
-
+          <div className="flex items-center justify-end gap-1.5 sm:gap-2 animate-fadeInUp shrink-0 relative" ref={userMenuRef}>
             {currentUser && (
-              <button 
-                onClick={handleSignOut} 
-                className="flex items-center gap-1 sm:gap-1.5 px-2 py-1.5 sm:px-3 sm:py-2 rounded-xl border border-slate-800 bg-slate-800/50 hover:bg-slate-800 text-[11px] sm:text-xs text-slate-300 font-bold font-heading uppercase tracking-wider transition-all cursor-pointer"
-                title="Sair da conta"
-              >
-                <LogOut className="w-3.5 h-3.5" />
-                <span className="hidden xs:inline">Sair</span>
-              </button>
+              <div className="relative">
+                <button 
+                  type="button"
+                  id="user-profile-menu-button"
+                  onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                  className={`flex items-center gap-2 px-2.5 py-1.5 sm:px-3.5 sm:py-2 rounded-xl border text-[11px] sm:text-xs font-bold font-heading uppercase tracking-wider transition-all cursor-pointer shadow-md ${
+                    isUserMenuOpen || showAccountSettings 
+                      ? "bg-lime-400 text-slate-950 border-lime-400 shadow-lime-400/20" 
+                      : "bg-slate-800/90 text-slate-100 border-slate-700/80 hover:bg-slate-750 hover:border-slate-600"
+                  }`}
+                  title="Menu do Usuário / Perfil"
+                  aria-label="Abrir menu do usuário"
+                >
+                  <div className={`p-1 rounded-lg ${isUserMenuOpen || showAccountSettings ? "bg-slate-950 text-lime-400" : "bg-slate-700 text-lime-400"}`}>
+                    <User className="w-3.5 h-3.5 shrink-0" />
+                  </div>
+                  <span className="max-w-[70px] xs:max-w-[100px] sm:max-w-[140px] truncate">
+                    {profile.name || currentUser.profile.name || "Atleta"}
+                  </span>
+                  <Menu className={`w-4 h-4 shrink-0 transition-transform ${isUserMenuOpen ? "rotate-90 text-slate-950" : "text-slate-300"}`} />
+                </button>
+
+                {/* Dropdown Menu Sanduíche */}
+                <AnimatePresence>
+                  {isUserMenuOpen && (
+                    <motion.div 
+                      initial={{ opacity: 0, y: 8, scale: 0.96 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 8, scale: 0.96 }}
+                      transition={{ duration: 0.15, ease: "easeOut" }}
+                      className="absolute right-0 mt-2 w-64 sm:w-72 bg-slate-900 border border-slate-700/90 rounded-2xl shadow-2xl overflow-hidden z-50 divide-y divide-slate-800"
+                    >
+                      {/* User Header in Menu */}
+                      <div className="p-3.5 bg-slate-850/90 flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-lime-500/20 border border-lime-500/40 text-lime-400 flex items-center justify-center font-black text-sm shrink-0 uppercase">
+                          {(profile.name || currentUser.profile.name || "A").charAt(0)}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-bold text-slate-100 truncate">
+                            {profile.name || currentUser.profile.name || "Atleta"}
+                          </p>
+                          <p className="text-[10px] text-slate-400 truncate">
+                            {currentUser.email}
+                          </p>
+                          <span className="inline-block mt-1 text-[9px] font-extrabold uppercase px-1.5 py-0.5 bg-lime-400/10 text-lime-400 border border-lime-400/30 rounded-md">
+                            Atleta Biker AI
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Menu Options */}
+                      <div className="p-1.5 space-y-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowAccountSettings(true);
+                            setShowAdminPanel(false);
+                            setIsUserMenuOpen(false);
+                          }}
+                          className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-left transition-colors cursor-pointer ${
+                            showAccountSettings 
+                              ? "bg-lime-400/15 text-lime-300 border border-lime-400/30" 
+                              : "text-slate-200 hover:bg-slate-800 hover:text-white"
+                          }`}
+                        >
+                          <Settings className="w-4 h-4 text-lime-400 shrink-0" />
+                          <div className="flex flex-col">
+                            <span>Alterar Informações / Perfil</span>
+                            <span className="text-[9px] font-normal text-slate-400">Editar dados de treino e senha</span>
+                          </div>
+                        </button>
+
+                        {(showAccountSettings || showAdminPanel) && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowAccountSettings(false);
+                              setShowAdminPanel(false);
+                              setIsUserMenuOpen(false);
+                            }}
+                            className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-slate-200 hover:bg-slate-800 hover:text-white text-left transition-colors cursor-pointer"
+                          >
+                            <Bike className="w-4 h-4 text-lime-400 shrink-0" />
+                            <div className="flex flex-col">
+                              <span>Minha Planilha de Treinos</span>
+                              <span className="text-[9px] font-normal text-slate-400">Voltar ao painel de exercícios</span>
+                            </div>
+                          </button>
+                        )}
+
+                        {profile.role === "coach" && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowAdminPanel(true);
+                              setShowAccountSettings(false);
+                              setIsUserMenuOpen(false);
+                            }}
+                            className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-slate-200 hover:bg-slate-800 hover:text-white text-left transition-colors cursor-pointer"
+                          >
+                            <ShieldCheck className="w-4 h-4 text-lime-400 shrink-0" />
+                            <div className="flex flex-col">
+                              <span>Painel do Treinador</span>
+                              <span className="text-[9px] font-normal text-slate-400">Gerenciar inscritos e alunos</span>
+                            </div>
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Logout Action */}
+                      <div className="p-1.5">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsUserMenuOpen(false);
+                            handleSignOut();
+                          }}
+                          className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-rose-400 hover:bg-rose-500/10 hover:text-rose-300 text-left transition-colors cursor-pointer"
+                        >
+                          <LogOut className="w-4 h-4 text-rose-400 shrink-0" />
+                          <span>Sair da conta</span>
+                        </button>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
             )}
           </div>
         </div>
