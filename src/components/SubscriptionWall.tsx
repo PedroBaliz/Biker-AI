@@ -57,7 +57,7 @@ export default function SubscriptionWall({ userEmail, userName, currentStatus, o
   const [mpPixData, setMpPixData] = useState<{ qr_code: string; qr_code_base64: string; paymentId?: number } | null>(null);
 
   // Single premium plan
-  const premiumPlan = { name: "Plano Pro", price: "24,89" };
+  const premiumPlan = { name: "Plano Pro", price: "10,90" };
 
   // Fetch integration status on mount
   useEffect(() => {
@@ -156,8 +156,8 @@ export default function SubscriptionWall({ userEmail, userName, currentStatus, o
 
   const handleNotifyPayment = async () => {
     setSimulatingPayment(true);
-    MetaPixelEvents.purchase(24.89, "BRL");
-    MetaPixelEvents.subscribe(24.89, "BRL");
+    MetaPixelEvents.purchase(10.90, "BRL");
+    MetaPixelEvents.subscribe(10.90, "BRL");
     try {
       await apiFetch("/api/user/notify-payment", {
         method: "POST",
@@ -347,7 +347,7 @@ export default function SubscriptionWall({ userEmail, userName, currentStatus, o
                   <h5 className="font-heading font-black text-lg mt-2">Plano Pro</h5>
                   <div className="flex items-baseline gap-1 mt-2">
                     <span className="text-xs font-bold text-slate-400">R$</span>
-                    <span className="text-3xl font-mono font-black text-lime-400">24,89</span>
+                    <span className="text-3xl font-mono font-black text-lime-400">10,90</span>
                     <span className="text-xs text-slate-400 font-sans">/ mês</span>
                   </div>
                   <p className="text-[11px] mt-2 text-slate-300 leading-relaxed">
@@ -417,7 +417,7 @@ export default function SubscriptionWall({ userEmail, userName, currentStatus, o
                 type="button"
                 onClick={() => {
                   setCheckoutStep("choose-payment");
-                  MetaPixelEvents.initiateCheckout(24.89, "BRL");
+                  MetaPixelEvents.initiateCheckout(10.90, "BRL");
                 }}
                 className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-4 bg-slate-900 border border-slate-850 hover:bg-slate-800 text-lime-400 font-extrabold uppercase rounded-xl text-xs transition-all cursor-pointer shadow-md"
               >

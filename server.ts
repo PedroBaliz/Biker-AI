@@ -1248,7 +1248,7 @@ app.post("/api/user/notify-payment", async (req, res) => {
       id: `pay_notify_${Date.now()}`,
       userName: user.profile?.name || "Atleta",
       userEmail: user.email,
-      text: `[AVISO DE PAGAMENTO - R$ 24,89 Via Mercado Pago] Atleta informou que concluiu o pagamento via ${method || "Mercado Pago"}. ${note ? `Obs: ${note}` : "Aguardando ativação no painel privado."}`,
+      text: `[AVISO DE PAGAMENTO - R$ 10,90 Via Mercado Pago] Atleta informou que concluiu o pagamento via ${method || "Mercado Pago"}. ${note ? `Obs: ${note}` : "Aguardando ativação no painel privado."}`,
       timestamp: new Date().toISOString()
     };
 
@@ -2764,7 +2764,7 @@ app.post("/api/mercadopago/create-preference", requireAuth, verifyUserMatch, asy
             id: "premium-monthly",
             title: "Assinatura Mensal Premium - CycleCoach AI",
             quantity: 1,
-            unit_price: 24.89,
+            unit_price: 10.90,
             currency_id: "BRL"
           }
         ],
@@ -2812,7 +2812,7 @@ app.post("/api/mercadopago/create-pix", requireAuth, verifyUserMatch, async (req
       return res.json({
         success: true,
         isSimulated: true,
-        qr_code: "00020101021226870014BR.GOV.BCB.PIX2565bikerai-mp-mercadopago-pedrobramos-24.89-6009SAOPAULO62070503MVP",
+        qr_code: "00020101021226870014BR.GOV.BCB.PIX2565bikerai-mp-mercadopago-pedrobramos-10.90-6009SAOPAULO62070503MVP",
         qr_code_base64: "",
         direct_link: "https://mpago.la/24PgikU"
       });
@@ -2829,7 +2829,7 @@ app.post("/api/mercadopago/create-pix", requireAuth, verifyUserMatch, async (req
         "X-Idempotency-Key": idempotencyKey
       },
       body: JSON.stringify({
-        transaction_amount: 24.89,
+        transaction_amount: 10.90,
         description: "Assinatura CycleCoach AI Premium",
         payment_method_id: "pix",
         payer: {

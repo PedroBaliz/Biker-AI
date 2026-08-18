@@ -725,7 +725,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
               <div className="w-9 h-9 rounded-xl bg-sky-500/10 border border-sky-500/20 text-sky-400 flex items-center justify-center">
                 <Lock className="w-5 h-5" />
               </div>
-              <h4 className="font-heading font-bold text-sm text-white">R$ 24,89 / mês</h4>
+              <h4 className="font-heading font-bold text-sm text-white">R$ 10,90 / mês</h4>
               <p className="text-xs text-slate-400 font-sans leading-relaxed">
                 Preço único, acessível e sem cobranças surpresas. Processamento criptografado via Mercado Pago.
               </p>
