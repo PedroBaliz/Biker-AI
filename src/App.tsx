@@ -1246,8 +1246,14 @@ export default function App() {
                           <p className="text-[10px] text-slate-400 truncate">
                             {currentUser.email}
                           </p>
-                          <span className="inline-block mt-1 text-[9px] font-extrabold uppercase px-1.5 py-0.5 bg-lime-400/10 text-lime-400 border border-lime-400/30 rounded-md">
-                            Atleta Biker AI
+                          <span className={`inline-block mt-1 text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded-md ${
+                            (profile.role === "coach" || currentUser.profile?.role === "coach" || currentUser.email?.toLowerCase() === "pedro.bramos@sempreceub.com")
+                              ? "bg-amber-400/15 text-amber-300 border border-amber-400/30"
+                              : "bg-lime-400/10 text-lime-400 border border-lime-400/30"
+                          }`}>
+                            {(profile.role === "coach" || currentUser.profile?.role === "coach" || currentUser.email?.toLowerCase() === "pedro.bramos@sempreceub.com") 
+                              ? "Coach / Admin" 
+                              : "Atleta Biker AI"}
                           </span>
                         </div>
                       </div>

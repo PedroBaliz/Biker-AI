@@ -973,15 +973,23 @@ async function ensureAllAthletesArePending() {
             user.profile.subscriptionStatus = "pending_payment";
             changed = true;
           }
+          if (user.profile.subscriptionPlan !== "Plano Pro") {
+            user.profile.subscriptionPlan = "Plano Pro";
+            changed = true;
+          }
         } else {
+          if (user.profile.role !== "coach") {
+            user.profile.role = "coach";
+            changed = true;
+          }
+          if (user.profile.subscriptionPlan !== "Acesso Master (Coach)") {
+            user.profile.subscriptionPlan = "Acesso Master (Coach)";
+            changed = true;
+          }
           if (user.profile.subscriptionStatus !== "active") {
             user.profile.subscriptionStatus = "active";
             changed = true;
           }
-        }
-        if (user.profile.subscriptionPlan !== "Plano Pro") {
-          user.profile.subscriptionPlan = "Plano Pro";
-          changed = true;
         }
         if (changed) {
           updatedCount++;
@@ -991,7 +999,7 @@ async function ensureAllAthletesArePending() {
     
     if (updatedCount > 0) {
       await saveDatabase(db);
-      console.log(`[Status Sync] Sincronizados ${updatedCount} usuários para o status inicial e Plano Pro.`);
+      console.log(`[Status Sync] Sincronizados ${updatedCount} usuários para o status inicial.`);
     } else {
       console.log("[Status Sync] Todos os usuários já estão sincronizados.");
     }
@@ -2496,7 +2504,7 @@ app.get("/api/admin/users", requireAuth, requireAdmin, async (req, res) => {
         profile: {
           ...user.profile,
           subscriptionStatus: user.profile?.subscriptionStatus || (isCoach ? "active" : "pending_payment"),
-          subscriptionPlan: user.profile?.subscriptionPlan || "Plano Pro",
+          subscriptionPlan: isCoach ? "Acesso Master (Coach)" : (user.profile?.subscriptionPlan || "Plano Pro"),
           subscriptionExpiresAt: user.profile?.subscriptionExpiresAt || "2026-12-31",
           role: uRole
         },

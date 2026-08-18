@@ -8,6 +8,7 @@ import {
   Filter, 
   RotateCcw, 
   ShieldAlert, 
+  ShieldCheck,
   CheckCircle, 
   Hourglass, 
   Calendar, 
@@ -335,15 +336,23 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
     }
   };
 
-  // Metrics calculations
-  const totalUsers = users.length;
-  const activeCount = users.filter(u => u.profile.subscriptionStatus === 'active').length;
-  const pendingCount = users.filter(u => u.profile.subscriptionStatus === 'pending_payment').length;
-  const expiredCount = users.filter(u => u.profile.subscriptionStatus === 'expired').length;
-  const avgFtp = (users.filter(u => u.profile.ftp).reduce((sum, u) => sum + (u.profile.ftp || 0), 0) / (users.filter(u => u.profile.ftp).length || 1)).toFixed(0);
+  // Helper to identify coach / master admin accounts
+  const isCoachUser = (u: AdminUser) => 
+    u.profile?.role === "coach" || 
+    u.email?.trim().toLowerCase() === "pedro.bramos@sempreceub.com";
 
-  // Estimativa de faturamento de MVP (Plano Pro R$ 10,90/mês)
-  const estimatedRevenue = users.reduce((sum, u) => {
+  // Athletes list (strictly excluding coaches from paying subscriber metrics)
+  const athletes = users.filter(u => !isCoachUser(u));
+  const coachesCount = users.filter(u => isCoachUser(u)).length;
+
+  const totalAthletes = athletes.length;
+  const activeCount = athletes.filter(u => u.profile.subscriptionStatus === 'active').length;
+  const pendingCount = athletes.filter(u => u.profile.subscriptionStatus === 'pending_payment').length;
+  const expiredCount = athletes.filter(u => u.profile.subscriptionStatus === 'expired').length;
+  const avgFtp = (athletes.filter(u => u.profile.ftp).reduce((sum, u) => sum + (u.profile.ftp || 0), 0) / (athletes.filter(u => u.profile.ftp).length || 1)).toFixed(0);
+
+  // Estimativa de faturamento de MVP (apenas atletas pagantes ativos - R$ 10,90/mês, desconsiderando o coach)
+  const estimatedRevenue = athletes.reduce((sum, u) => {
     if (u.profile.subscriptionStatus !== 'active') return sum;
     return sum + 10.90; // Plano Pro
   }, 0).toFixed(2);
@@ -360,11 +369,18 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
 
   // Filter users list
   const filteredUsers = users.filter(user => {
+    const isCoach = isCoachUser(user);
     const matchesSearch = 
       user.profile.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
       user.email.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesStatus = statusFilter === "all" || (user.profile.subscriptionStatus || "active") === statusFilter;
+    let matchesStatus = true;
+    if (statusFilter === "coach") {
+      matchesStatus = isCoach;
+    } else if (statusFilter !== "all") {
+      matchesStatus = !isCoach && (user.profile.subscriptionStatus || "active") === statusFilter;
+    }
+
     const matchesPlan = planFilter === "all" || (user.profile.subscriptionPlan || "Plano Pro") === planFilter;
 
     return matchesSearch && matchesStatus && matchesPlan;
@@ -413,14 +429,19 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
 
       {/* METRICS DASHBOARD ROW - BENTO GRID STYLE */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-        {/* Total Registros */}
+        {/* Total Alunos */}
         <div className="bg-white border border-slate-100 rounded-2xl p-4 shadow-xs flex items-center gap-3">
           <div className="p-2.5 bg-slate-100 text-slate-650 rounded-xl shrink-0">
             <Users className="w-5 h-5" />
           </div>
           <div>
-            <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Atletas Cadastrados</span>
-            <span className="text-xl font-bold font-heading text-slate-800">{totalUsers}</span>
+            <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Alunos Atletas</span>
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-xl font-bold font-heading text-slate-800">{totalAthletes}</span>
+              {coachesCount > 0 && (
+                <span className="text-[10px] text-amber-600 font-bold">(+{coachesCount} coach)</span>
+              )}
+            </div>
           </div>
         </div>
 
@@ -430,7 +451,7 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
             <CheckCircle className="w-5 h-5" />
           </div>
           <div>
-            <span className="block text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Assinantes Ativos</span>
+            <span className="block text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Alunos Pagantes Ativos</span>
             <span className="text-xl font-bold font-heading text-emerald-800">{activeCount}</span>
           </div>
         </div>
@@ -463,7 +484,7 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
             <DollarSign className="w-5 h-5" />
           </div>
           <div>
-            <span className="block text-[10px] font-bold text-sky-600 uppercase tracking-wider">Receita Mensal Est.</span>
+            <span className="block text-[10px] font-bold text-sky-600 uppercase tracking-wider">Receita Mensal Alunos</span>
             <span className="text-xl font-bold font-heading text-sky-850">R$ {estimatedRevenue}/mês</span>
           </div>
         </div>
@@ -512,17 +533,20 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
               />
             </div>
             {/* Filter Status */}
-            <div className="relative w-full sm:w-40 shrink-0">
+            <div className="relative w-full sm:w-48 shrink-0">
               <Filter className="absolute left-3 top-3.5 w-3.5 h-3.5 text-slate-400" />
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
                 className="w-full bg-slate-50 border border-slate-150 focus:border-slate-350 focus:bg-white rounded-xl pl-9 pr-3 py-3 text-xs outline-hidden transition-all text-slate-700 font-bold"
               >
-                <option value="all">Filtro: Todos</option>
-                <option value="active">Ativos</option>
-                <option value="pending_payment">Atrasados</option>
-                <option value="expired">Expirados</option>
+                <option value="all">Filtro: Todos ({users.length})</option>
+                <option value="active">Alunos Ativos ({activeCount})</option>
+                <option value="pending_payment">Alunos Pendentes ({pendingCount})</option>
+                <option value="expired">Alunos Bloqueados ({expiredCount})</option>
+                {coachesCount > 0 && (
+                  <option value="coach">Treinadores / Isentos ({coachesCount})</option>
+                )}
               </select>
             </div>
           </div>
@@ -551,6 +575,7 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
             ) : (
               <div className="divide-y divide-slate-100 max-h-[500px] overflow-y-auto">
                 {filteredUsers.map((user) => {
+                  const isCoach = isCoachUser(user);
                   const subStatus = user.profile.subscriptionStatus || 'active';
                   const isCurSelected = selectedUser?.email === user.email;
                   return (
@@ -566,9 +591,9 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
                           <h4 className="font-heading font-extrabold text-sm text-slate-800">{user.profile.name}</h4>
-                          {user.profile.role === "coach" && (
+                          {isCoach && (
                             <span className="bg-amber-100 text-amber-800 text-[8px] font-black uppercase px-1.5 py-0.5 rounded-full border border-amber-250">
-                              Coach
+                              Coach (Admin)
                             </span>
                           )}
                           {user.email.toLowerCase() === currentUserEmail.toLowerCase() && (
@@ -581,7 +606,7 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
                         <div className="flex gap-2.5 items-center flex-wrap pt-0.5">
                           <span className="text-[10px] text-slate-500 font-sans flex items-center gap-1">
                             <Tag className="w-3 h-3" />
-                            {user.profile.subscriptionPlan || "Plano Pro"}
+                            {isCoach ? "Acesso Master (Isento)" : (user.profile.subscriptionPlan || "Plano Pro")}
                           </span>
                           <span className="text-slate-200">|</span>
                           <span className="text-[10px] text-slate-500 font-sans flex items-center gap-1">
@@ -598,18 +623,21 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
 
                       <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
                         {/* Static Badge Status */}
-                        {subStatus === 'active' && (
+                        {isCoach ? (
+                          <span className="bg-amber-100 border border-amber-250 text-amber-900 text-[10px] font-extrabold px-2.5 py-1 rounded-full flex items-center gap-1">
+                            <ShieldCheck className="w-3 h-3 text-amber-600" />
+                            <span>Coach / Isento</span>
+                          </span>
+                        ) : subStatus === 'active' ? (
                           <span className="bg-emerald-100 border border-emerald-250 text-emerald-800 text-[10px] font-extrabold px-2.5 py-1 rounded-full flex items-center gap-1">
                             <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-ping"></span>
                             <span>Ativo</span>
                           </span>
-                        )}
-                        {subStatus === 'pending_payment' && (
+                        ) : subStatus === 'pending_payment' ? (
                           <span className="bg-amber-100 border border-amber-250 text-amber-800 text-[10px] font-extrabold px-2.5 py-1 rounded-full flex items-center gap-1">
                             <span>Pendente</span>
                           </span>
-                        )}
-                        {subStatus === 'expired' && (
+                        ) : (
                           <span className="bg-rose-100 border border-rose-250 text-rose-800 text-[10px] font-extrabold px-2.5 py-1 rounded-full flex items-center gap-1 animate-pulse">
                             <span>Expirado</span>
                           </span>
@@ -617,7 +645,11 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
 
                         {/* Direct testing Switch status triggers */}
                         <div className="flex items-center gap-1">
-                          {subStatus === 'active' ? (
+                          {isCoach ? (
+                            <span className="text-[9px] font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5">
+                              Livre
+                            </span>
+                          ) : subStatus === 'active' ? (
                             <button
                               type="button"
                               onClick={(e) => {
