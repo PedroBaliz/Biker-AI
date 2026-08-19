@@ -21,8 +21,7 @@ import {
   Flame, 
   Sparkles,
   ClipboardList,
-  CreditCard,
-  Instagram
+  CreditCard
 } from "lucide-react";
 
 interface AccountSettingsProps {
@@ -627,18 +626,16 @@ export default function AccountSettings({ currentUser, onUpdateAccount, onClose 
             </div>
 
             {/* Support footer info */}
-            <div className="bg-gradient-to-r from-amber-50 to-pink-50 border border-pink-200 p-3.5 rounded-2xl text-slate-800 text-xs space-y-2">
-              <p className="font-sans leading-relaxed">
+            <div className="bg-slate-900 border border-slate-800 p-3.5 rounded-2xl text-slate-300 text-xs space-y-2">
+              <p className="font-sans leading-relaxed text-slate-300">
                 Para suporte técnico, faturamento, alterações de plano ou dúvidas sobre seus treinos:
               </p>
               <a
-                href="https://www.instagram.com/biker_ai_app?igsh=MTl1ZnptN3ZjbzBhYg=="
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-pink-300 rounded-xl font-bold transition-all shadow-sm"
+                href="mailto:bikeraisupport@gmail.com"
+                className="inline-flex items-center gap-2 px-3.5 py-2 bg-slate-800 hover:bg-slate-750 text-lime-400 border border-slate-700 rounded-xl font-bold transition-all shadow-sm text-xs"
               >
-                <Instagram className="w-4 h-4 text-pink-400 shrink-0" />
-                <span>Envie um Direct em caso de dúvida (@biker_ai_app)</span>
+                <Mail className="w-4 h-4 text-lime-400 shrink-0" />
+                <span>Envie um email para bikeraisupport@gmail.com — respondemos em até 24h úteis.</span>
               </a>
             </div>
           </motion.div>

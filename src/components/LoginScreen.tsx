@@ -924,13 +924,11 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
 
               <div className="pt-1 flex justify-center">
                 <a
-                  href="https://www.instagram.com/biker_ai_app?igsh=MTl1ZnptN3ZjbzBhYg=="
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-3 py-2 bg-slate-900/90 hover:bg-slate-850 text-pink-300 hover:text-pink-200 border border-pink-500/25 hover:border-pink-500/50 rounded-xl text-[11px] sm:text-xs font-bold transition-all shadow-sm max-w-full"
+                  href="mailto:bikeraisupport@gmail.com"
+                  className="inline-flex items-center gap-2 px-3 py-2 bg-slate-900/90 hover:bg-slate-850 text-lime-400 hover:text-lime-300 border border-slate-750 hover:border-slate-650 rounded-xl text-[11px] sm:text-xs font-bold transition-all shadow-sm max-w-full"
                 >
-                  <Instagram className="w-4 h-4 text-pink-400 shrink-0" />
-                  <span className="leading-tight">Dúvidas? Envie um Direct para <strong>@biker_ai_app</strong></span>
+                  <Mail className="w-4 h-4 text-lime-400 shrink-0" />
+                  <span className="leading-tight">Dúvidas? Envie um email para <strong>bikeraisupport@gmail.com</strong></span>
                 </a>
               </div>
             </div>
@@ -958,13 +956,11 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
 
           <div className="flex items-center justify-center">
             <a 
-              href="https://www.instagram.com/biker_ai_app?igsh=MTl1ZnptN3ZjbzBhYg=="
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-3.5 py-2 bg-pink-500/10 hover:bg-pink-500/20 text-pink-300 border border-pink-500/30 rounded-xl text-xs font-bold transition-all shadow-sm max-w-full"
+              href="mailto:bikeraisupport@gmail.com"
+              className="inline-flex items-center gap-2 px-3.5 py-2 bg-slate-900 hover:bg-slate-850 text-lime-400 border border-slate-800 rounded-xl text-xs font-bold transition-all shadow-sm max-w-full"
             >
-              <Instagram className="w-4 h-4 text-pink-400 shrink-0" />
-              <span>Suporte Direct @biker_ai_app</span>
+              <Mail className="w-4 h-4 text-lime-400 shrink-0" />
+              <span>Suporte: bikeraisupport@gmail.com</span>
             </a>
           </div>
 

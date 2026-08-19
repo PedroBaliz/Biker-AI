@@ -52,7 +52,7 @@ import {
   EyeOff,
   Download,
   Lock,
-  Instagram,
+  Mail,
   Smartphone,
   Share,
   X,
@@ -2456,13 +2456,11 @@ export default function App() {
           </div>
 
           <a 
-            href="https://www.instagram.com/biker_ai_app?igsh=MTl1ZnptN3ZjbzBhYg=="
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 px-3 py-1.5 bg-pink-500/10 hover:bg-pink-500/20 text-pink-300 border border-pink-500/30 rounded-xl text-xs font-bold transition-all shadow-sm"
+            href="mailto:bikeraisupport@gmail.com"
+            className="inline-flex items-center gap-2 px-3 py-1.5 bg-slate-900 hover:bg-slate-850 text-lime-400 border border-slate-800 rounded-xl text-xs font-bold transition-all shadow-sm"
           >
-            <Instagram className="w-3.5 h-3.5 text-pink-400 shrink-0" />
-            <span>Suporte Direct @biker_ai_app</span>
+            <Mail className="w-3.5 h-3.5 text-lime-400 shrink-0" />
+            <span>Suporte: bikeraisupport@gmail.com</span>
           </a>
         </div>
       </footer>
@@ -2745,20 +2743,18 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {/* Floating Instagram Support Button */}
+      {/* Floating Email Support Button */}
       <a
-        href="https://www.instagram.com/biker_ai_app?igsh=MTl1ZnptN3ZjbzBhYg=="
-        target="_blank"
-        rel="noopener noreferrer"
-        className="fixed bottom-3.5 right-3.5 sm:bottom-5 sm:right-5 z-40 flex items-center gap-2 px-3 py-2 sm:px-3.5 sm:py-2.5 bg-slate-900/95 hover:bg-slate-900 text-pink-300 hover:text-white border border-pink-500/40 hover:border-pink-500/80 rounded-full shadow-xl hover:shadow-2xl transition-all cursor-pointer group backdrop-blur-md max-w-[calc(100vw-2rem)]"
-        title="Dúvidas? Envie um Direct no Instagram @biker_ai_app"
+        href="mailto:bikeraisupport@gmail.com"
+        className="fixed bottom-3.5 right-3.5 sm:bottom-5 sm:right-5 z-40 flex items-center gap-2 px-3 py-2 sm:px-3.5 sm:py-2.5 bg-slate-900/95 hover:bg-slate-900 text-lime-400 hover:text-white border border-lime-500/40 hover:border-lime-500/80 rounded-full shadow-xl hover:shadow-2xl transition-all cursor-pointer group backdrop-blur-md max-w-[calc(100vw-2rem)]"
+        title="Dúvidas? Envie um email para bikeraisupport@gmail.com"
       >
-        <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-gradient-to-tr from-amber-500 via-pink-500 to-purple-600 flex items-center justify-center text-white shrink-0 group-hover:scale-110 transition-transform">
-          <Instagram className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+        <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-lime-500 flex items-center justify-center text-slate-950 shrink-0 group-hover:scale-110 transition-transform">
+          <Mail className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
         </div>
         <div className="flex flex-col text-left pr-0.5">
-          <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-pink-400 leading-none">Suporte Direct</span>
-          <span className="text-[10px] sm:text-[11px] font-bold text-slate-200 leading-tight">@biker_ai_app</span>
+          <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-lime-400 leading-none">Suporte Biker AI</span>
+          <span className="text-[10px] sm:text-[11px] font-bold text-slate-200 leading-tight">bikeraisupport@gmail.com</span>
         </div>
       </a>
 
