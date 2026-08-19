@@ -1033,10 +1033,10 @@ app.post("/api/auth/register", async (req, res) => {
     const isCoachEmail = email.trim().toLowerCase() === "pedro.bramos@sempreceub.com";
     const newProfile = {
       name: name.trim(),
-      level: "",
-      goal: "",
-      daysPerWeek: null,
-      durationPerSession: null,
+      level: "intermediário",
+      goal: "melhorar condicionamento",
+      daysPerWeek: 3,
+      durationPerSession: 60,
       eventDate: "",
       hasPowerMeter: null,
       ftp: null,
@@ -1121,6 +1121,10 @@ app.post("/api/auth/login", async (req, res) => {
 
     const responseUser = { ...user };
     delete (responseUser as any).password; // Sanitize for privacy
+    if (responseUser.profile) {
+      if (!responseUser.profile.goal) responseUser.profile.goal = "melhorar condicionamento";
+      if (!responseUser.profile.level) responseUser.profile.level = "intermediário";
+    }
     if (responseUser.plan) {
       responseUser.plan = sanitizePlanForUser(responseUser.plan, responseUser.profile);
     }
@@ -1195,6 +1199,10 @@ app.post("/api/auth/session", requireAuth, verifyUserMatch, async (req, res) => 
     
     const responseUser = { ...user };
     delete (responseUser as any).password; // Sanitize for privacy
+    if (responseUser.profile) {
+      if (!responseUser.profile.goal) responseUser.profile.goal = "melhorar condicionamento";
+      if (!responseUser.profile.level) responseUser.profile.level = "intermediário";
+    }
     if (responseUser.plan) {
       responseUser.plan = sanitizePlanForUser(responseUser.plan, responseUser.profile);
     }

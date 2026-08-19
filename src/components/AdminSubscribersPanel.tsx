@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { UserProfile, ZoneInfo } from "../types";
+import { UserProfile, ZoneInfo, formatGoal, formatLevel } from "../types";
 import { apiFetch } from "../firebase";
 import { motion, AnimatePresence } from "motion/react";
 import { 
@@ -912,11 +912,11 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
                   <div className="grid grid-cols-2 gap-3 text-sans text-xs">
                     <div>
                       <span className="text-slate-450 block text-[9.5px] uppercase font-bold leading-normal">Objetivo principal</span>
-                      <span className="text-slate-800 font-semibold">{selectedUser.profile.goal || "Não configurado"}</span>
+                      <span className="text-slate-800 font-semibold">{formatGoal(selectedUser.profile.goal)}</span>
                     </div>
                     <div>
                       <span className="text-slate-450 block text-[9.5px] uppercase font-bold leading-normal">Nível de giro</span>
-                      <span className="text-slate-800 font-semibold capitalize">{selectedUser.profile.level || "Iniciante"}</span>
+                      <span className="text-slate-800 font-semibold">{formatLevel(selectedUser.profile.level)}</span>
                     </div>
                     <div>
                       <span className="text-slate-450 block text-[9.5px] uppercase font-bold leading-normal">Frequência Semanal</span>
@@ -989,7 +989,7 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
                     <span>Gerenciador de Backups Físicos</span>
                   </h3>
                   <p className="text-[10.5px] text-slate-450 mt-1 leading-normal">
-                    O CycleCoach AI realiza cópias rotativas no servidor local a cada modificação do banco para proteção integral contra perda acidental.
+                    O Biker AI realiza cópias rotativas no servidor local a cada modificação do banco para proteção integral contra perda acidental.
                   </p>
                 </div>
 

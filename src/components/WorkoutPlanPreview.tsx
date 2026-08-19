@@ -1,5 +1,5 @@
 import React from "react";
-import { TrainingPlan, UserProfile, isRestDay } from "../types";
+import { TrainingPlan, UserProfile, isRestDay, formatGoal, formatLevel } from "../types";
 import { motion } from "motion/react";
 import { 
   Lock, 
@@ -87,8 +87,8 @@ export default function WorkoutPlanPreview({ plan, profile, onUnlockClick }: Wor
           <div className="bg-slate-800/60 border border-slate-700/60 rounded-2xl p-4 flex flex-col justify-between">
             <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider block font-bold">Nível & Objetivo</span>
             <div className="mt-2">
-              <span className="text-xs font-bold text-slate-200 capitalize block">{profile.level || "Intermediário"}</span>
-              <span className="text-[10.5px] text-slate-400 block break-words line-clamp-2 leading-snug">{profile.goal || "Melhorar condicionamento"}</span>
+              <span className="text-xs font-bold text-slate-200 block">{formatLevel(profile.level)}</span>
+              <span className="text-[10.5px] text-slate-400 block break-words line-clamp-2 leading-snug">{formatGoal(profile.goal)}</span>
             </div>
           </div>
 

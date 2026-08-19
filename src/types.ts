@@ -119,3 +119,29 @@ export function isRestDay(workout: Workout): boolean {
     (duration === 0 && !typeLower.includes("teste") && !titleLower.includes("teste"))
   );
 }
+
+export function formatGoal(goal?: string): string {
+  if (!goal || !goal.trim()) return "Melhorar Condicionamento";
+  const g = goal.toLowerCase().trim();
+  if (g.includes("peso") || g.includes("emagrecer") || g.includes("calor") || g.includes("gordura")) {
+    return "Perder Peso & Definição";
+  }
+  if (g.includes("condicionamento") || g.includes("resistencia") || g.includes("resistência") || g.includes("aerob") || g.includes("aerób") || g.includes("fôlego") || g.includes("folego")) {
+    return "Melhorar Condicionamento";
+  }
+  if (g.includes("evento") || g.includes("desafio") || g.includes("gfny") || g.includes("prova") || g.includes("gran fondo")) {
+    return "Completar Evento / Prova";
+  }
+  if (g.includes("compet") || g.includes("performance") || g.includes("corrida") || g.includes("podio") || g.includes("pódio")) {
+    return "Competir & Performance";
+  }
+  return goal.charAt(0).toUpperCase() + goal.slice(1);
+}
+
+export function formatLevel(level?: string): string {
+  if (!level || !level.trim()) return "Intermediário";
+  const l = level.toLowerCase().trim();
+  if (l.includes("iniciante")) return "Iniciante";
+  if (l.includes("avancado") || l.includes("avançado") || l.includes("pro") || l.includes("elite")) return "Avançado";
+  return "Intermediário";
+}

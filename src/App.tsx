@@ -3,7 +3,7 @@ import { jsPDF } from "jspdf";
 import confetti from "canvas-confetti";
 // @ts-ignore
 import cyclingActionImg from "./assets/images/cycling_action_1780860242304.png";
-import { UserProfile, ChatMessage, TrainingPlan, UserAccount, Workout, isRestDay } from "./types";
+import { UserProfile, ChatMessage, TrainingPlan, UserAccount, Workout, isRestDay, formatGoal, formatLevel } from "./types";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { auth, apiFetch } from "./firebase";
 import WorkoutCard from "./components/WorkoutCard";
@@ -1583,11 +1583,11 @@ export default function App() {
                         </div>
                         <div>
                           <label className="text-[10px] uppercase font-bold text-slate-400">Nível</label>
-                          <p className="text-xs font-bold text-slate-800 capitalize">{profile.level || "Intermediário"}</p>
+                          <p className="text-xs font-bold text-slate-800">{formatLevel(profile.level)}</p>
                         </div>
                         <div>
-                          <label className="text-[10px] uppercase font-bold text-slate-400">Objetivo</label>
-                          <p className="text-xs font-bold text-slate-800 capitalize">{profile.goal || "Condicionamento"}</p>
+                          <label className="text-[10px] uppercase font-bold text-slate-400">Foco / Objetivo</label>
+                          <p className="text-xs font-bold text-slate-800">{formatGoal(profile.goal)}</p>
                         </div>
                         <div>
                           <label className="text-[10px] uppercase font-bold text-slate-400">Frequência</label>
@@ -1633,16 +1633,15 @@ export default function App() {
               <div className="bg-white rounded-3xl border border-slate-100/85 shadow-[0_4px_24px_rgba(15,23,42,0.02)] p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 animate-fadeInUp">
                 <div className="flex items-center gap-4">
                   <div className="w-14 h-14 rounded-full bg-slate-900 border-2 border-lime-400 flex items-center justify-center font-heading font-black text-lime-400 text-lg shadow-sm relative shrink-0">
-                    {profile.name.slice(0, 2).toUpperCase()}
+                    {(profile.name || "AT").slice(0, 2).toUpperCase()}
                     <span className="absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-white"></span>
                   </div>
                   <div>
-                    <h2 className="font-heading font-black text-slate-800 text-lg leading-tight">Ciclista: {profile.name}</h2>
+                    <h2 className="font-heading font-black text-slate-800 text-lg leading-tight">Ciclista: {profile.name || "Atleta"}</h2>
                     <p className="text-xs text-slate-405 leading-relaxed font-sans mt-1 flex flex-wrap items-center gap-2 font-medium">
-                      <span className="bg-slate-100 text-slate-700 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider">{profile.level}</span>
+                      <span className="bg-slate-100 text-slate-700 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider">{formatLevel(profile.level)}</span>
                       <span className="text-slate-300">•</span>
-                      <span>Foco: <strong className="text-slate-850">{profile.goal}</strong></span>
-
+                      <span>Foco: <strong className="text-slate-850">{formatGoal(profile.goal)}</strong></span>
                     </p>
                   </div>
                 </div>

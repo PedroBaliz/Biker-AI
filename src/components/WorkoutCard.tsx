@@ -182,9 +182,12 @@ function WorkoutCardInner({ workout, onUpdate, onDelete, profile, allWorkouts, i
 
   const displayType = getCleanWorkoutTitle(workout.type, isSimpleMode);
   const displayTargetZone = getShortZoneBadge(workout.targetZone, isSimpleMode);
-  const displayGoal = isSimpleMode ? getSimplifiedText(workout.goal) : workout.goal;
-  const displayStructure = isSimpleMode ? getSimplifiedText(workout.structure) : workout.structure;
-  const displayTip = isSimpleMode ? getSimplifiedText(workout.tip) : workout.tip;
+  const fallbackGoal = isRestDay(workout)
+    ? "Recuperação passiva e supercompensação fisiológica para absorver a carga."
+    : "Desenvolvimento de resistência aeróbica e controle consciente de ritmo.";
+  const displayGoal = (isSimpleMode ? getSimplifiedText(workout.goal) : workout.goal) || fallbackGoal;
+  const displayStructure = (isSimpleMode ? getSimplifiedText(workout.structure) : workout.structure) || (isRestDay(workout) ? "Dia sem treino programado. Mantenha boa hidratação e sono reparador." : "Giro contínuo com ritmo controlado conforme sua percepção de esforço.");
+  const displayTip = (isSimpleMode ? getSimplifiedText(workout.tip) : workout.tip) || "Mantenha a postura relaxada sobre a bicicleta e hidrate-se a cada 15 a 20 minutos.";
   
   // Temporary local state for editing prescription (Coach / Admin)
   const [editType, setEditType] = useState(workout.type);
