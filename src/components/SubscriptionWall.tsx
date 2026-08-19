@@ -173,7 +173,7 @@ export default function SubscriptionWall({ userEmail, userName, currentStatus, o
     } finally {
       setSimulatingPayment(false);
       setPaymentNotified(true);
-      setCheckMessage("Aviso de pagamento registrado com sucesso! O treinador irá verificar e ativar o seu acesso no painel privado em até 24h.");
+      setCheckMessage("Aviso de pagamento registrado com sucesso! O treinador irá verificar e ativar o seu acesso no painel.");
     }
   };
 
@@ -195,7 +195,7 @@ export default function SubscriptionWall({ userEmail, userName, currentStatus, o
           }, 1200);
           return;
         } else {
-          setCheckMessage("Status Atual: Pendente de Ativação pelo Treinador. Aguarde até 24h após o pagamento.");
+          setCheckMessage("Status Atual: Pendente de Ativação. Caso já tenha realizado o pagamento, o acesso será liberado em instantes.");
         }
       } else {
         setCheckMessage("Erro ao consultar o servidor. Tente novamente em instantes.");
@@ -267,7 +267,7 @@ export default function SubscriptionWall({ userEmail, userName, currentStatus, o
               Pagamento Rápido e Seguro
             </h4>
             <p className="text-xs text-emerald-100 font-sans leading-relaxed">
-              Clique no botão abaixo para pagar via Mercado Pago (Pix ou Cartão). <strong>A liberação do seu acesso ocorrerá no painel do treinador em até 24h após o pagamento.</strong>
+              Clique no botão abaixo para pagar via Mercado Pago (Pix ou Cartão). <strong>O seu acesso ao treinador será liberado com rapidez e segurança após a confirmação do pagamento.</strong>
             </p>
             <div className="pt-1">
               <a
@@ -275,7 +275,7 @@ export default function SubscriptionWall({ userEmail, userName, currentStatus, o
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-black/20 hover:bg-black/30 border border-white/20 hover:border-white/40 rounded-xl text-[10px] sm:text-[11px] font-bold text-white transition-all max-w-full"
               >
                 <Mail className="w-3.5 h-3.5 text-amber-300 shrink-0" />
-                <span className="leading-tight break-words">Envie um email para <strong>bikeraisupport@gmail.com</strong> — respondemos em até 24h úteis.</span>
+                <span className="leading-tight break-words">Envie um email para <strong>bikeraisupport@gmail.com</strong> para suporte e dúvidas.</span>
               </a>
             </div>
           </div>
@@ -306,7 +306,7 @@ export default function SubscriptionWall({ userEmail, userName, currentStatus, o
               <p className="font-bold">{checkMessage}</p>
               {!checkMessage.includes("ativada") && (
                 <p className="text-[11px] opacity-90 leading-normal">
-                  Enquanto a sua conta não for ativada pelo treinador no painel privado, você continuará vendo esta página de pagamento. A liberação ocorrerá em até 24h após a confirmação do pagamento.
+                  Após a confirmação do seu pagamento, o seu acesso ao painel de treinos será liberado.
                 </p>
               )}
             </div>
@@ -949,7 +949,7 @@ export default function SubscriptionWall({ userEmail, userName, currentStatus, o
               className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 hover:bg-slate-800 border border-slate-700 hover:border-slate-600 rounded-xl text-xs font-bold text-lime-400 transition-all shadow-sm"
             >
               <Mail className="w-4 h-4 text-lime-400" />
-              <span>Envie um email para bikeraisupport@gmail.com — respondemos em até 24h úteis.</span>
+              <span>Envie um email para bikeraisupport@gmail.com — suporte oficial Biker AI</span>
             </a>
           </div>
         </motion.div>

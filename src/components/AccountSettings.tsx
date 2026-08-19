@@ -635,7 +635,7 @@ export default function AccountSettings({ currentUser, onUpdateAccount, onClose 
                 className="inline-flex items-center gap-2 px-3.5 py-2 bg-slate-800 hover:bg-slate-750 text-lime-400 border border-slate-700 rounded-xl font-bold transition-all shadow-sm text-xs"
               >
                 <Mail className="w-4 h-4 text-lime-400 shrink-0" />
-                <span>Envie um email para bikeraisupport@gmail.com — respondemos em até 24h úteis.</span>
+                <span>Envie um email para bikeraisupport@gmail.com — suporte oficial Biker AI</span>
               </a>
             </div>
           </motion.div>
