@@ -87,6 +87,19 @@ export default function SubscriptionWall({ userEmail, userName, currentStatus, o
         </div>
       </div>
 
+      {/* Top Quick Subscribe Button */}
+      <div className="w-full">
+        <button
+          type="button"
+          onClick={handleProceedToMercadoPago}
+          className="w-full py-3.5 sm:py-4 px-6 bg-slate-900 hover:bg-slate-850 active:scale-[0.99] text-lime-400 font-heading font-black text-xs sm:text-sm uppercase tracking-wider rounded-2xl shadow-lg hover:shadow-xl transition-all text-center flex items-center justify-center gap-2.5 cursor-pointer group border border-slate-800 ring-2 ring-lime-400/60 hover:ring-lime-400"
+        >
+          <Zap className="w-4 h-4 sm:w-5 sm:h-5 fill-lime-400 text-lime-400 shrink-0" />
+          <span>Assinar Agora • R$ 10,90/mês</span>
+          <ExternalLink className="w-4 h-4 group-hover:translate-x-0.5 transition-transform shrink-0" />
+        </button>
+      </div>
+
       {/* Plan Details & Value Proposition */}
       <div className="text-center space-y-1 pt-1">
         <span className="bg-lime-500/15 text-lime-700 text-[10px] font-black uppercase px-2.5 py-1 rounded-full border border-lime-500/20 tracking-wider">
