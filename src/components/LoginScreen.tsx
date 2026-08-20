@@ -294,55 +294,54 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
     }
   };
 
-
   return (
-    <div className="w-full flex flex-col bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-white min-h-screen relative overflow-x-hidden font-sans">
+    <div className="w-full flex flex-col bg-gradient-to-b from-[#061e16] via-[#092e22] to-[#04140e] text-white min-h-screen relative overflow-x-hidden font-sans">
       
-      {/* Background ambient lighting glows - vivid, high-visibility and athletic */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-[600px] bg-[radial-gradient(ellipse_80%_60%_at_50%_-10%,rgba(132,204,22,0.22),rgba(16,185,129,0.12),transparent_70%)] pointer-events-none -z-0"></div>
-      <div className="absolute top-[6%] right-[-5%] w-[650px] h-[650px] bg-lime-400/20 rounded-full blur-[100px] pointer-events-none -z-0"></div>
-      <div className="absolute top-[32%] left-[-10%] w-[600px] h-[600px] bg-emerald-500/18 rounded-full blur-[110px] pointer-events-none -z-0"></div>
-      <div className="absolute top-[60%] right-[2%] w-[650px] h-[650px] bg-lime-500/18 rounded-full blur-[110px] pointer-events-none -z-0"></div>
-      <div className="absolute bottom-[4%] left-[8%] w-[550px] h-[550px] bg-teal-500/15 rounded-full blur-[120px] pointer-events-none -z-0"></div>
+      {/* Background ambient lighting glows - intense, high-visibility athletic emerald and lime aura */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-[700px] bg-[radial-gradient(ellipse_90%_70%_at_50%_-10%,rgba(132,204,22,0.35),rgba(16,185,129,0.25),transparent_75%)] pointer-events-none -z-0"></div>
+      <div className="absolute top-[4%] right-[-5%] w-[700px] h-[700px] bg-lime-400/25 rounded-full blur-[120px] pointer-events-none -z-0"></div>
+      <div className="absolute top-[28%] left-[-10%] w-[700px] h-[700px] bg-emerald-500/25 rounded-full blur-[130px] pointer-events-none -z-0"></div>
+      <div className="absolute top-[55%] right-[0%] w-[750px] h-[750px] bg-lime-500/22 rounded-full blur-[130px] pointer-events-none -z-0"></div>
+      <div className="absolute bottom-[3%] left-[5%] w-[650px] h-[650px] bg-teal-400/20 rounded-full blur-[140px] pointer-events-none -z-0"></div>
 
-      {/* Subtle athletic dot grid background */}
-      <div className="absolute inset-0 bg-[radial-gradient(#475569_1.2px,transparent_1.2px)] [background-size:24px_24px] opacity-35 pointer-events-none -z-0"></div>
+      {/* Athletic emerald racing grid pattern */}
+      <div className="absolute inset-0 bg-[radial-gradient(rgba(52,211,153,0.18)_1.5px,transparent_1.5px)] [background-size:26px_26px] opacity-60 pointer-events-none -z-0"></div>
 
       {/* Elegant Landing Header / Navigation Bar */}
-      <header className="border-b border-slate-800/90 bg-slate-950/85 backdrop-blur-xl sticky top-0 z-50 py-4 px-4 sm:px-6 md:px-12 shadow-lg shadow-black/30">
+      <header className="border-b border-emerald-500/30 bg-[#051a13]/90 backdrop-blur-xl sticky top-0 z-50 py-4 px-4 sm:px-6 md:px-12 shadow-xl shadow-black/40">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 bg-lime-500/10 border border-lime-500/20 rounded-xl text-lime-400 shadow-sm shadow-lime-500/5">
+            <div className="p-2 bg-lime-500/15 border border-lime-400/30 rounded-xl text-lime-400 shadow-md shadow-lime-500/10">
               <Bike className="w-6 h-6" />
             </div>
             <div>
               <h1 className="font-heading font-black text-lg tracking-tight uppercase leading-none">
                 BIKER <span className="text-lime-400">AI</span>
               </h1>
-              <p className="text-[9px] text-slate-400 tracking-widest uppercase font-mono font-bold leading-none mt-1">Smart Cycling Coach</p>
+              <p className="text-[9px] text-emerald-300 tracking-widest uppercase font-mono font-bold leading-none mt-1">Smart Cycling Coach</p>
             </div>
           </div>
           <div className="hidden md:flex items-center gap-6">
             <button 
               type="button" 
               onClick={() => scrollToSection("como-funciona")} 
-              className="text-xs font-semibold text-slate-300 hover:text-lime-450 transition-colors cursor-pointer bg-transparent border-none p-0"
+              className="text-xs font-semibold text-emerald-100 hover:text-lime-300 transition-colors cursor-pointer bg-transparent border-none p-0"
             >
               Como Funciona
             </button>
             <button 
               type="button" 
               onClick={() => scrollToSection("beneficios")} 
-              className="text-xs font-semibold text-slate-300 hover:text-lime-450 transition-colors cursor-pointer bg-transparent border-none p-0"
+              className="text-xs font-semibold text-emerald-100 hover:text-lime-300 transition-colors cursor-pointer bg-transparent border-none p-0"
             >
               Benefícios
             </button>
           </div>
           <div>
             <button 
-              type="button"
+              type="button" 
               onClick={() => scrollToSection("auth-section")} 
-              className="px-4 py-2 bg-linear-to-r from-lime-500/10 to-emerald-500/10 hover:from-lime-500/20 hover:to-emerald-500/20 text-lime-400 border border-lime-500/30 hover:border-lime-400 rounded-xl text-xs font-black uppercase transition-all shadow-md shadow-lime-500/5 cursor-pointer"
+              className="px-4 py-2 bg-gradient-to-r from-lime-400 to-emerald-400 hover:from-lime-300 hover:to-emerald-300 text-slate-950 rounded-xl text-xs font-black uppercase transition-all shadow-lg shadow-lime-500/20 cursor-pointer border-none"
             >
               Gerar Planilha Grátis
             </button>
@@ -356,7 +355,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
         {/* Hero Copy (Left 7 Cols) */}
         <div className="lg:col-span-7 space-y-6 text-left">
           
-          <div className="inline-flex items-center gap-2 px-3 py-1 bg-lime-500/10 border border-lime-500/20 text-lime-400 rounded-full text-[10px] font-black uppercase tracking-wider">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-lime-500/15 border border-lime-400/30 text-lime-300 rounded-full text-[10px] font-black uppercase tracking-wider shadow-sm">
             <Sparkles className="w-3.5 h-3.5" />
             <span>Treino de Ciclismo Simples e Personalizado</span>
           </div>
@@ -364,94 +363,92 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
           <h2 className="text-4xl sm:text-5xl md:text-6xl font-heading font-black tracking-tight text-white leading-[1.1]">
             Sua planilha de treino.<br />
             Do seu jeito.<br />
-            <span className="bg-linear-to-r from-lime-400 to-emerald-400 bg-clip-text text-transparent">Sem complicação.</span>
+            <span className="bg-gradient-to-r from-lime-300 via-emerald-400 to-teal-300 bg-clip-text text-transparent">Sem complicação.</span>
           </h2>
 
-          <p className="text-sm sm:text-base text-slate-300 font-sans leading-relaxed max-w-2xl">
+          <p className="text-sm sm:text-base text-emerald-100/90 font-sans leading-relaxed max-w-2xl">
             Monte seu plano de treinos semanal em menos de 1 minuto. Ajustamos o volume e a intensidade de acordo com o seu tempo livre e seu nível no pedal. Chega de treinar no escuro com PDFs estáticos ou tabelas genéricas!
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 pt-2 pb-4">
             <button 
-              type="button"
+              type="button" 
               onClick={() => scrollToSection("auth-section")}
-              className="inline-flex items-center justify-center gap-2.5 px-6 py-4 bg-linear-to-r from-lime-500 to-emerald-500 hover:from-lime-450 hover:to-emerald-450 active:scale-98 text-slate-950 text-xs font-black uppercase tracking-wider rounded-2xl shadow-lg shadow-lime-500/20 transition-all cursor-pointer border-none"
+              className="inline-flex items-center justify-center gap-2.5 px-6 py-4 bg-gradient-to-r from-lime-400 to-emerald-400 hover:from-lime-300 hover:to-emerald-300 active:scale-98 text-slate-950 text-xs font-black uppercase tracking-wider rounded-2xl shadow-xl shadow-lime-500/25 transition-all cursor-pointer border-none"
             >
               <span>Gerar Minha Planilha Grátis</span>
               <ChevronRight className="w-4 h-4" />
             </button>
             <button 
-              type="button"
-              onClick={() => scrollToSection("como-funciona")}
-              className="inline-flex items-center justify-center gap-2 px-6 py-4 bg-slate-900/80 hover:bg-slate-850 text-white text-xs font-bold uppercase tracking-wider rounded-2xl border border-slate-800 hover:border-slate-700 transition-all cursor-pointer"
+              type="button" 
+              onClick={() => scrollToSection("como-funciona")} 
+              className="inline-flex items-center justify-center gap-2 px-6 py-4 bg-[#0a281e]/90 hover:bg-[#0e3528] text-white text-xs font-bold uppercase tracking-wider rounded-2xl border border-emerald-500/40 hover:border-lime-400/50 transition-all cursor-pointer shadow-md"
             >
               <span>Ver Como Funciona</span>
             </button>
           </div>
 
           {/* Key Metrics grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-slate-900">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-emerald-500/20">
             <div className="space-y-0.5">
-              <p className="text-xl sm:text-3xl font-heading font-black text-lime-400 tracking-tight">Mais Força</p>
-              <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Aumente seus watts</p>
-              <p className="text-[10px] text-slate-500 leading-normal font-sans">Pedale com mais facilidade e canse muito menos</p>
+              <p className="text-xl sm:text-3xl font-heading font-black text-lime-300 tracking-tight">Mais Força</p>
+              <p className="text-[10px] uppercase font-bold text-emerald-300 tracking-wider">Aumente seus watts</p>
+              <p className="text-[10px] text-emerald-200/70 leading-normal font-sans">Pedale com mais facilidade e canse muito menos</p>
             </div>
-            <div className="space-y-0.5 border-t sm:border-t-0 sm:border-l border-slate-900 pt-3 sm:pt-0 pl-0 sm:pl-4">
-              <p className="text-xl sm:text-3xl font-heading font-black text-emerald-400 tracking-tight">Mais Fôlego</p>
-              <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Subidas fáceis</p>
-              <p className="text-[10px] text-slate-500 leading-normal font-sans">Sinta menos cansaço nas pernas e suba no seu ritmo</p>
+            <div className="space-y-0.5 border-t sm:border-t-0 sm:border-l border-emerald-500/20 pt-3 sm:pt-0 pl-0 sm:pl-4">
+              <p className="text-xl sm:text-3xl font-heading font-black text-emerald-300 tracking-tight">Mais Fôlego</p>
+              <p className="text-[10px] uppercase font-bold text-emerald-300 tracking-wider">Subidas fáceis</p>
+              <p className="text-[10px] text-emerald-200/70 leading-normal font-sans">Sinta menos cansaço nas pernas e suba no seu ritmo</p>
             </div>
-            <div className="space-y-0.5 border-t sm:border-t-0 sm:border-l border-slate-900 pt-3 sm:pt-0 pl-0 sm:pl-4">
-              <p className="text-xl sm:text-3xl font-heading font-black text-yellow-400 tracking-tight font-heading">No Seu Tempo</p>
-              <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Treinos Flexíveis</p>
-              <p className="text-[10px] text-slate-500 leading-normal font-sans">As sessões cabem no seu tempo livre, dia a dia</p>
+            <div className="space-y-0.5 border-t sm:border-t-0 sm:border-l border-emerald-500/20 pt-3 sm:pt-0 pl-0 sm:pl-4">
+              <p className="text-xl sm:text-3xl font-heading font-black text-yellow-300 tracking-tight font-heading">No Seu Tempo</p>
+              <p className="text-[10px] uppercase font-bold text-emerald-300 tracking-wider">Treinos Flexíveis</p>
+              <p className="text-[10px] text-emerald-200/70 leading-normal font-sans">As sessões cabem no seu tempo livre, dia a dia</p>
             </div>
           </div>
-
-
 
         </div>
 
         {/* Hero Image Graphic (Right 5 Cols) */}
         <div className="lg:col-span-5 relative flex justify-center items-center">
-          <div className="absolute inset-0 bg-linear-to-r from-lime-500/10 to-emerald-500/10 rounded-full blur-3xl -z-10 opacity-55"></div>
+          <div className="absolute inset-0 bg-gradient-to-r from-lime-500/20 to-emerald-500/20 rounded-full blur-3xl -z-10 opacity-70"></div>
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.8, delay: 0.2 }}
-            className="relative rounded-3xl overflow-hidden border border-slate-800 shadow-2xl bg-slate-950/40 p-2 group"
+            className="relative rounded-3xl overflow-hidden border-2 border-emerald-500/40 shadow-2xl bg-[#061d15]/60 p-2 group"
           >
             <img 
               src={bikerHero} 
               alt="Biker AI Hero" 
-              className="rounded-2xl max-w-full h-auto object-cover opacity-90 group-hover:opacity-100 group-hover:scale-[1.02] transition-all duration-700"
+              className="rounded-2xl max-w-full h-auto object-cover opacity-95 group-hover:opacity-100 group-hover:scale-[1.02] transition-all duration-700"
               referrerPolicy="no-referrer"
             />
-            <div className="absolute inset-0 bg-linear-to-t from-slate-950/40 via-transparent to-transparent opacity-60"></div>
+            <div className="absolute inset-0 bg-gradient-to-t from-[#04140e]/60 via-transparent to-transparent opacity-60"></div>
           </motion.div>
         </div>
       </section>
 
       {/* SEÇÃO COMPARATIVA: PDF VS BIKER AI */}
-      <section className="relative py-20 px-4 sm:px-6 md:px-12 bg-gradient-to-b from-slate-900/80 via-slate-900 to-slate-950 border-y border-slate-800/80">
-        <div className="max-w-4xl mx-auto rounded-3xl border border-slate-750 bg-slate-950/90 overflow-hidden relative shadow-2xl backdrop-blur-md">
-          <div className="absolute -inset-y-12 -inset-x-12 bg-radial-to-r from-lime-500/10 to-transparent opacity-50 pointer-events-none"></div>
+      <section className="relative py-20 px-4 sm:px-6 md:px-12 bg-gradient-to-b from-[#08261d] via-[#0b3326] to-[#061e16] border-y border-emerald-500/30">
+        <div className="max-w-4xl mx-auto rounded-3xl border-2 border-emerald-500/40 bg-[#061c14]/95 overflow-hidden relative shadow-2xl backdrop-blur-md">
+          <div className="absolute -inset-y-12 -inset-x-12 bg-[radial-gradient(ellipse_at_center,rgba(132,204,22,0.15),transparent_70%)] opacity-70 pointer-events-none"></div>
           <div className="p-6 md:p-10 grid grid-cols-1 md:grid-cols-2 gap-8 relative z-10 text-left items-center">
             <div className="space-y-4">
-              <span className="text-[9px] font-mono font-bold tracking-widest text-lime-400 uppercase bg-lime-500/10 border border-lime-500/20 px-2.5 py-1 rounded-md">
+              <span className="text-[9px] font-mono font-bold tracking-widest text-lime-300 uppercase bg-lime-500/15 border border-lime-400/30 px-2.5 py-1 rounded-md">
                 Diferencial Exclusivo
               </span>
               <h4 className="text-2xl md:text-3xl font-heading font-black text-white leading-tight">Por que planilhas em PDF comuns não funcionam?</h4>
-              <p className="text-xs sm:text-sm text-slate-300 leading-relaxed font-sans">
+              <p className="text-xs sm:text-sm text-emerald-100/90 leading-relaxed font-sans">
                 Comprar um PDF genérico estático na internet parece barato, mas as tabelas de papel ou planilha travadas falham ao menor sinal de imprevisto. Se chover, se você adoecer, viajar ou trabalhar até mais tarde e pular a terça-feira, o PDF não muda sozinho para te salvar.
               </p>
-              <div className="text-xs text-lime-400 font-bold block pt-1">
+              <div className="text-xs text-lime-300 font-bold block pt-1">
                 No Biker AI, a planilha se curva à sua vida real, e nunca o contrário.
               </div>
             </div>
 
-            <div className="p-6 rounded-2xl bg-slate-900/90 border border-slate-750 space-y-4 font-sans text-xs shadow-lg">
-              <div className="flex items-center gap-2 text-xs font-bold text-white border-b border-slate-800 pb-2.5">
+            <div className="p-6 rounded-2xl bg-[#0a2c20]/90 border border-emerald-500/30 space-y-4 font-sans text-xs shadow-lg">
+              <div className="flex items-center gap-2 text-xs font-bold text-white border-b border-emerald-500/20 pb-2.5">
                 <span className="w-2.5 h-2.5 rounded-full bg-lime-400 animate-pulse"></span>
                 <span>O que acontece se você perder um treino?</span>
               </div>
@@ -459,13 +456,13 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
               <div className="space-y-4">
                 <div className="space-y-1">
                   <span className="font-bold text-rose-400 block tracking-wider uppercase text-[10px] font-mono">Planilhas Gerais Estáticas:</span>
-                  <p className="text-slate-400">Você se sente culpado, tenta empilhar o treino perdido, treina dolorido sem orientação e acaba se fadigando ou lesionando.</p>
+                  <p className="text-slate-300">Você se sente culpado, tenta empilhar o treino perdido, treina dolorido sem orientação e acaba se fadigando ou lesionando.</p>
                 </div>
                 <div className="space-y-1">
                   <span className="font-bold text-[#00E676] block tracking-wider uppercase text-[10px] font-mono font-black flex items-center gap-1">
                     <Check className="w-3 h-3 text-[#00E676]" /> Biker AI Inteligente:
                   </span>
-                  <p className="text-slate-300">Você simplesmente atualiza sua disponibilidade nas configurações. Nossa IA reorganiza a planilha e os descansos do restante da semana instantaneamente para se ajustar à sua rotina real.</p>
+                  <p className="text-emerald-100">Você simplesmente atualiza sua disponibilidade nas configurações. Nossa IA reorganiza a planilha e os descansos do restante da semana instantaneamente para se ajustar à sua rotina real.</p>
                 </div>
               </div>
             </div>
@@ -474,18 +471,18 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
       </section>
 
       {/* SEÇÃO COMO É FÁCIL USAR O BIKER AI */}
-      <section id="como-funciona" className="relative py-24 px-4 sm:px-6 md:px-12 bg-gradient-to-b from-slate-950 via-slate-900/70 to-slate-950 border-t border-slate-800 scroll-mt-24">
-        <div className="absolute inset-0 bg-radial-to-b from-lime-500/10 via-transparent to-transparent opacity-70"></div>
+      <section id="como-funciona" className="relative py-24 px-4 sm:px-6 md:px-12 bg-gradient-to-b from-[#061e16] via-[#0a3124] to-[#051c14] border-t border-emerald-500/30 scroll-mt-24">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(132,204,22,0.18),transparent_70%)] opacity-80 pointer-events-none"></div>
         <div className="max-w-7xl mx-auto w-full space-y-16 relative z-10">
           
           <div className="text-center space-y-4 max-w-3xl mx-auto">
-            <span className="text-[10px] bg-lime-500/10 border border-lime-500/25 text-lime-400 font-black px-3 py-1 rounded-full uppercase tracking-widest font-mono">
+            <span className="text-[10px] bg-lime-500/15 border border-lime-400/30 text-lime-300 font-black px-3.5 py-1 rounded-full uppercase tracking-widest font-mono">
               Sem Complicação
             </span>
             <h3 className="text-3xl sm:text-4xl font-heading font-black tracking-tight text-white">
               Sua planilha de treinos no piloto automático: <span className="text-lime-400">veja como é fácil</span>
             </h3>
-            <p className="text-sm sm:text-base text-slate-300 font-sans leading-relaxed">
+            <p className="text-sm sm:text-base text-emerald-100/90 font-sans leading-relaxed">
               Você não precisa entender de fisiologia de esporte, cálculos de watts ou passar horas configurando tabelas confusas. A inteligência artificial cuida de tudo para você pedalar melhor em apenas 3 passos simples.
             </p>
           </div>
@@ -494,88 +491,88 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             
             {/* Passo 1 */}
-            <div className="p-8 rounded-3xl bg-slate-900/90 border border-slate-750/90 space-y-5 text-left relative overflow-hidden group hover:border-lime-400/40 hover:shadow-xl hover:shadow-lime-500/10 transition-all shadow-lg shadow-black/40 backdrop-blur-xs">
-              <div className="absolute top-0 right-0 p-8 bg-lime-500/10 rounded-full pointer-events-none blur-2xl"></div>
+            <div className="p-8 rounded-3xl bg-[#08271e]/90 border border-emerald-500/35 space-y-5 text-left relative overflow-hidden group hover:border-lime-400/50 hover:shadow-2xl hover:shadow-lime-500/15 transition-all shadow-xl shadow-black/40 backdrop-blur-xs">
+              <div className="absolute top-0 right-0 p-8 bg-lime-500/15 rounded-full pointer-events-none blur-2xl"></div>
               
               <div className="flex justify-between items-start">
-                <div className="w-12 h-12 rounded-xl bg-lime-500/10 border border-lime-500/20 text-lime-400 flex items-center justify-center font-heading font-black text-lg">
+                <div className="w-12 h-12 rounded-xl bg-lime-500/15 border border-lime-400/30 text-lime-300 flex items-center justify-center font-heading font-black text-lg shadow-sm">
                   1
                 </div>
-                <span className="text-[10px] font-mono text-slate-400 bg-slate-950/80 px-2.5 py-1 rounded-lg border border-slate-800 font-semibold">
+                <span className="text-[10px] font-mono text-emerald-200 bg-[#04160f] px-2.5 py-1 rounded-lg border border-emerald-500/30 font-semibold">
                   Leva 1 minuto
                 </span>
               </div>
 
               <div className="space-y-2">
                 <h4 className="text-lg font-heading font-black text-white">Nos conte seus objetivos</h4>
-                <p className="text-xs sm:text-sm text-slate-300 leading-relaxed font-sans">
+                <p className="text-xs sm:text-sm text-emerald-100/90 leading-relaxed font-sans">
                   Responda a perguntas rápidas sobre quantos dias quer treinar na semana, seu nível atual e seus objetivos reais — seja ganhar fôlego em subidas, perder peso ou completar um desafio de longa distância com amigos.
                 </p>
               </div>
 
-              <div className="pt-4 border-t border-slate-800 space-y-1.5">
-                <span className="text-[9px] uppercase font-bold text-slate-400 font-mono tracking-wider block">O que você responde:</span>
+              <div className="pt-4 border-t border-emerald-500/20 space-y-1.5">
+                <span className="text-[9px] uppercase font-bold text-emerald-300 font-mono tracking-wider block">O que você responde:</span>
                 <div className="flex flex-wrap gap-1.5">
-                  <span className="text-[10px] text-slate-200 bg-slate-950/90 px-2 py-0.5 rounded border border-slate-800">"Tenho 3 dias livres por semana"</span>
-                  <span className="text-[10px] text-slate-200 bg-slate-950/90 px-2 py-0.5 rounded border border-slate-800">"Quero subir sem cansar tanto"</span>
+                  <span className="text-[10px] text-white bg-[#051a12] px-2.5 py-1 rounded border border-emerald-500/30">"Tenho 3 dias livres por semana"</span>
+                  <span className="text-[10px] text-white bg-[#051a12] px-2.5 py-1 rounded border border-emerald-500/30">"Quero subir sem cansar tanto"</span>
                 </div>
               </div>
             </div>
 
             {/* Passo 2 */}
-            <div className="p-8 rounded-3xl bg-slate-900/90 border border-slate-750/90 space-y-5 text-left relative overflow-hidden group hover:border-lime-400/40 hover:shadow-xl hover:shadow-lime-500/10 transition-all shadow-lg shadow-black/40 backdrop-blur-xs">
-              <div className="absolute top-0 right-0 p-8 bg-lime-500/10 rounded-full pointer-events-none blur-2xl"></div>
+            <div className="p-8 rounded-3xl bg-[#08271e]/90 border border-emerald-500/35 space-y-5 text-left relative overflow-hidden group hover:border-lime-400/50 hover:shadow-2xl hover:shadow-lime-500/15 transition-all shadow-xl shadow-black/40 backdrop-blur-xs">
+              <div className="absolute top-0 right-0 p-8 bg-lime-500/15 rounded-full pointer-events-none blur-2xl"></div>
               
               <div className="flex justify-between items-start">
-                <div className="w-12 h-12 rounded-xl bg-lime-500/10 border border-lime-500/20 text-lime-400 flex items-center justify-center font-heading font-black text-lg">
+                <div className="w-12 h-12 rounded-xl bg-lime-500/15 border border-lime-400/30 text-lime-300 flex items-center justify-center font-heading font-black text-lg shadow-sm">
                   2
                 </div>
-                <span className="text-[10px] font-mono text-lime-400 bg-lime-500/10 px-2.5 py-1 rounded-lg border border-lime-500/20 font-bold">
+                <span className="text-[10px] font-mono text-lime-300 bg-lime-500/15 px-2.5 py-1 rounded-lg border border-lime-400/30 font-bold">
                   Planilha na Hora
                 </span>
               </div>
 
               <div className="space-y-2">
                 <h4 className="text-lg font-heading font-black text-white">Sua planilha sob medida</h4>
-                <p className="text-xs sm:text-sm text-slate-300 leading-relaxed font-sans">
+                <p className="text-xs sm:text-sm text-emerald-100/90 leading-relaxed font-sans">
                   Nossa IA calcula suas zonas de esforço de forma automática (por percepção de esforço ou watts de forma totalmente invisível). Você não precisa entender de tabelas difíceis: a IA faz todo o cálculo chato nos bastidores por você.
                 </p>
               </div>
 
-              <div className="pt-4 border-t border-slate-800 space-y-1.5">
-                <span className="text-[9px] uppercase font-bold text-slate-400 font-mono tracking-wider block">A IA Cuida de Tudo nos Bastidores:</span>
+              <div className="pt-4 border-t border-emerald-500/20 space-y-1.5">
+                <span className="text-[9px] uppercase font-bold text-emerald-300 font-mono tracking-wider block">A IA Cuida de Tudo nos Bastidores:</span>
                 <div className="flex flex-wrap gap-1.5">
-                  <span className="text-[10px] text-lime-400 bg-lime-500/10 px-2 py-0.5 rounded border border-lime-500/20 font-medium">Zonas de Ritmo Descomplicadas</span>
-                  <span className="text-[10px] text-lime-400 bg-lime-500/10 px-2 py-0.5 rounded border border-lime-500/20 font-medium">Watts & Frequência Automáticos</span>
+                  <span className="text-[10px] text-lime-300 bg-lime-500/15 px-2.5 py-1 rounded border border-lime-400/30 font-medium">Zonas de Ritmo Descomplicadas</span>
+                  <span className="text-[10px] text-lime-300 bg-lime-500/15 px-2.5 py-1 rounded border border-lime-400/30 font-medium">Watts & Frequência Automáticos</span>
                 </div>
               </div>
             </div>
 
             {/* Passo 3 */}
-            <div className="p-8 rounded-3xl bg-slate-900/90 border border-slate-750/90 space-y-5 text-left relative overflow-hidden group hover:border-lime-400/40 hover:shadow-xl hover:shadow-lime-500/10 transition-all shadow-lg shadow-black/40 backdrop-blur-xs">
-              <div className="absolute top-0 right-0 p-8 bg-lime-500/10 rounded-full pointer-events-none blur-2xl"></div>
+            <div className="p-8 rounded-3xl bg-[#08271e]/90 border border-emerald-500/35 space-y-5 text-left relative overflow-hidden group hover:border-lime-400/50 hover:shadow-2xl hover:shadow-lime-500/15 transition-all shadow-xl shadow-black/40 backdrop-blur-xs">
+              <div className="absolute top-0 right-0 p-8 bg-lime-500/15 rounded-full pointer-events-none blur-2xl"></div>
               
               <div className="flex justify-between items-start">
-                <div className="w-12 h-12 rounded-xl bg-lime-500/10 border border-lime-500/20 text-lime-400 flex items-center justify-center font-heading font-black text-lg">
+                <div className="w-12 h-12 rounded-xl bg-lime-500/15 border border-lime-400/30 text-lime-300 flex items-center justify-center font-heading font-black text-lg shadow-sm">
                   3
                 </div>
-                <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/20 font-bold">
+                <span className="text-[10px] font-mono text-emerald-300 bg-emerald-500/15 px-2.5 py-1 rounded-lg border border-emerald-400/30 font-bold">
                   Recalibrar é Rápido
                 </span>
               </div>
 
               <div className="space-y-2">
                 <h4 className="text-lg font-heading font-black text-white">Flexibilidade que te entende</h4>
-                <p className="text-xs sm:text-sm text-slate-300 leading-relaxed font-sans">
+                <p className="text-xs sm:text-sm text-emerald-100/90 leading-relaxed font-sans">
                   Marcou o pedal como finalizado? Registre de forma super rápida suas sensações e percepção de esforço. Se precisar saltar algum treino por imprevisto, o sistema reagenda toda a semana de forma inteligente!
                 </p>
               </div>
 
-              <div className="pt-4 border-t border-slate-800 space-y-1.5">
-                <span className="text-[9px] uppercase font-bold text-slate-400 font-mono tracking-wider block">Flexibilidade Real:</span>
+              <div className="pt-4 border-t border-emerald-500/20 space-y-1.5">
+                <span className="text-[9px] uppercase font-bold text-emerald-300 font-mono tracking-wider block">Flexibilidade Real:</span>
                 <div className="flex flex-wrap gap-1.5">
-                  <span className="text-[10px] text-[#00E676] bg-[#00E676]/10 px-2 py-0.5 rounded border border-[#00E676]/20">Registro de Esforço</span>
-                  <span className="text-[10px] text-[#00E676] bg-[#00E676]/10 px-2 py-0.5 rounded border border-[#00E676]/20">Adaptação sob Imprevistos</span>
+                  <span className="text-[10px] text-[#00E676] bg-[#00E676]/15 px-2.5 py-1 rounded border border-[#00E676]/30">Registro de Esforço</span>
+                  <span className="text-[10px] text-[#00E676] bg-[#00E676]/15 px-2.5 py-1 rounded border border-[#00E676]/30">Adaptação sob Imprevistos</span>
                 </div>
               </div>
             </div>
@@ -586,17 +583,17 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
       </section>
 
       {/* Benefits Section with Bento Grid Layout */}
-      <section id="beneficios" className="bg-gradient-to-b from-slate-900/80 via-slate-900/95 to-slate-950 border-y border-slate-800 py-24 px-4 sm:px-6 md:px-12 scroll-mt-24 relative">
+      <section id="beneficios" className="bg-gradient-to-b from-[#051c14] via-[#092e22] to-[#051a13] border-y border-emerald-500/30 py-24 px-4 sm:px-6 md:px-12 scroll-mt-24 relative">
         <div className="max-w-7xl mx-auto w-full space-y-12 relative z-10">
           
           <div className="text-center space-y-3 max-w-3xl mx-auto">
-            <span className="text-[10px] bg-lime-500/10 border border-lime-500/25 text-lime-400 font-black px-3 py-1 rounded-full uppercase tracking-wider">
+            <span className="text-[10px] bg-lime-500/15 border border-lime-400/30 text-lime-300 font-black px-3.5 py-1 rounded-full uppercase tracking-wider">
               Ecossistema Completo
             </span>
             <h3 className="text-3xl sm:text-4xl font-heading font-black tracking-tight text-white">
               Os Benefícios de Treinar Com a <span className="text-lime-400">Biker AI</span>
             </h3>
-            <p className="text-sm text-slate-300 font-sans leading-relaxed">
+            <p className="text-sm text-emerald-100/90 font-sans leading-relaxed">
               Pensamos em cada detalhe para ajudar ciclistas que precisam dividir o tempo entre família, trabalho e o prazer de pedalar com qualidade, sem complicação.
             </p>
           </div>
@@ -605,13 +602,13 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             
             {/* Card 1 */}
-            <div className="p-6 rounded-3xl bg-slate-900/90 border border-slate-750/80 flex flex-col justify-between hover:border-lime-400/40 hover:shadow-xl hover:shadow-lime-500/5 transition-all group space-y-4 text-left shadow-lg shadow-black/20 backdrop-blur-xs">
+            <div className="p-6 rounded-3xl bg-[#07241b]/90 border border-emerald-500/35 flex flex-col justify-between hover:border-lime-400/50 hover:shadow-xl hover:shadow-lime-500/10 transition-all group space-y-4 text-left shadow-lg shadow-black/30 backdrop-blur-xs">
               <div className="space-y-3">
-                <div className="w-10 h-10 rounded-2xl bg-lime-500/10 border border-lime-500/20 text-lime-400 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-2xl bg-lime-500/15 border border-lime-400/30 text-lime-300 flex items-center justify-center">
                   <Activity className="w-5 h-5 group-hover:animate-pulse" />
                 </div>
                 <h4 className="font-heading font-black text-base text-white">Planilhas Fáceis de Seguir</h4>
-                <p className="text-xs text-slate-350 leading-relaxed">
+                <p className="text-xs text-emerald-100/80 leading-relaxed">
                   Treinos pensados totalmente para a sua rotina diária. O sistema cria e ajusta as sessões de acordo com o seu cansaço e o seu tempo livre.
                 </p>
               </div>
@@ -619,13 +616,13 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
             </div>
 
             {/* Card 2 */}
-            <div className="p-6 rounded-3xl bg-slate-900/90 border border-slate-750/80 flex flex-col justify-between hover:border-emerald-400/40 hover:shadow-xl hover:shadow-emerald-500/5 transition-all group space-y-4 text-left shadow-lg shadow-black/20 backdrop-blur-xs">
+            <div className="p-6 rounded-3xl bg-[#07241b]/90 border border-emerald-500/35 flex flex-col justify-between hover:border-emerald-400/50 hover:shadow-xl hover:shadow-emerald-500/10 transition-all group space-y-4 text-left shadow-lg shadow-black/30 backdrop-blur-xs">
               <div className="space-y-3">
-                <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-500/15 border border-emerald-400/30 text-emerald-300 flex items-center justify-center">
                   <Sliders className="w-5 h-5" />
                 </div>
                 <h4 className="font-heading font-black text-base text-white">Zonas de Ritmo Claras</h4>
-                <p className="text-xs text-slate-350 leading-relaxed">
+                <p className="text-xs text-emerald-100/80 leading-relaxed">
                   Zonas de esforço sob medida para você, adaptadas para a sua frequência cardíaca e potência, evitando cansaço excessivo.
                 </p>
               </div>
@@ -633,13 +630,13 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
             </div>
 
             {/* Card 3 */}
-            <div className="p-6 rounded-3xl bg-slate-900/90 border border-slate-750/80 flex flex-col justify-between hover:border-yellow-400/40 hover:shadow-xl hover:shadow-yellow-500/5 transition-all group space-y-4 text-left shadow-lg shadow-black/20 backdrop-blur-xs">
+            <div className="p-6 rounded-3xl bg-[#07241b]/90 border border-emerald-500/35 flex flex-col justify-between hover:border-yellow-400/50 hover:shadow-xl hover:shadow-yellow-500/10 transition-all group space-y-4 text-left shadow-lg shadow-black/30 backdrop-blur-xs">
               <div className="space-y-3">
-                <div className="w-10 h-10 rounded-2xl bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-2xl bg-yellow-500/15 border border-yellow-400/30 text-yellow-300 flex items-center justify-center">
                   <TrendingUp className="w-5 h-5" />
                 </div>
                 <h4 className="font-heading font-black text-base text-white">Progresso Sem Mistério</h4>
-                <p className="text-xs text-slate-350 leading-relaxed">
+                <p className="text-xs text-emerald-100/80 leading-relaxed">
                   Gráficos super simples e limpos que mostram as suas metas de treino, total de horas pedaladas e a evolução da sua resistência semanal.
                 </p>
               </div>
@@ -647,13 +644,13 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
             </div>
 
             {/* Card 4 */}
-            <div className="p-6 rounded-3xl bg-slate-900/90 border border-slate-750/80 flex flex-col justify-between hover:border-blue-400/40 hover:shadow-xl hover:shadow-blue-500/5 transition-all group space-y-4 text-left shadow-lg shadow-black/20 backdrop-blur-xs">
+            <div className="p-6 rounded-3xl bg-[#07241b]/90 border border-emerald-500/35 flex flex-col justify-between hover:border-blue-400/50 hover:shadow-xl hover:shadow-blue-500/10 transition-all group space-y-4 text-left shadow-lg shadow-black/30 backdrop-blur-xs">
               <div className="space-y-3">
-                <div className="w-10 h-10 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-2xl bg-blue-500/15 border border-blue-400/30 text-blue-300 flex items-center justify-center">
                   <Zap className="w-5 h-5" />
                 </div>
                 <h4 className="font-heading font-black text-base text-white">Pedaladas Automáticas</h4>
-                <p className="text-xs text-slate-350 leading-relaxed">
+                <p className="text-xs text-emerald-100/80 leading-relaxed">
                   Grave seus treinos ou junte suas atividades para que suas pedaladas fiquem registradas diretamente em sua conta sem trabalho manual no dia a dia.
                 </p>
               </div>
@@ -661,13 +658,13 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
             </div>
 
             {/* Card 6 */}
-            <div className="p-6 rounded-3xl bg-slate-900/90 border border-slate-750/80 flex flex-col justify-between hover:border-sky-400/40 hover:shadow-xl hover:shadow-sky-500/5 transition-all group space-y-4 text-left shadow-lg shadow-black/20 backdrop-blur-xs">
+            <div className="p-6 rounded-3xl bg-[#07241b]/90 border border-emerald-500/35 flex flex-col justify-between hover:border-sky-400/50 hover:shadow-xl hover:shadow-sky-500/10 transition-all group space-y-4 text-left shadow-lg shadow-black/30 backdrop-blur-xs">
               <div className="space-y-3">
-                <div className="w-10 h-10 rounded-2xl bg-sky-500/10 border border-sky-500/20 text-sky-400 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-2xl bg-sky-500/15 border border-sky-400/30 text-sky-300 flex items-center justify-center">
                   <Calendar className="w-5 h-5" />
                 </div>
                 <h4 className="font-heading font-black text-base text-white">Organize do Seu Jeito</h4>
-                <p className="text-xs text-slate-350 leading-relaxed">
+                <p className="text-xs text-emerald-100/80 leading-relaxed">
                   Selecione os dias da semana em que você tem fôlego ou disponibilidade para pedalar. O sistema cria e distribui os treinos de acordo com o seu plano.
                 </p>
               </div>
@@ -680,50 +677,50 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
       </section>
 
       {/* Transparência e Garantias Section */}
-      <section id="garantia" className="py-20 px-4 sm:px-6 md:px-12 bg-gradient-to-b from-slate-950 via-slate-900/80 to-slate-950 border-t border-slate-800 text-left">
+      <section id="garantia" className="py-20 px-4 sm:px-6 md:px-12 bg-gradient-to-b from-[#051a13] via-[#092c21] to-[#051a13] border-t border-emerald-500/30 text-left">
         <div className="max-w-4xl mx-auto w-full space-y-8">
           <div className="text-center space-y-2">
-            <span className="text-[10px] bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-black px-3 py-1 rounded-full uppercase tracking-wider">
+            <span className="text-[10px] bg-emerald-500/15 border border-emerald-400/30 text-emerald-300 font-black px-3.5 py-1 rounded-full uppercase tracking-wider">
               Segurança e Transparência
             </span>
             <h3 className="text-2xl sm:text-3xl font-heading font-black text-white">
               Sua Satisfação em Primeiro Lugar
             </h3>
-            <p className="text-xs sm:text-sm text-slate-300 font-sans max-w-xl mx-auto">
+            <p className="text-xs sm:text-sm text-emerald-100/90 font-sans max-w-xl mx-auto">
               Acreditamos tanto na qualidade do nosso acompanhamento de ciclismo que eliminamos todo o risco para você.
             </p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {/* Card 1: Garantia */}
-            <div className="p-5 rounded-2xl bg-slate-900/90 border border-slate-750 space-y-2.5 shadow-md">
-              <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center">
+            <div className="p-5 rounded-2xl bg-[#07241b]/90 border border-emerald-500/30 space-y-2.5 shadow-md">
+              <div className="w-9 h-9 rounded-xl bg-emerald-500/15 border border-emerald-400/30 text-emerald-300 flex items-center justify-center">
                 <ShieldCheck className="w-5 h-5" />
               </div>
               <h4 className="font-heading font-bold text-sm text-white">Garantia de 7 Dias</h4>
-              <p className="text-xs text-slate-300 font-sans leading-relaxed">
+              <p className="text-xs text-emerald-100/80 font-sans leading-relaxed">
                 Acesse a plataforma, gere sua planilha e converse com o treinador. Se não gostar, devolvemos 100% do seu dinheiro.
               </p>
             </div>
 
             {/* Card 2: Sem Fidelidade */}
-            <div className="p-5 rounded-2xl bg-slate-900/90 border border-slate-750 space-y-2.5 shadow-md">
-              <div className="w-9 h-9 rounded-xl bg-lime-500/10 border border-lime-500/20 text-lime-400 flex items-center justify-center">
+            <div className="p-5 rounded-2xl bg-[#07241b]/90 border border-emerald-500/30 space-y-2.5 shadow-md">
+              <div className="w-9 h-9 rounded-xl bg-lime-500/15 border border-lime-400/30 text-lime-300 flex items-center justify-center">
                 <CheckCircle className="w-5 h-5" />
               </div>
               <h4 className="font-heading font-bold text-sm text-white">Cancele Quando Quiser</h4>
-              <p className="text-xs text-slate-300 font-sans leading-relaxed">
+              <p className="text-xs text-emerald-100/80 font-sans leading-relaxed">
                 Sem contrato de fidelidade, sem carência e sem taxas de cancelamento. Você tem controle total da sua assinatura.
               </p>
             </div>
 
             {/* Card 3: Preço Transparente */}
-            <div className="p-5 rounded-2xl bg-slate-900/90 border border-slate-750 space-y-2.5 shadow-md">
-              <div className="w-9 h-9 rounded-xl bg-sky-500/10 border border-sky-500/20 text-sky-400 flex items-center justify-center">
+            <div className="p-5 rounded-2xl bg-[#07241b]/90 border border-emerald-500/30 space-y-2.5 shadow-md">
+              <div className="w-9 h-9 rounded-xl bg-sky-500/15 border border-sky-400/30 text-sky-300 flex items-center justify-center">
                 <Lock className="w-5 h-5" />
               </div>
               <h4 className="font-heading font-bold text-sm text-white">R$ 10,90 / mês</h4>
-              <p className="text-xs text-slate-300 font-sans leading-relaxed">
+              <p className="text-xs text-emerald-100/80 font-sans leading-relaxed">
                 Preço único, acessível e sem cobranças surpresas. Processamento criptografado via Mercado Pago.
               </p>
             </div>
@@ -732,23 +729,23 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
       </section>
 
       {/* Centered Auth Section placed AFTER "Como Funciona" */}
-      <section id="auth-section" className="relative py-24 px-4 sm:px-6 md:px-12 bg-gradient-to-b from-slate-950 via-slate-900/90 to-slate-950 border-t border-slate-800 scroll-mt-24">
-        <div className="absolute inset-0 bg-radial-to-b from-lime-500/15 via-transparent to-transparent opacity-75"></div>
+      <section id="auth-section" className="relative py-24 px-4 sm:px-6 md:px-12 bg-gradient-to-b from-[#051a13] via-[#0a3124] to-[#04140e] border-t border-emerald-500/30 scroll-mt-24">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(132,204,22,0.25),transparent_70%)] opacity-90 pointer-events-none"></div>
         <div className="max-w-xl mx-auto w-full relative z-10 space-y-8">
           
-          <div className="absolute inset-0 bg-linear-to-r from-lime-500/15 to-emerald-500/15 rounded-3xl blur-2xl -z-10 opacity-80"></div>
+          <div className="absolute inset-0 bg-gradient-to-r from-lime-500/25 to-emerald-500/25 rounded-3xl blur-3xl -z-10 opacity-80"></div>
           
-          <div className="w-full bg-slate-900/95 border-2 border-slate-700/90 rounded-3xl shadow-[0_0_50px_rgba(132,204,22,0.12)] p-6 sm:p-8 backdrop-blur-xl relative z-10 space-y-6">
+          <div className="w-full bg-[#072218]/95 border-2 border-lime-400/60 rounded-3xl shadow-[0_0_60px_rgba(132,204,22,0.22)] p-6 sm:p-8 backdrop-blur-xl relative z-10 space-y-6">
             
             {/* Logo e Welcome */}
             <div className="text-center space-y-1.5">
-              <div className="inline-flex p-2.5 bg-lime-500/10 border border-lime-500/20 rounded-2xl text-lime-400 mb-1">
+              <div className="inline-flex p-2.5 bg-lime-500/15 border border-lime-400/30 rounded-2xl text-lime-300 mb-1 shadow-sm">
                 <Bike className="w-6 h-6" />
               </div>
               <h3 className="font-heading font-black text-lg tracking-tight uppercase text-white">
                 {isLogin ? "Entrar na sua conta" : "Criar sua conta nova"}
               </h3>
-              <p className="text-[11px] text-slate-400 leading-relaxed font-sans">
+              <p className="text-[11px] text-emerald-200/90 leading-relaxed font-sans">
                 {isLogin 
                   ? "Coloque seu e-mail e senha abaixo para ver seus treinos de hoje." 
                   : "Crie seu cadastro rápido para receber treinos fáceis e personalizados de verdade."
@@ -757,18 +754,18 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
             </div>
 
             {/* Selector de Abas */}
-            <div className="flex p-0.5 bg-slate-950 rounded-xl border border-slate-850">
+            <div className="flex p-0.5 bg-[#04140e] rounded-xl border border-emerald-500/30">
               <button 
                 type="button"
                 onClick={() => { setIsLogin(true); setError(""); setSuccessMsg(""); }}
-                className={`flex-1 py-2 text-[11px] font-bold font-heading rounded-lg uppercase transition-all cursor-pointer ${isLogin ? 'bg-slate-800 text-lime-400 shadow-sm border border-slate-700' : 'text-slate-455 hover:text-white'}`}
+                className={`flex-1 py-2 text-[11px] font-bold font-heading rounded-lg uppercase transition-all cursor-pointer ${isLogin ? 'bg-[#092d21] text-lime-300 shadow-sm border border-emerald-400/40' : 'text-emerald-300 hover:text-white'}`}
               >
                 Entrar
               </button>
               <button 
                 type="button"
                 onClick={() => { setIsLogin(false); setError(""); setSuccessMsg(""); }}
-                className={`flex-1 py-2 text-[11px] font-bold font-heading rounded-lg uppercase transition-all cursor-pointer ${!isLogin ? 'bg-slate-800 text-lime-400 shadow-sm border border-slate-700' : 'text-slate-455 hover:text-white'}`}
+                className={`flex-1 py-2 text-[11px] font-bold font-heading rounded-lg uppercase transition-all cursor-pointer ${!isLogin ? 'bg-[#092d21] text-lime-300 shadow-sm border border-emerald-400/40' : 'text-emerald-300 hover:text-white'}`}
               >
                 Criar Conta
               </button>
@@ -781,7 +778,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.95 }}
-                  className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-400 text-xs flex gap-2.5 items-start text-left"
+                  className="p-3 bg-rose-500/15 border border-rose-500/30 rounded-xl text-rose-300 text-xs flex gap-2.5 items-start text-left"
                 >
                   <ShieldAlert className="w-4 h-4 shrink-0 mt-0.5" />
                   <span>{error}</span>
@@ -793,7 +790,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.95 }}
-                  className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-400 text-xs flex gap-2.5 items-start text-left"
+                  className="p-3 bg-emerald-500/15 border border-emerald-500/30 rounded-xl text-emerald-300 text-xs flex gap-2.5 items-start text-left"
                 >
                   <CheckCircle className="w-4 h-4 shrink-0 mt-0.5" />
                   <span>{successMsg}</span>
@@ -807,16 +804,16 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
               {/* Campo Nome (Apenas Cadastro) */}
               {!isLogin && (
                 <div className="space-y-1">
-                  <label className="block text-[10px] uppercase font-bold tracking-wider text-slate-400">Seu Nome de Atleta</label>
+                  <label className="block text-[10px] uppercase font-bold tracking-wider text-emerald-300">Seu Nome de Atleta</label>
                   <div className="relative">
-                    <User className="absolute left-3.5 top-3.5 w-4 h-4 text-slate-500" />
+                    <User className="absolute left-3.5 top-3.5 w-4 h-4 text-emerald-400" />
                     <input 
                       type="text"
                       required
                       placeholder="Ex: Pedro Henrique"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-850 hover:border-slate-800 focus:border-lime-500/40 rounded-xl pl-10 pr-4 py-3 text-xs outline-hidden focus:ring-1 focus:ring-lime-500/40 transition-all text-white placeholder:text-slate-600 font-heading font-medium"
+                      className="w-full bg-[#04150f] border border-emerald-500/30 hover:border-emerald-400/50 focus:border-lime-400 rounded-xl pl-10 pr-4 py-3 text-xs outline-hidden focus:ring-1 focus:ring-lime-400 transition-all text-white placeholder:text-emerald-700 font-heading font-medium"
                     />
                   </div>
                 </div>
@@ -824,16 +821,16 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
 
               {/* Campo Email */}
               <div className="space-y-1">
-                <label className="block text-[10px] uppercase font-bold tracking-wider text-slate-400">E-mail de Cadastro</label>
+                <label className="block text-[10px] uppercase font-bold tracking-wider text-emerald-300">E-mail de Cadastro</label>
                 <div className="relative">
-                  <Mail className="absolute left-3.5 top-3.5 w-4 h-4 text-slate-500" />
+                  <Mail className="absolute left-3.5 top-3.5 w-4 h-4 text-emerald-400" />
                   <input 
                     type="email"
                     required
                     placeholder="atleta@exemplo.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-850 hover:border-slate-800 focus:border-lime-500/40 rounded-xl pl-10 pr-4 py-3 text-xs outline-hidden focus:ring-1 focus:ring-lime-500/40 transition-all text-white placeholder:text-slate-600 font-mono"
+                    className="w-full bg-[#04150f] border border-emerald-500/30 hover:border-emerald-400/50 focus:border-lime-400 rounded-xl pl-10 pr-4 py-3 text-xs outline-hidden focus:ring-1 focus:ring-lime-400 transition-all text-white placeholder:text-emerald-700 font-mono"
                   />
                 </div>
               </div>
@@ -841,23 +838,23 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
               {/* Campo Senha */}
               <div className="space-y-1">
                 <div className="flex justify-between items-center">
-                  <label className="block text-[10px] uppercase font-bold tracking-wider text-slate-400">Senha Privada</label>
-                  {isLogin && <span className="text-[9px] text-slate-500 select-none">Mínimo 6 dígitos</span>}
+                  <label className="block text-[10px] uppercase font-bold tracking-wider text-emerald-300">Senha Privada</label>
+                  {isLogin && <span className="text-[9px] text-emerald-400/80 select-none">Mínimo 6 dígitos</span>}
                 </div>
                 <div className="relative">
-                  <Lock className="absolute left-3.5 top-3.5 w-4 h-4 text-slate-500" />
+                  <Lock className="absolute left-3.5 top-3.5 w-4 h-4 text-emerald-400" />
                   <input 
                     type={showPassword ? "text" : "password"}
                     required
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-850 hover:border-slate-800 focus:border-lime-500/40 rounded-xl pl-10 pr-10 py-3 text-xs outline-hidden focus:ring-1 focus:ring-lime-500/40 transition-all text-white placeholder:text-slate-600 font-mono"
+                    className="w-full bg-[#04150f] border border-emerald-500/30 hover:border-emerald-400/50 focus:border-lime-400 rounded-xl pl-10 pr-10 py-3 text-xs outline-hidden focus:ring-1 focus:ring-lime-400 transition-all text-white placeholder:text-emerald-700 font-mono"
                   />
                   <button 
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3.5 top-3.5 text-slate-500 hover:text-white"
+                    className="absolute right-3.5 top-3.5 text-emerald-400 hover:text-white"
                   >
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
@@ -867,7 +864,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
               <button 
                 type="submit"
                 disabled={isSubmitting}
-                className={`w-full bg-linear-to-r from-lime-500 to-emerald-500 hover:from-lime-450 hover:to-emerald-450 active:scale-98 text-slate-950 py-3.5 px-4 rounded-xl text-xs font-black font-heading uppercase tracking-wider flex items-center justify-center gap-2 transition-all mt-6 shadow-lg shadow-lime-500/20 ${isSubmitting ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer'}`}
+                className={`w-full bg-gradient-to-r from-lime-400 to-emerald-400 hover:from-lime-300 hover:to-emerald-300 active:scale-98 text-slate-950 py-3.5 px-4 rounded-xl text-xs font-black font-heading uppercase tracking-wider flex items-center justify-center gap-2 transition-all mt-6 shadow-xl shadow-lime-500/25 cursor-pointer border-none ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''}`}
               >
                 {isSubmitting ? (
                   <>
@@ -885,7 +882,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
 
             {/* Trust and Guarantees Micro-copy */}
             <div className="pt-2 text-center space-y-2">
-              <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[10px] text-slate-400 font-sans font-medium">
+              <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[10px] text-emerald-200/80 font-sans font-medium">
                 <span className="flex items-center gap-1">
                   <ShieldCheck className="w-3.5 h-3.5 text-lime-400" />
                   Garantia de 7 Dias
@@ -902,9 +899,9 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
             </div>
 
             {/* App installation container */}
-            <div className="pt-4 border-t border-slate-800/60 text-center space-y-3">
+            <div className="pt-4 border-t border-emerald-500/20 text-center space-y-3">
               {isPortable ? (
-                <div className="inline-flex items-center gap-1.5 py-1.5 px-3 bg-emerald-500/10 border border-emerald-500/20 rounded-full text-emerald-400 text-[10px] font-semibold">
+                <div className="inline-flex items-center gap-1.5 py-1.5 px-3 bg-emerald-500/15 border border-emerald-500/30 rounded-full text-emerald-300 text-[10px] font-semibold">
                   <CheckCircle className="w-3.5 h-3.5" />
                   <span>Aplicativo Instalado com Sucesso</span>
                 </div>
@@ -912,7 +909,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
                 <button
                   type="button"
                   onClick={handleInstallClick}
-                  className="inline-flex justify-center items-center gap-1.5 text-xs text-slate-400 hover:text-lime-400 transition-colors uppercase tracking-wider font-bold"
+                  className="inline-flex justify-center items-center gap-1.5 text-xs text-emerald-300 hover:text-lime-300 transition-colors uppercase tracking-wider font-bold cursor-pointer"
                 >
                   <Download className="w-3.5 h-3.5 shrink-0" />
                   <span>Baixar Biker AI no seu Celular</span>
@@ -922,7 +919,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
               <div className="pt-1 flex justify-center">
                 <a
                   href="mailto:bikeraisupport@gmail.com"
-                  className="inline-flex items-center gap-2 px-3 py-2 bg-slate-900/90 hover:bg-slate-850 text-lime-400 hover:text-lime-300 border border-slate-750 hover:border-slate-650 rounded-xl text-[11px] sm:text-xs font-bold transition-all shadow-sm max-w-full"
+                  className="inline-flex items-center gap-2 px-3 py-2 bg-[#051a13] hover:bg-[#08291e] text-lime-300 hover:text-lime-200 border border-emerald-500/30 hover:border-emerald-400 rounded-xl text-[11px] sm:text-xs font-bold transition-all shadow-sm max-w-full"
                 >
                   <Mail className="w-4 h-4 text-lime-400 shrink-0" />
                   <span className="leading-tight">Dúvidas? Envie um email para <strong>bikeraisupport@gmail.com</strong></span>
@@ -933,28 +930,28 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
           </div>
         </div>
       </section>
-      <footer className="border-t border-slate-900 bg-slate-950 py-8 sm:py-12 px-4 sm:px-6 md:px-12 text-slate-500 font-sans text-xs pb-24 sm:pb-12">
+      <footer className="border-t border-emerald-900/60 bg-[#030e09] py-8 sm:py-12 px-4 sm:px-6 md:px-12 text-emerald-300/70 font-sans text-xs pb-24 sm:pb-12">
         <div className="max-w-7xl mx-auto flex flex-col lg:flex-row items-center justify-between gap-6 text-center sm:text-left">
           
           <div className="flex items-center gap-2.5">
-            <div className="p-2 bg-slate-900 rounded-xl text-lime-400 border border-slate-800">
+            <div className="p-2 bg-[#051912] rounded-xl text-lime-400 border border-emerald-500/30">
               <Bike className="w-5 h-5" />
             </div>
             <p className="text-xs sm:text-sm font-extrabold text-white">BIKER AI — Smart Assessment</p>
           </div>
 
           <div className="flex flex-wrap justify-center items-center gap-x-4 gap-y-2.5 text-xs">
-            <button type="button" onClick={() => scrollToSection("como-funciona")} className="hover:text-white transition-colors cursor-pointer bg-transparent border-none p-0 text-slate-400">Como funciona</button>
-            <span className="text-slate-800 hidden xs:inline">•</span>
-            <button type="button" onClick={() => scrollToSection("beneficios")} className="hover:text-white transition-colors cursor-pointer bg-transparent border-none p-0 text-slate-400">Benefícios</button>
-            <span className="text-slate-800 hidden xs:inline">•</span>
+            <button type="button" onClick={() => scrollToSection("como-funciona")} className="hover:text-white transition-colors cursor-pointer bg-transparent border-none p-0 text-emerald-200">Como funciona</button>
+            <span className="text-emerald-800 hidden xs:inline">•</span>
+            <button type="button" onClick={() => scrollToSection("beneficios")} className="hover:text-white transition-colors cursor-pointer bg-transparent border-none p-0 text-emerald-200">Benefícios</button>
+            <span className="text-emerald-800 hidden xs:inline">•</span>
             <button type="button" onClick={() => scrollToSection("auth-section")} className="text-lime-400 hover:text-lime-300 font-bold transition-colors cursor-pointer bg-transparent border-none p-0">Entrar no Portal</button>
           </div>
 
           <div className="flex items-center justify-center">
             <a 
               href="mailto:bikeraisupport@gmail.com"
-              className="inline-flex items-center gap-2 px-3.5 py-2 bg-slate-900 hover:bg-slate-850 text-lime-400 border border-slate-800 rounded-xl text-xs font-bold transition-all shadow-sm max-w-full"
+              className="inline-flex items-center gap-2 px-3.5 py-2 bg-[#051912] hover:bg-[#09291f] text-lime-300 border border-emerald-500/30 rounded-xl text-xs font-bold transition-all shadow-sm max-w-full"
             >
               <Mail className="w-4 h-4 text-lime-400 shrink-0" />
               <span>Suporte: bikeraisupport@gmail.com</span>
@@ -963,7 +960,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
 
         </div>
 
-        <div className="max-w-7xl mx-auto pt-6 mt-6 border-t border-slate-900/80 flex flex-col sm:flex-row items-center justify-between gap-2 text-center text-[10px] text-slate-600 font-mono">
+        <div className="max-w-7xl mx-auto pt-6 mt-6 border-t border-emerald-900/40 flex flex-col sm:flex-row items-center justify-between gap-2 text-center text-[10px] text-emerald-400/60 font-mono">
           <span>© 2026 Biker AI. Versão 2.1 • Todos os direitos reservados.</span>
           <span>Treino Personalizado • Inteligência Artificial</span>
         </div>
@@ -972,31 +969,31 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
       {/* Guide overlay installation guide */}
       <AnimatePresence>
         {showInstallGuide && (
-          <div id="install-guide-modal-backdrop" className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md">
+          <div id="install-guide-modal-backdrop" className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#030e09]/80 backdrop-blur-md">
             <motion.div
               id="install-guide-modal-content"
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl p-6 relative font-sans text-white text-left"
+              className="w-full max-w-md bg-[#07241b] border-2 border-emerald-500/40 rounded-3xl overflow-hidden shadow-2xl p-6 relative font-sans text-white text-left"
             >
               <button
                 type="button"
                 onClick={() => setShowInstallGuide(false)}
-                className="absolute right-4 top-4 text-slate-400 hover:text-white p-1 rounded-lg bg-slate-950/40 hover:bg-slate-850 transition-colors cursor-pointer"
+                className="absolute right-4 top-4 text-emerald-300 hover:text-white p-1 rounded-lg bg-[#04150f] hover:bg-[#092d21] transition-colors cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
 
-              <div className="flex items-center gap-3 pb-3 border-b border-slate-800">
-                <div className="p-2.5 bg-lime-500/15 border border-lime-500/30 rounded-2xl text-lime-400">
+              <div className="flex items-center gap-3 pb-3 border-b border-emerald-500/20">
+                <div className="p-2.5 bg-lime-500/15 border border-lime-400/30 rounded-2xl text-lime-300">
                   <Smartphone className="w-5 h-5" />
                 </div>
                 <div>
                   <h3 className="font-heading font-black text-sm uppercase tracking-wide">
                     Como Instalar o Biker AI
                   </h3>
-                  <p className="text-[10px] text-slate-400 mt-0.5 font-mono">
+                  <p className="text-[10px] text-emerald-300/70 mt-0.5 font-mono">
                     Adicione à tela inicial como um aplicativo nativo
                   </p>
                 </div>
@@ -1005,13 +1002,13 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
               <div className="py-4 space-y-4">
                 
                 {/* iOS Instructions */}
-                <div className="bg-slate-950/50 p-3.5 rounded-2xl border border-slate-850/80 space-y-2">
-                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-sky-500/10 text-sky-400 rounded-md text-[9px] font-bold tracking-wider uppercase font-heading">
+                <div className="bg-[#041610] p-3.5 rounded-2xl border border-emerald-500/25 space-y-2">
+                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-sky-500/15 text-sky-300 rounded-md text-[9px] font-bold tracking-wider uppercase font-heading">
                     No iPhone (Safari / iOS)
                   </span>
-                  <ol className="list-decimal list-inside text-xs text-slate-300 space-y-1.5 leading-relaxed pl-1 font-medium">
+                  <ol className="list-decimal list-inside text-xs text-emerald-100/90 space-y-1.5 leading-relaxed pl-1 font-medium">
                     <li>
-                      Toque no botão de <span className="inline-flex items-center gap-1 px-1 py-0.5 bg-slate-850 rounded text-slate-300 text-[10px]"><Share className="w-3 h-3 text-slate-300 inline" /> Compartilhar</span> na barra inferior do Safari.
+                      Toque no botão de <span className="inline-flex items-center gap-1 px-1 py-0.5 bg-[#092d21] rounded text-emerald-200 text-[10px]"><Share className="w-3 h-3 text-emerald-300 inline" /> Compartilhar</span> na barra inferior do Safari.
                     </li>
                     <li>
                       Role a lista de opções para baixo e toque em <strong className="text-white">"Adicionar à Tela de Início"</strong>.
@@ -1023,11 +1020,11 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
                 </div>
 
                 {/* Android / Desktop Instructions */}
-                <div className="bg-slate-950/50 p-3.5 rounded-2xl border border-slate-850/80 space-y-2">
-                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-amber-500/10 text-amber-400 rounded-md text-[9px] font-bold tracking-wider uppercase font-heading">
+                <div className="bg-[#041610] p-3.5 rounded-2xl border border-emerald-500/25 space-y-2">
+                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-amber-500/15 text-amber-300 rounded-md text-[9px] font-bold tracking-wider uppercase font-heading">
                     No Android (Chrome) ou Computador
                   </span>
-                  <ol className="list-decimal list-inside text-xs text-slate-300 space-y-1.5 leading-relaxed pl-1 font-medium">
+                  <ol className="list-decimal list-inside text-xs text-emerald-100/90 space-y-1.5 leading-relaxed pl-1 font-medium">
                     <li>
                       Toque nos <strong className="text-white">três pontinhos (⋮)</strong> no canto superior direito do navegador.
                     </li>
@@ -1040,9 +1037,9 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
                   </ol>
                 </div>
 
-                <div className="bg-lime-500/5 p-3 rounded-xl border border-lime-500/10 text-[11px] text-lime-400 flex items-start gap-2">
+                <div className="bg-lime-500/10 p-3 rounded-xl border border-lime-400/20 text-[11px] text-lime-300 flex items-start gap-2">
                   <span className="font-extrabold select-none">VANTAGENS:</span>
-                  <span className="leading-relaxed text-slate-300">Instalar o aplicativo garante carregamento instantâneo, menos consumo de internet, suporte offline e navegação livre de barras do navegador!</span>
+                  <span className="leading-relaxed text-emerald-100/90">Instalar o aplicativo garante carregamento instantâneo, menos consumo de internet, suporte offline e navegação livre de barras do navegador!</span>
                 </div>
 
               </div>
@@ -1050,7 +1047,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
               <button
                 type="button"
                 onClick={() => setShowInstallGuide(false)}
-                className="w-full bg-slate-800 hover:bg-slate-755 text-white font-bold font-heading py-2.5 rounded-xl text-xs uppercase tracking-wider transition-colors cursor-pointer"
+                className="w-full bg-gradient-to-r from-lime-400 to-emerald-400 text-slate-950 font-black font-heading py-2.5 rounded-xl text-xs uppercase tracking-wider transition-all hover:from-lime-300 hover:to-emerald-300 cursor-pointer border-none shadow-md shadow-lime-500/20"
               >
                 Entendi, fechar instrução
               </button>
