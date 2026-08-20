@@ -9,8 +9,6 @@ import {
   CheckCircle, 
   Lock, 
   Sparkles, 
-  CreditCard, 
-  FileText,
   Zap, 
   ArrowRight, 
   Mail,
@@ -92,7 +90,7 @@ export default function SubscriptionWall({ userEmail, userName, currentStatus, o
         <button
           type="button"
           onClick={handleProceedToMercadoPago}
-          className="w-full py-3.5 sm:py-4 px-6 bg-slate-900 hover:bg-slate-850 active:scale-[0.99] text-lime-400 font-heading font-black text-xs sm:text-sm uppercase tracking-wider rounded-2xl shadow-lg hover:shadow-xl transition-all text-center flex items-center justify-center gap-2.5 cursor-pointer group border border-slate-800 ring-2 ring-lime-400/60 hover:ring-lime-400"
+          className="w-full py-4 px-6 bg-slate-900 hover:bg-slate-800 active:scale-[0.99] text-lime-400 font-heading font-black text-xs sm:text-sm uppercase tracking-wider rounded-2xl shadow-lg hover:shadow-xl transition-all text-center flex items-center justify-center gap-2.5 cursor-pointer group border border-slate-800 ring-2 ring-lime-400/60 hover:ring-lime-400"
         >
           <Zap className="w-4 h-4 sm:w-5 sm:h-5 fill-lime-400 text-lime-400 shrink-0" />
           <span>Assinar Agora • R$ 10,90/mês</span>
@@ -130,30 +128,7 @@ export default function SubscriptionWall({ userEmail, userName, currentStatus, o
             </p>
           </div>
 
-          {/* Payment Methods Accepted */}
-          <div className="mt-5 pt-4 border-t border-slate-800 space-y-2.5">
-            <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 block font-mono">
-              Formas aceitas no Mercado Pago:
-            </span>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-left">
-              <div className="bg-slate-800/80 border border-slate-700/80 rounded-xl p-2.5 flex items-center gap-2">
-                <CreditCard className="w-4 h-4 text-sky-400 shrink-0" />
-                <div className="leading-tight">
-                  <span className="text-[11px] font-bold text-slate-200 block">Cartão de Crédito</span>
-                  <span className="text-[9.5px] text-slate-400">Recorrente em até 12x • Liberação imediata</span>
-                </div>
-              </div>
-              <div className="bg-slate-800/80 border border-slate-700/80 rounded-xl p-2.5 flex items-center gap-2">
-                <FileText className="w-4 h-4 text-amber-400 shrink-0" />
-                <div className="leading-tight">
-                  <span className="text-[11px] font-bold text-slate-200 block">Boleto Bancário</span>
-                  <span className="text-[9.5px] text-slate-400">Compensação em até 3 dias úteis</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="pt-4 border-t border-slate-800 mt-4 flex items-center justify-between text-[11px] font-bold text-lime-400 font-sans">
+          <div className="pt-4 border-t border-slate-800 mt-5 flex items-center justify-between text-[11px] font-bold text-lime-400 font-sans">
             <span>Cancele quando quiser em 1 clique</span>
             <CheckCircle className="w-4 h-4 text-lime-400 shrink-0" />
           </div>
