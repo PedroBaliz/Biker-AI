@@ -296,15 +296,20 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
 
 
   return (
-    <div className="w-full flex flex-col bg-slate-950 text-white min-h-screen relative overflow-x-hidden font-sans">
+    <div className="w-full flex flex-col bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-white min-h-screen relative overflow-x-hidden font-sans">
       
-      {/* Background ambient lighting glows */}
-      <div className="absolute top-[10%] right-5 w-[600px] h-[600px] bg-lime-500/10 rounded-full blur-[140px] pointer-events-none"></div>
-      <div className="absolute top-[40%] left-[-100px] w-[500px] h-[500px] bg-emerald-500/5 rounded-full blur-[140px] pointer-events-none"></div>
-      <div className="absolute bottom-[10%] right-1/4 w-[600px] h-[600px] bg-lime-500/5 rounded-full blur-[140px] pointer-events-none"></div>
+      {/* Background ambient lighting glows - vivid, high-visibility and athletic */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-[600px] bg-[radial-gradient(ellipse_80%_60%_at_50%_-10%,rgba(132,204,22,0.22),rgba(16,185,129,0.12),transparent_70%)] pointer-events-none -z-0"></div>
+      <div className="absolute top-[6%] right-[-5%] w-[650px] h-[650px] bg-lime-400/20 rounded-full blur-[100px] pointer-events-none -z-0"></div>
+      <div className="absolute top-[32%] left-[-10%] w-[600px] h-[600px] bg-emerald-500/18 rounded-full blur-[110px] pointer-events-none -z-0"></div>
+      <div className="absolute top-[60%] right-[2%] w-[650px] h-[650px] bg-lime-500/18 rounded-full blur-[110px] pointer-events-none -z-0"></div>
+      <div className="absolute bottom-[4%] left-[8%] w-[550px] h-[550px] bg-teal-500/15 rounded-full blur-[120px] pointer-events-none -z-0"></div>
+
+      {/* Subtle athletic dot grid background */}
+      <div className="absolute inset-0 bg-[radial-gradient(#475569_1.2px,transparent_1.2px)] [background-size:24px_24px] opacity-35 pointer-events-none -z-0"></div>
 
       {/* Elegant Landing Header / Navigation Bar */}
-      <header className="border-b border-slate-900 bg-slate-950/70 backdrop-blur-md sticky top-0 z-50 py-4 px-4 sm:px-6 md:px-12">
+      <header className="border-b border-slate-800/90 bg-slate-950/85 backdrop-blur-xl sticky top-0 z-50 py-4 px-4 sm:px-6 md:px-12 shadow-lg shadow-black/30">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="p-2 bg-lime-500/10 border border-lime-500/20 rounded-xl text-lime-400 shadow-sm shadow-lime-500/5">
@@ -428,16 +433,16 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
       </section>
 
       {/* SEÇÃO COMPARATIVA: PDF VS BIKER AI */}
-      <section className="relative py-16 px-4 sm:px-6 md:px-12 bg-slate-900/40 border-t border-slate-900">
-        <div className="max-w-4xl mx-auto rounded-3xl border border-slate-800 bg-slate-950 overflow-hidden relative shadow-xl">
-          <div className="absolute -inset-y-12 -inset-x-12 bg-radial-to-r from-lime-500/5 to-transparent opacity-40 pointer-events-none"></div>
+      <section className="relative py-20 px-4 sm:px-6 md:px-12 bg-gradient-to-b from-slate-900/80 via-slate-900 to-slate-950 border-y border-slate-800/80">
+        <div className="max-w-4xl mx-auto rounded-3xl border border-slate-750 bg-slate-950/90 overflow-hidden relative shadow-2xl backdrop-blur-md">
+          <div className="absolute -inset-y-12 -inset-x-12 bg-radial-to-r from-lime-500/10 to-transparent opacity-50 pointer-events-none"></div>
           <div className="p-6 md:p-10 grid grid-cols-1 md:grid-cols-2 gap-8 relative z-10 text-left items-center">
             <div className="space-y-4">
               <span className="text-[9px] font-mono font-bold tracking-widest text-lime-400 uppercase bg-lime-500/10 border border-lime-500/20 px-2.5 py-1 rounded-md">
                 Diferencial Exclusivo
               </span>
               <h4 className="text-2xl md:text-3xl font-heading font-black text-white leading-tight">Por que planilhas em PDF comuns não funcionam?</h4>
-              <p className="text-xs sm:text-sm text-slate-400 leading-relaxed font-sans">
+              <p className="text-xs sm:text-sm text-slate-300 leading-relaxed font-sans">
                 Comprar um PDF genérico estático na internet parece barato, mas as tabelas de papel ou planilha travadas falham ao menor sinal de imprevisto. Se chover, se você adoecer, viajar ou trabalhar até mais tarde e pular a terça-feira, o PDF não muda sozinho para te salvar.
               </p>
               <div className="text-xs text-lime-400 font-bold block pt-1">
@@ -445,7 +450,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
               </div>
             </div>
 
-            <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4 font-sans text-xs">
+            <div className="p-6 rounded-2xl bg-slate-900/90 border border-slate-750 space-y-4 font-sans text-xs shadow-lg">
               <div className="flex items-center gap-2 text-xs font-bold text-white border-b border-slate-800 pb-2.5">
                 <span className="w-2.5 h-2.5 rounded-full bg-lime-400 animate-pulse"></span>
                 <span>O que acontece se você perder um treino?</span>
@@ -469,8 +474,8 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
       </section>
 
       {/* SEÇÃO COMO É FÁCIL USAR O BIKER AI */}
-      <section id="como-funciona" className="relative py-24 px-4 sm:px-6 md:px-12 bg-slate-950 border-t border-slate-900 scroll-mt-24">
-        <div className="absolute inset-0 bg-radial-to-b from-lime-500/5 via-transparent to-transparent opacity-60"></div>
+      <section id="como-funciona" className="relative py-24 px-4 sm:px-6 md:px-12 bg-gradient-to-b from-slate-950 via-slate-900/70 to-slate-950 border-t border-slate-800 scroll-mt-24">
+        <div className="absolute inset-0 bg-radial-to-b from-lime-500/10 via-transparent to-transparent opacity-70"></div>
         <div className="max-w-7xl mx-auto w-full space-y-16 relative z-10">
           
           <div className="text-center space-y-4 max-w-3xl mx-auto">
@@ -480,7 +485,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
             <h3 className="text-3xl sm:text-4xl font-heading font-black tracking-tight text-white">
               Sua planilha de treinos no piloto automático: <span className="text-lime-400">veja como é fácil</span>
             </h3>
-            <p className="text-sm sm:text-base text-slate-400 font-sans leading-relaxed">
+            <p className="text-sm sm:text-base text-slate-300 font-sans leading-relaxed">
               Você não precisa entender de fisiologia de esporte, cálculos de watts ou passar horas configurando tabelas confusas. A inteligência artificial cuida de tudo para você pedalar melhor em apenas 3 passos simples.
             </p>
           </div>
@@ -489,37 +494,37 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             
             {/* Passo 1 */}
-            <div className="p-8 rounded-2xl bg-slate-900 border border-slate-800 space-y-5 text-left relative overflow-hidden group hover:border-slate-700/50 transition-all">
-              <div className="absolute top-0 right-0 p-8 bg-lime-500/5 rounded-full pointer-events-none blur-2xl"></div>
+            <div className="p-8 rounded-3xl bg-slate-900/90 border border-slate-750/90 space-y-5 text-left relative overflow-hidden group hover:border-lime-400/40 hover:shadow-xl hover:shadow-lime-500/10 transition-all shadow-lg shadow-black/40 backdrop-blur-xs">
+              <div className="absolute top-0 right-0 p-8 bg-lime-500/10 rounded-full pointer-events-none blur-2xl"></div>
               
               <div className="flex justify-between items-start">
                 <div className="w-12 h-12 rounded-xl bg-lime-500/10 border border-lime-500/20 text-lime-400 flex items-center justify-center font-heading font-black text-lg">
                   1
                 </div>
-                <span className="text-[10px] font-mono text-slate-500 bg-slate-950 px-2.5 py-1 rounded-lg border border-slate-850">
+                <span className="text-[10px] font-mono text-slate-400 bg-slate-950/80 px-2.5 py-1 rounded-lg border border-slate-800 font-semibold">
                   Leva 1 minuto
                 </span>
               </div>
 
               <div className="space-y-2">
                 <h4 className="text-lg font-heading font-black text-white">Nos conte seus objetivos</h4>
-                <p className="text-xs sm:text-sm text-slate-400 leading-relaxed font-sans">
+                <p className="text-xs sm:text-sm text-slate-300 leading-relaxed font-sans">
                   Responda a perguntas rápidas sobre quantos dias quer treinar na semana, seu nível atual e seus objetivos reais — seja ganhar fôlego em subidas, perder peso ou completar um desafio de longa distância com amigos.
                 </p>
               </div>
 
-              <div className="pt-4 border-t border-slate-850 space-y-1.5">
-                <span className="text-[9px] uppercase font-bold text-slate-500 font-mono tracking-wider block">O que você responde:</span>
+              <div className="pt-4 border-t border-slate-800 space-y-1.5">
+                <span className="text-[9px] uppercase font-bold text-slate-400 font-mono tracking-wider block">O que você responde:</span>
                 <div className="flex flex-wrap gap-1.5">
-                  <span className="text-[10px] text-slate-300 bg-slate-950 px-2 py-0.5 rounded border border-slate-850">"Tenho 3 dias livres por semana"</span>
-                  <span className="text-[10px] text-slate-300 bg-slate-950 px-2 py-0.5 rounded border border-slate-850">"Quero subir sem cansar tanto"</span>
+                  <span className="text-[10px] text-slate-200 bg-slate-950/90 px-2 py-0.5 rounded border border-slate-800">"Tenho 3 dias livres por semana"</span>
+                  <span className="text-[10px] text-slate-200 bg-slate-950/90 px-2 py-0.5 rounded border border-slate-800">"Quero subir sem cansar tanto"</span>
                 </div>
               </div>
             </div>
 
             {/* Passo 2 */}
-            <div className="p-8 rounded-2xl bg-slate-900 border border-slate-800 space-y-5 text-left relative overflow-hidden group hover:border-slate-700/50 transition-all">
-              <div className="absolute top-0 right-0 p-8 bg-lime-500/5 rounded-full pointer-events-none blur-2xl"></div>
+            <div className="p-8 rounded-3xl bg-slate-900/90 border border-slate-750/90 space-y-5 text-left relative overflow-hidden group hover:border-lime-400/40 hover:shadow-xl hover:shadow-lime-500/10 transition-all shadow-lg shadow-black/40 backdrop-blur-xs">
+              <div className="absolute top-0 right-0 p-8 bg-lime-500/10 rounded-full pointer-events-none blur-2xl"></div>
               
               <div className="flex justify-between items-start">
                 <div className="w-12 h-12 rounded-xl bg-lime-500/10 border border-lime-500/20 text-lime-400 flex items-center justify-center font-heading font-black text-lg">
@@ -532,45 +537,45 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
 
               <div className="space-y-2">
                 <h4 className="text-lg font-heading font-black text-white">Sua planilha sob medida</h4>
-                <p className="text-xs sm:text-sm text-slate-400 leading-relaxed font-sans">
+                <p className="text-xs sm:text-sm text-slate-300 leading-relaxed font-sans">
                   Nossa IA calcula suas zonas de esforço de forma automática (por percepção de esforço ou watts de forma totalmente invisível). Você não precisa entender de tabelas difíceis: a IA faz todo o cálculo chato nos bastidores por você.
                 </p>
               </div>
 
-              <div className="pt-4 border-t border-slate-850 space-y-1.5">
-                <span className="text-[9px] uppercase font-bold text-slate-500 font-mono tracking-wider block">A IA Cuida de Tudo nos Bastidores:</span>
+              <div className="pt-4 border-t border-slate-800 space-y-1.5">
+                <span className="text-[9px] uppercase font-bold text-slate-400 font-mono tracking-wider block">A IA Cuida de Tudo nos Bastidores:</span>
                 <div className="flex flex-wrap gap-1.5">
-                  <span className="text-[10px] text-lime-400 bg-lime-500/5 px-2 py-0.5 rounded border border-lime-500/10 font-medium">Zonas de Ritmo Descomplicadas</span>
-                  <span className="text-[10px] text-lime-400 bg-lime-500/5 px-2 py-0.5 rounded border border-lime-500/10 font-medium">Watts & Frequência Automáticos</span>
+                  <span className="text-[10px] text-lime-400 bg-lime-500/10 px-2 py-0.5 rounded border border-lime-500/20 font-medium">Zonas de Ritmo Descomplicadas</span>
+                  <span className="text-[10px] text-lime-400 bg-lime-500/10 px-2 py-0.5 rounded border border-lime-500/20 font-medium">Watts & Frequência Automáticos</span>
                 </div>
               </div>
             </div>
 
             {/* Passo 3 */}
-            <div className="p-8 rounded-2xl bg-slate-900 border border-slate-800 space-y-5 text-left relative overflow-hidden group hover:border-slate-700/50 transition-all">
-              <div className="absolute top-0 right-0 p-8 bg-lime-500/5 rounded-full pointer-events-none blur-2xl"></div>
+            <div className="p-8 rounded-3xl bg-slate-900/90 border border-slate-750/90 space-y-5 text-left relative overflow-hidden group hover:border-lime-400/40 hover:shadow-xl hover:shadow-lime-500/10 transition-all shadow-lg shadow-black/40 backdrop-blur-xs">
+              <div className="absolute top-0 right-0 p-8 bg-lime-500/10 rounded-full pointer-events-none blur-2xl"></div>
               
               <div className="flex justify-between items-start">
                 <div className="w-12 h-12 rounded-xl bg-lime-500/10 border border-lime-500/20 text-lime-400 flex items-center justify-center font-heading font-black text-lg">
                   3
                 </div>
-                <span className="text-[10px] font-mono text-slate-405 bg-slate-950 px-2.5 py-1 rounded-lg border border-slate-850 font-bold">
+                <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/20 font-bold">
                   Recalibrar é Rápido
                 </span>
               </div>
 
               <div className="space-y-2">
                 <h4 className="text-lg font-heading font-black text-white">Flexibilidade que te entende</h4>
-                <p className="text-xs sm:text-sm text-slate-400 leading-relaxed font-sans">
+                <p className="text-xs sm:text-sm text-slate-300 leading-relaxed font-sans">
                   Marcou o pedal como finalizado? Registre de forma super rápida suas sensações e percepção de esforço. Se precisar saltar algum treino por imprevisto, o sistema reagenda toda a semana de forma inteligente!
                 </p>
               </div>
 
-              <div className="pt-4 border-t border-slate-850 space-y-1.5">
-                <span className="text-[9px] uppercase font-bold text-slate-500 font-mono tracking-wider block">Flexibilidade Real:</span>
+              <div className="pt-4 border-t border-slate-800 space-y-1.5">
+                <span className="text-[9px] uppercase font-bold text-slate-400 font-mono tracking-wider block">Flexibilidade Real:</span>
                 <div className="flex flex-wrap gap-1.5">
-                  <span className="text-[10px] text-[#00E676] bg-[#00E676]/5 px-2 py-0.5 rounded border border-[#00E676]/10">Registro de Esforço</span>
-                  <span className="text-[10px] text-[#00E676] bg-[#00E676]/5 px-2 py-0.5 rounded border border-[#00E676]/10">Adaptação sob Imprevistos</span>
+                  <span className="text-[10px] text-[#00E676] bg-[#00E676]/10 px-2 py-0.5 rounded border border-[#00E676]/20">Registro de Esforço</span>
+                  <span className="text-[10px] text-[#00E676] bg-[#00E676]/10 px-2 py-0.5 rounded border border-[#00E676]/20">Adaptação sob Imprevistos</span>
                 </div>
               </div>
             </div>
@@ -581,17 +586,17 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
       </section>
 
       {/* Benefits Section with Bento Grid Layout */}
-      <section id="beneficios" className="bg-slate-900/30 border-y border-slate-900 py-24 px-4 sm:px-6 md:px-12 scroll-mt-24">
-        <div className="max-w-7xl mx-auto w-full space-y-12">
+      <section id="beneficios" className="bg-gradient-to-b from-slate-900/80 via-slate-900/95 to-slate-950 border-y border-slate-800 py-24 px-4 sm:px-6 md:px-12 scroll-mt-24 relative">
+        <div className="max-w-7xl mx-auto w-full space-y-12 relative z-10">
           
           <div className="text-center space-y-3 max-w-3xl mx-auto">
             <span className="text-[10px] bg-lime-500/10 border border-lime-500/25 text-lime-400 font-black px-3 py-1 rounded-full uppercase tracking-wider">
               Ecossistema Completo
             </span>
-            <h3 className="text-3xl sm:text-4xl font-heading font-black tracking-tight">
+            <h3 className="text-3xl sm:text-4xl font-heading font-black tracking-tight text-white">
               Os Benefícios de Treinar Com a <span className="text-lime-400">Biker AI</span>
             </h3>
-            <p className="text-sm text-slate-400 font-sans leading-relaxed">
+            <p className="text-sm text-slate-300 font-sans leading-relaxed">
               Pensamos em cada detalhe para ajudar ciclistas que precisam dividir o tempo entre família, trabalho e o prazer de pedalar com qualidade, sem complicação.
             </p>
           </div>
@@ -600,13 +605,13 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             
             {/* Card 1 */}
-            <div className="p-6 rounded-3xl bg-slate-900 border border-slate-800 flex flex-col justify-between hover:border-lime-500/20 transition-all group space-y-4 text-left">
+            <div className="p-6 rounded-3xl bg-slate-900/90 border border-slate-750/80 flex flex-col justify-between hover:border-lime-400/40 hover:shadow-xl hover:shadow-lime-500/5 transition-all group space-y-4 text-left shadow-lg shadow-black/20 backdrop-blur-xs">
               <div className="space-y-3">
                 <div className="w-10 h-10 rounded-2xl bg-lime-500/10 border border-lime-500/20 text-lime-400 flex items-center justify-center">
                   <Activity className="w-5 h-5 group-hover:animate-pulse" />
                 </div>
                 <h4 className="font-heading font-black text-base text-white">Planilhas Fáceis de Seguir</h4>
-                <p className="text-xs text-slate-400 font-sans leading-relaxed">
+                <p className="text-xs text-slate-350 leading-relaxed">
                   Treinos pensados totalmente para a sua rotina diária. O sistema cria e ajusta as sessões de acordo com o seu cansaço e o seu tempo livre.
                 </p>
               </div>
@@ -614,13 +619,13 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
             </div>
 
             {/* Card 2 */}
-            <div className="p-6 rounded-3xl bg-slate-900 border border-slate-800 flex flex-col justify-between hover:border-emerald-500/20 transition-all group space-y-4 text-left">
+            <div className="p-6 rounded-3xl bg-slate-900/90 border border-slate-750/80 flex flex-col justify-between hover:border-emerald-400/40 hover:shadow-xl hover:shadow-emerald-500/5 transition-all group space-y-4 text-left shadow-lg shadow-black/20 backdrop-blur-xs">
               <div className="space-y-3">
                 <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center">
                   <Sliders className="w-5 h-5" />
                 </div>
                 <h4 className="font-heading font-black text-base text-white">Zonas de Ritmo Claras</h4>
-                <p className="text-xs text-slate-400 font-sans leading-relaxed">
+                <p className="text-xs text-slate-350 leading-relaxed">
                   Zonas de esforço sob medida para você, adaptadas para a sua frequência cardíaca e potência, evitando cansaço excessivo.
                 </p>
               </div>
@@ -628,13 +633,13 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
             </div>
 
             {/* Card 3 */}
-            <div className="p-6 rounded-3xl bg-slate-900 border border-slate-800 flex flex-col justify-between hover:border-yellow-500/20 transition-all group space-y-4 text-left">
+            <div className="p-6 rounded-3xl bg-slate-900/90 border border-slate-750/80 flex flex-col justify-between hover:border-yellow-400/40 hover:shadow-xl hover:shadow-yellow-500/5 transition-all group space-y-4 text-left shadow-lg shadow-black/20 backdrop-blur-xs">
               <div className="space-y-3">
                 <div className="w-10 h-10 rounded-2xl bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 flex items-center justify-center">
                   <TrendingUp className="w-5 h-5" />
                 </div>
                 <h4 className="font-heading font-black text-base text-white">Progresso Sem Mistério</h4>
-                <p className="text-xs text-slate-400 font-sans leading-relaxed">
+                <p className="text-xs text-slate-350 leading-relaxed">
                   Gráficos super simples e limpos que mostram as suas metas de treino, total de horas pedaladas e a evolução da sua resistência semanal.
                 </p>
               </div>
@@ -642,13 +647,13 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
             </div>
 
             {/* Card 4 */}
-            <div className="p-6 rounded-3xl bg-slate-900 border border-slate-800 flex flex-col justify-between hover:border-blue-500/20 transition-all group space-y-4 text-left">
+            <div className="p-6 rounded-3xl bg-slate-900/90 border border-slate-750/80 flex flex-col justify-between hover:border-blue-400/40 hover:shadow-xl hover:shadow-blue-500/5 transition-all group space-y-4 text-left shadow-lg shadow-black/20 backdrop-blur-xs">
               <div className="space-y-3">
                 <div className="w-10 h-10 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center">
                   <Zap className="w-5 h-5" />
                 </div>
                 <h4 className="font-heading font-black text-base text-white">Pedaladas Automáticas</h4>
-                <p className="text-xs text-slate-400 font-sans leading-relaxed">
+                <p className="text-xs text-slate-350 leading-relaxed">
                   Grave seus treinos ou junte suas atividades para que suas pedaladas fiquem registradas diretamente em sua conta sem trabalho manual no dia a dia.
                 </p>
               </div>
@@ -656,13 +661,13 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
             </div>
 
             {/* Card 6 */}
-            <div className="p-6 rounded-3xl bg-slate-900 border border-slate-800 flex flex-col justify-between hover:border-sky-500/20 transition-all group space-y-4 text-left">
+            <div className="p-6 rounded-3xl bg-slate-900/90 border border-slate-750/80 flex flex-col justify-between hover:border-sky-400/40 hover:shadow-xl hover:shadow-sky-500/5 transition-all group space-y-4 text-left shadow-lg shadow-black/20 backdrop-blur-xs">
               <div className="space-y-3">
                 <div className="w-10 h-10 rounded-2xl bg-sky-500/10 border border-sky-500/20 text-sky-400 flex items-center justify-center">
                   <Calendar className="w-5 h-5" />
                 </div>
                 <h4 className="font-heading font-black text-base text-white">Organize do Seu Jeito</h4>
-                <p className="text-xs text-slate-400 font-sans leading-relaxed">
+                <p className="text-xs text-slate-350 leading-relaxed">
                   Selecione os dias da semana em que você tem fôlego ou disponibilidade para pedalar. O sistema cria e distribui os treinos de acordo com o seu plano.
                 </p>
               </div>
@@ -674,16 +679,8 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
         </div>
       </section>
 
-
-
-
-
-
-
-
-
       {/* Transparência e Garantias Section */}
-      <section id="garantia" className="py-16 px-4 sm:px-6 md:px-12 bg-slate-900/40 border-t border-slate-900 text-left">
+      <section id="garantia" className="py-20 px-4 sm:px-6 md:px-12 bg-gradient-to-b from-slate-950 via-slate-900/80 to-slate-950 border-t border-slate-800 text-left">
         <div className="max-w-4xl mx-auto w-full space-y-8">
           <div className="text-center space-y-2">
             <span className="text-[10px] bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-black px-3 py-1 rounded-full uppercase tracking-wider">
@@ -692,41 +689,41 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
             <h3 className="text-2xl sm:text-3xl font-heading font-black text-white">
               Sua Satisfação em Primeiro Lugar
             </h3>
-            <p className="text-xs sm:text-sm text-slate-400 font-sans max-w-xl mx-auto">
+            <p className="text-xs sm:text-sm text-slate-300 font-sans max-w-xl mx-auto">
               Acreditamos tanto na qualidade do nosso acompanhamento de ciclismo que eliminamos todo o risco para você.
             </p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {/* Card 1: Garantia */}
-            <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-2.5">
+            <div className="p-5 rounded-2xl bg-slate-900/90 border border-slate-750 space-y-2.5 shadow-md">
               <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center">
                 <ShieldCheck className="w-5 h-5" />
               </div>
               <h4 className="font-heading font-bold text-sm text-white">Garantia de 7 Dias</h4>
-              <p className="text-xs text-slate-400 font-sans leading-relaxed">
+              <p className="text-xs text-slate-300 font-sans leading-relaxed">
                 Acesse a plataforma, gere sua planilha e converse com o treinador. Se não gostar, devolvemos 100% do seu dinheiro.
               </p>
             </div>
 
             {/* Card 2: Sem Fidelidade */}
-            <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-2.5">
+            <div className="p-5 rounded-2xl bg-slate-900/90 border border-slate-750 space-y-2.5 shadow-md">
               <div className="w-9 h-9 rounded-xl bg-lime-500/10 border border-lime-500/20 text-lime-400 flex items-center justify-center">
                 <CheckCircle className="w-5 h-5" />
               </div>
               <h4 className="font-heading font-bold text-sm text-white">Cancele Quando Quiser</h4>
-              <p className="text-xs text-slate-400 font-sans leading-relaxed">
+              <p className="text-xs text-slate-300 font-sans leading-relaxed">
                 Sem contrato de fidelidade, sem carência e sem taxas de cancelamento. Você tem controle total da sua assinatura.
               </p>
             </div>
 
             {/* Card 3: Preço Transparente */}
-            <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-2.5">
+            <div className="p-5 rounded-2xl bg-slate-900/90 border border-slate-750 space-y-2.5 shadow-md">
               <div className="w-9 h-9 rounded-xl bg-sky-500/10 border border-sky-500/20 text-sky-400 flex items-center justify-center">
                 <Lock className="w-5 h-5" />
               </div>
               <h4 className="font-heading font-bold text-sm text-white">R$ 10,90 / mês</h4>
-              <p className="text-xs text-slate-400 font-sans leading-relaxed">
+              <p className="text-xs text-slate-300 font-sans leading-relaxed">
                 Preço único, acessível e sem cobranças surpresas. Processamento criptografado via Mercado Pago.
               </p>
             </div>
@@ -735,13 +732,13 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
       </section>
 
       {/* Centered Auth Section placed AFTER "Como Funciona" */}
-      <section id="auth-section" className="relative py-24 px-4 sm:px-6 md:px-12 bg-slate-950 border-t border-slate-900 scroll-mt-24">
-        <div className="absolute inset-0 bg-radial-to-b from-lime-500/5 via-transparent to-transparent opacity-60"></div>
+      <section id="auth-section" className="relative py-24 px-4 sm:px-6 md:px-12 bg-gradient-to-b from-slate-950 via-slate-900/90 to-slate-950 border-t border-slate-800 scroll-mt-24">
+        <div className="absolute inset-0 bg-radial-to-b from-lime-500/15 via-transparent to-transparent opacity-75"></div>
         <div className="max-w-xl mx-auto w-full relative z-10 space-y-8">
           
-          <div className="absolute inset-0 bg-linear-to-r from-lime-500/10 to-emerald-500/10 rounded-3xl blur-2xl -z-10 opacity-70"></div>
+          <div className="absolute inset-0 bg-linear-to-r from-lime-500/15 to-emerald-500/15 rounded-3xl blur-2xl -z-10 opacity-80"></div>
           
-          <div className="w-full bg-slate-900/90 border border-slate-800 rounded-3xl shadow-2xl p-6 sm:p-8 backdrop-blur-md relative z-10 space-y-6">
+          <div className="w-full bg-slate-900/95 border-2 border-slate-700/90 rounded-3xl shadow-[0_0_50px_rgba(132,204,22,0.12)] p-6 sm:p-8 backdrop-blur-xl relative z-10 space-y-6">
             
             {/* Logo e Welcome */}
             <div className="text-center space-y-1.5">
