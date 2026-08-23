@@ -64,7 +64,7 @@ export default function SubscriptionWall({ userEmail, userName, currentStatus, o
 
   const handleProceedToMercadoPago = () => {
     MetaPixelEvents.addPaymentInfo();
-    MetaPixelEvents.initiateCheckout(10.90, "BRL");
+    MetaPixelEvents.initiateCheckout(16.90, "BRL");
     window.open(MERCADO_PAGO_CHECKOUT_URL, "_blank", "noopener,noreferrer");
   };
 
@@ -93,7 +93,7 @@ export default function SubscriptionWall({ userEmail, userName, currentStatus, o
           className="w-full py-4 px-6 bg-slate-900 hover:bg-slate-800 active:scale-[0.99] text-lime-400 font-heading font-black text-xs sm:text-sm uppercase tracking-wider rounded-2xl shadow-lg hover:shadow-xl transition-all text-center flex items-center justify-center gap-2.5 cursor-pointer group border border-slate-800 ring-2 ring-lime-400/60 hover:ring-lime-400"
         >
           <Zap className="w-4 h-4 sm:w-5 sm:h-5 fill-lime-400 text-lime-400 shrink-0" />
-          <span>Assinar Agora • R$ 10,90/mês</span>
+          <span>Assinar Agora • R$ 16,90/mês</span>
           <ExternalLink className="w-4 h-4 group-hover:translate-x-0.5 transition-transform shrink-0" />
         </button>
       </div>
@@ -120,7 +120,7 @@ export default function SubscriptionWall({ userEmail, userName, currentStatus, o
             <h5 className="font-heading font-black text-xl mt-2 text-white">Plano Pro Biker AI</h5>
             <div className="flex items-baseline gap-1 mt-2">
               <span className="text-xs font-bold text-slate-400">R$</span>
-              <span className="text-3xl sm:text-4xl font-mono font-black text-lime-400">10,90</span>
+              <span className="text-3xl sm:text-4xl font-mono font-black text-lime-400">16,90</span>
               <span className="text-xs text-slate-400 font-sans">/ mês</span>
             </div>
             <p className="text-xs mt-2.5 text-slate-300 leading-relaxed font-sans">

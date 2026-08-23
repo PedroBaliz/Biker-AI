@@ -351,10 +351,10 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
   const expiredCount = athletes.filter(u => u.profile.subscriptionStatus === 'expired').length;
   const avgFtp = (athletes.filter(u => u.profile.ftp).reduce((sum, u) => sum + (u.profile.ftp || 0), 0) / (athletes.filter(u => u.profile.ftp).length || 1)).toFixed(0);
 
-  // Estimativa de faturamento de MVP (apenas atletas pagantes ativos - R$ 10,90/mês, desconsiderando o coach)
+  // Estimativa de faturamento de MVP (apenas atletas pagantes ativos - R$ 16,90/mês, desconsiderando o coach)
   const estimatedRevenue = athletes.reduce((sum, u) => {
     if (u.profile.subscriptionStatus !== 'active') return sum;
-    return sum + 10.90; // Plano Pro
+    return sum + 16.90; // Plano Pro
   }, 0).toFixed(2);
 
   // Consolidated feedbacks across all subscribers
