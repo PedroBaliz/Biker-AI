@@ -711,9 +711,14 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
               <div className="w-9 h-9 rounded-xl bg-sky-500/10 border border-sky-500/20 text-sky-400 flex items-center justify-center">
                 <Lock className="w-5 h-5" />
               </div>
-              <h4 className="font-heading font-bold text-sm text-white">R$ 16,90 / mês</h4>
+              <div className="flex items-center justify-between gap-1">
+                <h4 className="font-heading font-bold text-sm text-white">R$ 16,90 / mês</h4>
+                <span className="text-[9px] font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-md">
+                  Mais barato que uma pizza
+                </span>
+              </div>
               <p className="text-xs text-slate-400 font-sans leading-relaxed">
-                Preço único, acessível e sem cobranças surpresas. Processamento criptografado via Mercado Pago.
+                Mais barato que uma pizza: tenha assessoria e treinos inteligentes por menos de R$ 0,56 ao dia. Cancele quando quiser.
               </p>
             </div>
           </div>

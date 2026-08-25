@@ -118,13 +118,16 @@ export default function SubscriptionWall({ userEmail, userName, currentStatus, o
               <Zap className="w-4 h-4 text-lime-400" />
             </div>
             <h5 className="font-heading font-black text-xl mt-2 text-white">Plano Pro Biker AI</h5>
-            <div className="flex items-baseline gap-1 mt-2">
+            <div className="flex flex-wrap items-baseline gap-1 mt-2">
               <span className="text-xs font-bold text-slate-400">R$</span>
               <span className="text-3xl sm:text-4xl font-mono font-black text-lime-400">16,90</span>
               <span className="text-xs text-slate-400 font-sans">/ mês</span>
+              <span className="ml-auto text-[10px] font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2.5 py-0.5 rounded-full">
+                Mais barato que uma pizza
+              </span>
             </div>
             <p className="text-xs mt-2.5 text-slate-300 leading-relaxed font-sans">
-              Acesso total a todas as ferramentas, gráficos, treinos adaptativos e treinador AI. Sem pegadinhas nem taxas adicionais.
+              Menos que o valor de um lanche no pedal de sábado para ter acompanhamento com IA o mês inteiro (apenas R$ 0,56 ao dia). Acesso total a treinos adaptativos, gráficos e treinador AI.
             </p>
           </div>
 
