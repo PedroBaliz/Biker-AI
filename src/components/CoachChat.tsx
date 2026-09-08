@@ -238,7 +238,7 @@ export const CoachChat: React.FC<CoachChatProps> = ({
       {/* Suggestion Chips */}
       <div className="p-2 sm:px-4 sm:py-2.5 bg-white border-t border-slate-150 overflow-x-auto no-scrollbar flex items-center gap-2 shrink-0">
         <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400 shrink-0 hidden sm:inline">
-          Sugestões:
+          Exemplos rápidos:
         </span>
         {quickSuggestions.map((item, idx) => {
           const Icon = item.icon;
@@ -265,7 +265,7 @@ export const CoachChat: React.FC<CoachChatProps> = ({
           value={inputMessage}
           onChange={(e) => setInputMessage(e.target.value)}
           disabled={isTyping}
-          placeholder="Tire dúvidas sobre ritmo, hidratação, descanso ou peça ajustes..."
+          placeholder="Pergunte qualquer coisa livremente (nutrição, pneus, subidas, dores, marchas, ajustes)..."
           className="flex-1 bg-slate-50 hover:bg-slate-100/80 focus:bg-white text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 rounded-2xl px-4 py-3.5 outline-hidden border border-slate-200 focus:border-slate-800 focus:ring-2 focus:ring-slate-900/10 font-sans transition-all disabled:opacity-50"
         />
         <button 

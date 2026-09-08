@@ -1454,17 +1454,17 @@ const checkApiKey = () => {
 // Robust Gemini runner with model fallback and automatic retry for 503/429 errors
 const callGeminiWithFallback = async (
   requestFn: (modelName: string) => Promise<any>,
-  modelsToTry: string[] = ["gemini-3.1-flash-lite", "gemini-2.5-flash", "gemini-3.6-flash", "gemini-flash-latest", "gemini-3.8-flash"]
+  modelsToTry: string[] = ["gemini-3.1-flash-lite", "gemini-2.5-flash"]
 ): Promise<any> => {
   let lastError: any = null;
 
   for (let i = 0; i < modelsToTry.length; i++) {
     const model = modelsToTry[i];
     try {
-      // Guard each model call with an internal 9-second timeout so one slow model does not exhaust the whole budget
+      // Guard each model call with an internal 10-second timeout
       const modelPromise = requestFn(model);
       const perModelTimeout = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error(`Timeout de 9s no modelo ${model}`)), 9000);
+        setTimeout(() => reject(new Error(`Timeout de 10s no modelo ${model}`)), 10000);
       });
       return await Promise.race([modelPromise, perModelTimeout]);
     } catch (err: any) {
@@ -1835,7 +1835,7 @@ Continue firme registrando seus treinos e nos vemos no próximo!`;
   };
 };
 
-const fallbackChat = (message: string, profile: any, currentPlan: any): any => {
+const fallbackChat = (message: string, profile: any, currentPlan: any, messageHistory: any[] = []): any => {
   const normalized = (message || "").toLowerCase();
   const athleteName = profile?.name ? profile.name.trim().split(" ")[0] : "Campeão";
   const athleteLevel = profile?.level || "intermediário";
@@ -1843,10 +1843,79 @@ const fallbackChat = (message: string, profile: any, currentPlan: any): any => {
   const athleteFtp = profile?.ftp ? `${profile.ftp}W` : null;
   const athleteHrMax = profile?.hrMax ? `${profile.hrMax} bpm` : null;
 
+  // Analisar histórico recente para entender contexto de perguntas curtas (ex: "tenho 66 kg, quanto posso usar?")
+  const recentTexts = (messageHistory || [])
+    .slice(-4)
+    .map((m: any) => (m.text || "").toLowerCase())
+    .join(" ");
+  const isContextHydration = recentTexts.includes("sodio") || recentTexts.includes("sódio") || recentTexts.includes("hidrat") || recentTexts.includes("sal") || recentTexts.includes("eletról");
+
   let reply = "";
 
-  // 1. Sódio, Hidratação e Eletrólitos
+  // 0. Pergunta sobre dosagem específica, peso ou continuidade da hidratação/sódio (ex: "tenho 66 kg, quanto posso usar?")
   if (
+    normalized.includes("quanto posso usar") ||
+    normalized.includes("quanto usar") ||
+    normalized.includes("quanto tomar") ||
+    normalized.includes("dosagem") ||
+    normalized.includes("dose") ||
+    ((normalized.includes("kg") || normalized.includes("peso")) && isContextHydration)
+  ) {
+    const weightMatch = normalized.match(/(\d{2,3})\s*kg/i);
+    const weight = weightMatch ? weightMatch[1] : "66";
+
+    reply = `Excelente pergunta, ${athleteName}! Para um ciclista com cerca de **${weight} kg**, o cálculo de hidratação e sódio deve ser dosado com precisão para evitar sobrecarga gástrica e manter o rendimento:
+
+### 💧 Dosagem Personalizada para ${weight} kg:
+1. **Taxa de Sudorese Estimada:** Um atleta de ${weight} kg perde entre **500ml e 800ml de suor por hora** em esforço moderado (aumentando em dias quentes acima de 28°C).
+2. **Reposição Hídrica:** Beba entre **500ml e 700ml de água por hora** (cerca de 1 caramanhola média), distribuídos em goles de 150ml a cada 10-15 minutos.
+3. **Reposição de Sódio / Eletrólitos:**
+   - **Treinos de até 1h (Leve/Moderado):** Apenas água e uma pitada sutil de sal ou eletrólito leve é suficiente.
+   - **Treinos acima de 1h15 ou dias quentes:** Tome entre **350mg e 600mg de sódio por hora**. Se você usa cápsulas de sal convencionais (que têm ~200-300mg de sódio), **1 cápsula a cada 45 a 60 minutos** é a dose ideal para o seu peso.
+4. **Alerta de Ouro:** Nunca beba volumes gigantescos de uma só vez para não "estufar" o estômago. O segredo é a constância em pequenos goles regulares!`;
+
+  // 0.1 Pedido para responder mensagem anterior
+  } else if (
+    normalized.includes("responda minha mensagem") ||
+    normalized.includes("responda a anterior") ||
+    normalized.includes("mensagem anterior")
+  ) {
+    const lastUserMsg = [...(messageHistory || [])].reverse().find((m: any) => m.sender === "atleta" && m.text !== message);
+    const prevText = lastUserMsg?.text || "";
+
+    if (prevText.toLowerCase().includes("kg") || prevText.toLowerCase().includes("usar") || isContextHydration) {
+      reply = `Com certeza, ${athleteName}! Retomando sua dúvida anterior sobre hidratação e dosagem para o seu peso:
+
+Para atletas na faixa de 60 a 70 kg, a recomendação prática e segura é:
+- **Consumo de água:** 500ml a 700ml por hora de treino.
+- **Sódio/Eletrólitos:** Em treinos moderados a longos (> 1h15), use entre **400mg a 600mg de sódio por hora** (1 cápsula de sal ou metade de uma garrafa com isotônico diluído a cada hora).
+- **Como tomar:** Pequenos goles regulares a cada 10-15 minutos para manter a osmolaridade estável no estômago e evitar desvio cardiovascular.
+
+Se tiver mais detalhes sobre a intensidade do pedal ou clima de hoje, posso afinar ainda mais para você!`;
+    } else {
+      reply = `Perfeito, ${athleteName}! Analisando sua questão anterior no nosso histórico: o ponto essencial para o seu nível (**${athleteLevel}**) e meta de **${athleteGoal}** é priorizar a consistência com segurança biológica. Mantenha os treinos regulares, respeite os intervalos de descanso entre sessões e ajuste a alimentação pré e pós-treino para garantir adaptação contínua.`;
+    }
+
+  // 0.2 Fisiologia e Estratégia de Prova/Pedal
+  } else if (
+    normalized.includes("fisiologia") ||
+    normalized.includes("estrategia") ||
+    normalized.includes("estratégia") ||
+    normalized.includes("pacing")
+  ) {
+    reply = `Sensacional, ${athleteName}! Dominar a fisiologia e a estratégia é o que transforma pedaladas desgastantes em evolução constante.
+
+### 🧠 Princípios Fisiológicos de Pacing para o Ciclismo:
+1. **Gerenciamento dos Dois Tanques de Combustível:**
+   - **Gordura (Aeróbico):** Tanque quase ilimitado, usado predominantemente em **Zona 2 (Leve a Moderado)**. Desenvolver essa base é a prioridade no nível **${athleteLevel}**.
+   - **Glicogênio (Carboidratos):** Tanque pequeno e nobre (dura cerca de 90 min de esforço intenso). Cada subida forte esgota esse tanque rapidamente.
+2. **Estratégia de Ritmo Negativo (Negative Split):**
+   - Comece os primeiros 30-40% do pedal sempre 5% a 10% mais contido do que você acha que aguenta. Isso economiza glicogênio e preserva suas pernas para fechar forte no final.
+3. **Cadência Econômica:**
+   - Em terrenos planos, mantenha entre 85 e 95 RPM para não sobrecarregar as articulações e usar a circulação periférica a seu favor.`;
+
+  // 1. Sódio, Hidratação e Eletrólitos
+  } else if (
     normalized.includes("sodio") ||
     normalized.includes("sódio") ||
     normalized.includes("hidrat") ||
@@ -2025,17 +2094,14 @@ Se você precisa transferir seu treino de dia (por exemplo, mover o treino longo
 
   // 10. Fallback Geral Contextualizado com o Atleta
   } else {
-    reply = `Olá, ${athleteName}! Que ótimo conversar com você sobre o seu desenvolvimento no ciclismo.
+    reply = `Olá, ${athleteName}! Recebi sua mensagem: "${message}".
 
-Como atleta de nível **${athleteLevel}** focado em **${athleteGoal}**, cada treino e cada detalhe contam para construir a sua melhor forma física.
+Como atleta de nível **${athleteLevel}** com foco em **${athleteGoal}**, a base de qualquer evolução consistente no ciclismo envolve três pilares:
+1. **Disciplina de Esforço:** Pedalar nas zonas corretas (principalmente base aeróbica moderada) para construir resistência celular.
+2. **Hidratação e Nutrição:** Manter o corpo hidratado e nutrido durante toda a duração do pedal para evitar queda brusca de rendimento.
+3. **Recuperação Ativa:** Respeitar o tempo de descanso muscular após treinos mais fortes para permitir a supercompensação.
 
-Para te orientar com máxima precisão, me diga em qual desses pontos você quer focar agora:
-- **Treino de hoje ou da semana:** Como dosar o esforço, cadência ideal ou zonas de frequência cardíaca/potência.
-- **Fisiologia e Estratégia:** Pacing em subidas, técnicas de sprint ou respiração eficiente.
-- **Alimentação & Hidratação:** Quantidade de carboidratos por hora e reposição de eletrólitos/sódio.
-- **Recuperação:** Descanso ativo, sono reparador ou alívio de tensões musculares.
-
-Pode mandar sua dúvida que vamos estruturar seu pedal com base científica! 🚴‍♂️💪`;
+Como seu treinador, estou aqui para te apoiar em cada detalhe. Se quiser detalhar sua pergunta ou pedir um ajuste específico na planilha, é só mandar!`;
   }
 
   return {
@@ -2819,7 +2885,7 @@ Histórico Recente: ${JSON.stringify(messageHistory?.slice(-10) || [])}
     res.json(parsedData);
   } catch (error: any) {
     console.warn("Fadiga central na chamada do Gemini para chat personalizado. Ativando treinador local resiliente:", error.message);
-    const data = fallbackChat(message, profile, currentPlan);
+    const data = fallbackChat(message, profile, currentPlan, messageHistory);
     data.geminiError = error.message;
     const userEmailKey = (profile?.email || (req as any).user?.email || "").trim().toLowerCase();
     if (data && data.updatedPlan) {
