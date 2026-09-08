@@ -1498,15 +1498,19 @@ const callGeminiWithFallback = async (
 // Helper to implement a fast, client-side safety ceiling to avoid Vercel Serverless 10s execution timeout
 const withTimeout = <T>(promise: Promise<T>, ms: number = 25000, errorMessage = "Timeout exceeding limit"): Promise<T> => {
   let timeoutId: NodeJS.Timeout;
+  let didTimeout = false;
   const timeoutPromise = new Promise<never>((_, reject) => {
     timeoutId = setTimeout(() => {
+      didTimeout = true;
       reject(new Error(errorMessage));
     }, ms);
   });
   
   // Guard against unhandled promise rejections crashing Node.js serverless functions on Vercel
   promise.catch((err) => {
-    console.warn("Plano de fundo - Exceção do Gemini capturada silenciosamente para evitar crash do servidor:", err.message || err);
+    if (didTimeout) {
+      console.warn("[Plano de Fundo] Exceção da API em segundo plano após expiração do limite de tempo:", err?.message || err);
+    }
   });
 
   return Promise.race([promise, timeoutPromise]).finally(() => {
