@@ -1451,20 +1451,20 @@ const checkApiKey = () => {
   getAiClient();
 };
 
-// Robust Gemini runner with model fallback and automatic retry for 503/429 errors
+// Robust Gemini runner with model fallback and automatic retry for 503/429/timeout errors
 const callGeminiWithFallback = async (
   requestFn: (modelName: string) => Promise<any>,
-  modelsToTry: string[] = ["gemini-2.5-flash", "gemini-3.1-flash-lite"]
+  modelsToTry: string[] = ["gemini-2.5-flash", "gemini-3.1-flash-lite", "gemini-2.5-pro"]
 ): Promise<any> => {
   let lastError: any = null;
 
   for (let i = 0; i < modelsToTry.length; i++) {
     const model = modelsToTry[i];
     try {
-      // Guard each model call with an internal 10-second timeout
+      // Guard each model call with an internal 45-second timeout so complex responses have ample time to complete
       const modelPromise = requestFn(model);
       const perModelTimeout = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error(`Timeout de 10s no modelo ${model}`)), 10000);
+        setTimeout(() => reject(new Error(`Timeout de 45s no modelo ${model}`)), 45000);
       });
       return await Promise.race([modelPromise, perModelTimeout]);
     } catch (err: any) {
@@ -1480,14 +1480,11 @@ const callGeminiWithFallback = async (
                           errMsg.includes("404") ||
                           errMsg.includes("not found");
       
-      if (i < modelsToTry.length - 1 && isTemporary) {
-        console.log(`[AI Model Router] Modelo ${model} encontrou indisponibilidade temporária (${errMsg.slice(0, 70)}...). Alternando imediatamente para ${modelsToTry[i + 1]}...`);
+      if (i < modelsToTry.length - 1) {
+        console.log(`[AI Model Router] Modelo ${model} falhou ou demorou (${errMsg.slice(0, 70)}...). Alternando imediatamente para ${modelsToTry[i + 1]}...`);
         // Breve pausa para mitigar concorrência temporária
         await new Promise(r => setTimeout(r, 200));
         continue;
-      } else if (!isTemporary) {
-        // Se for erro permanente de autenticação ou chave inválida, não adianta tentar outros modelos
-        throw err;
       }
     }
   }
@@ -2092,11 +2089,30 @@ Se você precisa transferir seu treino de dia (por exemplo, mover o treino longo
 1. Me dizer exatamente a troca: *"Mude o treino de terça para quinta"* ou *"Quero descansar amanhã e fazer endurance no sábado"*.
 2. Ou na aba **Planilha**, clicar no botão de ajuste para reorganizar sua grade semanal mantendo a distribuição equilibrada de cargas.`;
 
+  // 9.1 Peso, composição corporal e impacto no ciclismo (ex: "peso 100 quilos", "isso me atrapalha?", "estou pesado")
+  } else if (
+    normalized.includes("peso") ||
+    normalized.includes("quilo") ||
+    normalized.includes("kg") ||
+    normalized.includes("pesado") ||
+    normalized.includes("gordo") ||
+    normalized.includes("atrapalha") ||
+    normalized.includes("emagrec")
+  ) {
+    reply = `De forma alguma isso te impede de pedalar e evoluir com consistência! No ciclismo, o peso corporal é apenas o ponto de partida do seu momento atual.
+
+### 🚴‍♂️ O Que Significa na Prática:
+1. **No Plano:** O peso tem baixíssimo impacto negativo na velocidade. Pelo contrário: ciclistas com maior massa corporal frequentemente desenvolvem excelente potência bruta no terreno plano.
+2. **Nas Subidas:** Aqui sim a relação peso-potência (W/kg) exige mais energia para vencer a gravidade. A solução agora não é se cobrar velocidade em aclives, mas sim usar marchas leves (giro solto de 85-95 rpm) para poupar joelhos e articulações.
+3. **Adaptação Estrutural:** No início, seu foco deve ser o tempo em cima do selim e a regularidade aeróbica (Zona 2). Com treinos frequentes e hidratação adequada, a composição corporal muda naturalmente e a sensação na bike fica cada vez mais leve.
+
+Você está no caminho certo. Foco na constância e no prazer de pedalar!`;
+
   // 10. Fallback Geral
   } else {
-    reply = `Compreendido! Sobre "${message}":
+    reply = `Compreendi a sua dúvida! No ciclismo e na rotina esportiva, cada detalhe conta — seja na escolha das marchas, no pacing do esforço, na nutrição pré/pós-treino ou no descanso adequado.
 
-Como seu treinador, estou pronto para te orientar em qualquer tema — seja na dosagem do esforço, nutrição, recuperação muscular ou ajustes na planilha da semana. Se quiser detalhar ou aprofundar essa dúvida, me diga o que mais você gostaria de saber!`;
+Para te orientar com máxima precisão sobre isso, me conte um pouco mais: você sente isso durante os pedais, no dia a dia ou está planejando alguma meta específica para os próximos treinos?`;
   }
 
   return {
@@ -2849,44 +2865,12 @@ Responda agora diretamente à mensagem acima:`;
           contents: userBrief,
           config: {
             systemInstruction,
-            responseMimeType: "application/json",
-            responseSchema: {
-              type: Type.OBJECT,
-              required: ["reply"],
-              properties: {
-                reply: { type: Type.STRING },
-                updatedPlan: {
-                  type: Type.OBJECT,
-                  properties: {
-                    workouts: {
-                      type: Type.ARRAY,
-                      items: {
-                        type: Type.OBJECT,
-                        required: ["day", "type", "duration", "goal", "structure", "targetZone", "rpe", "tip"],
-                        properties: {
-                          day: { type: Type.STRING },
-                          type: { type: Type.STRING },
-                          duration: { type: Type.INTEGER },
-                          goal: { type: Type.STRING },
-                          structure: { type: Type.STRING },
-                          targetZone: { type: Type.STRING },
-                          rpe: { type: Type.INTEGER },
-                          tip: { type: Type.STRING }
-                        }
-                      }
-                    },
-                    summary: { type: Type.STRING },
-                    observations: { type: Type.STRING },
-                    evaluation: { type: Type.STRING }
-                  }
-                }
-              }
-            }
+            responseMimeType: "application/json"
           }
         })
       ),
-      25000,
-      "Tempo limite de 25s atingido no acompanhamento do Coach."
+      60000,
+      "Tempo limite de 60s atingido no acompanhamento do Coach."
     );
 
     const resultText = response.text;
@@ -2894,6 +2878,15 @@ Responda agora diretamente à mensagem acima:`;
       throw new Error("No response from Gemini API");
     }
     const parsedData = cleanAndParseJson(resultText);
+    if (!parsedData || typeof parsedData !== "object" || !parsedData.reply) {
+      if (typeof parsedData === "string") {
+        res.json({ reply: parsedData, updatedPlan: null });
+        return;
+      }
+      res.json({ reply: resultText, updatedPlan: null });
+      return;
+    }
+
     if (parsedData && parsedData.updatedPlan) {
       if (!parsedData.updatedPlan.workouts || !Array.isArray(parsedData.updatedPlan.workouts) || parsedData.updatedPlan.workouts.length === 0) {
         delete parsedData.updatedPlan;
