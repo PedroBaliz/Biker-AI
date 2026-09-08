@@ -1454,7 +1454,7 @@ const checkApiKey = () => {
 // Robust Gemini runner with model fallback and automatic retry for 503/429 errors
 const callGeminiWithFallback = async (
   requestFn: (modelName: string) => Promise<any>,
-  modelsToTry: string[] = ["gemini-3.1-flash-lite", "gemini-2.5-flash"]
+  modelsToTry: string[] = ["gemini-2.5-flash", "gemini-3.1-flash-lite"]
 ): Promise<any> => {
   let lastError: any = null;
 
@@ -2092,16 +2092,11 @@ Se você precisa transferir seu treino de dia (por exemplo, mover o treino longo
 1. Me dizer exatamente a troca: *"Mude o treino de terça para quinta"* ou *"Quero descansar amanhã e fazer endurance no sábado"*.
 2. Ou na aba **Planilha**, clicar no botão de ajuste para reorganizar sua grade semanal mantendo a distribuição equilibrada de cargas.`;
 
-  // 10. Fallback Geral Contextualizado com o Atleta
+  // 10. Fallback Geral
   } else {
-    reply = `Olá, ${athleteName}! Recebi sua mensagem: "${message}".
+    reply = `Compreendido! Sobre "${message}":
 
-Como atleta de nível **${athleteLevel}** com foco em **${athleteGoal}**, a base de qualquer evolução consistente no ciclismo envolve três pilares:
-1. **Disciplina de Esforço:** Pedalar nas zonas corretas (principalmente base aeróbica moderada) para construir resistência celular.
-2. **Hidratação e Nutrição:** Manter o corpo hidratado e nutrido durante toda a duração do pedal para evitar queda brusca de rendimento.
-3. **Recuperação Ativa:** Respeitar o tempo de descanso muscular após treinos mais fortes para permitir a supercompensação.
-
-Como seu treinador, estou aqui para te apoiar em cada detalhe. Se quiser detalhar sua pergunta ou pedir um ajuste específico na planilha, é só mandar!`;
+Como seu treinador, estou pronto para te orientar em qualquer tema — seja na dosagem do esforço, nutrição, recuperação muscular ou ajustes na planilha da semana. Se quiser detalhar ou aprofundar essa dúvida, me diga o que mais você gostaria de saber!`;
   }
 
   return {
@@ -2803,25 +2798,49 @@ app.post("/api/chat", requireAuth, verifyUserMatch, async (req, res) => {
 
     checkApiKey();
 
-    const systemInstruction = `Você é um treinador de ciclismo especialista de classe mundial com profundo entendimento em fisiologia esportiva.
-Você está em uma conversa contínua com seu atleta parceiro. Responda em português brasileiro de forma inspiradora, mas sempre de forma amigável, clara e didática.
+    const athleteFirstName = profile?.name ? profile.name.trim().split(" ")[0] : "Atleta";
 
-REGRA CRÍTICA DE COMUNICAÇÃO: Nunca utilize a palavra "RPE" ou "Percepção Subjetiva de Esforço" em suas explicações, resumos, descrições ou dicas. Esse termo técnico afasta o ciclista. Use termos muito simples e diretos para explicar o nível de esforço, tais como: "Muito Leve", "Leve", "Moderado", "Forte" ou "Máximo".
+    const systemInstruction = `Você é o Gemini, uma inteligência artificial assistente e treinador especialista de ciclismo, saúde, performance e bem-estar.
 
-Dicas de comunicação:
-- Use e abuse de forma personalizada de todos os dados do Atleta Perfil recebidos (por exemplo: trate o atleta pelo seu Nome, leve em consideração se possui alguma limitação ou lesão física ao responder, adeque a linguagem ao nível dele (iniciante/intermediário/avançado), relacione as dicas com o objetivo principal dele e com os equipamentos que ele usa como FTP em Watts ou FCmax se informados).
-- Explique brevemente o porquê fisiológico das suas instruções quando achar oportuno usando analogias fáceis e animadoras para o progresso do atleta.
-- Se eles perguntarem sobre cansaço extremo ou lesão, seja cauteloso e preze pelo descanso ativo ou repouso absoluto.
-- Se eles pedirem para alterar ou regenerar a planilha do treino, encoraje-os a atualizar os dados de treino ou sugira ajustes práticos.
+LIBERDADE TOTAL DE CONVERSAÇÃO (COMO QUALQUER CHAT DO GEMINI):
+- Você NÃO é um robô com respostas prontas ou roteiro engessado.
+- Você tem a inteligência geral, raciocínio avançado e total liberdade de conversação do chat nativo do Gemini.
+- O atleta pode falar sobre QUALQUER assunto livremente: treinos, zonas de potência (FTP), frequência cardíaca, cadência, mecânica e manutenção de bicicletas, nutrição esportiva, hidratação e sódio, alívio de dores, rotina diária, motivação, tecnologia, curiosidades ou qualquer outro tema.
+- Se o usuário fizer uma pergunta geral, responda com inteligência e naturalidade, sem tentar forçar analogias artificiais se não fizer sentido.
 
-Envie um JSON com as seguintes chaves:
-- "reply": a resposta do coach formatada em Markdown (pode incluir listas, bullets ou termos explicados de maneira estimulante e simples).
-- "updatedPlan": opcional, caso o atleta tenha pedido explicitamente uma alteração no treino (como "mude terça para descanso" ou "adicione um treino extra no sábado"). Retorne a planilha atualizada na mesma estrutura, senão envie nulo.`;
+ANTI-REPETIÇÃO E COMUNICAÇÃO NATURAL (MANDATÓRIO):
+1. NUNCA comece toda resposta com uma saudação formal ou repetindo o nome ("Olá, Pedro Baliza!", "Fala, Pedro Baliza!"). Fale como em um chat contínuo com um amigo ou mentor.
+2. NUNCA recite o perfil do atleta (ex: "como atleta iniciante focado em melhorar condicionamento...") a cada mensagem. Esses dados servem apenas como contexto silencioso para calibrar o nível de profundidade das suas respostas.
+3. Vá direto ao ponto! Se o atleta fizer uma pergunta rápida ou direta ("tenho 66 kg, quanto posso usar?"), entregue a resposta, os números e a explicação de forma direta, clara e prática.
+4. Varie seu vocabulário e estilo de acordo com o tom da conversa. Seja empático, encorajador, científico quando necessário e sempre acessível.
+5. Se o atleta pedir expressamente uma alteração ou ajuste na planilha de treino atual (ex: "mude meu treino de quarta para folga", "adicione um pedal longo no domingo"), retorne a planilha semanal atualizada no campo "updatedPlan". Se ele NÃO tiver pedido mudança na planilha, envie "updatedPlan": null.
 
-    const userBrief = `Atleta Perfil: ${JSON.stringify(profile || {})}
-Planilha Semanal Atual: ${JSON.stringify(currentPlan || {})}
-Histórico Recente: ${JSON.stringify(messageHistory?.slice(-10) || [])}
-Última Mensagem do Atleta: "${message || ""}"`;
+Formato de Saída (JSON estrito):
+{
+  "reply": "Sua resposta natural, direta e rica em conteúdo formatada em Markdown",
+  "updatedPlan": null ou objeto com a planilha atualizada caso tenha sido pedido
+}`;
+
+    const recentDialogue = (messageHistory || [])
+      .slice(-8)
+      .map((m: any) => `${m.sender === "atleta" ? athleteFirstName : "Treinador"}: ${m.text}`)
+      .join("\n\n");
+
+    const userBrief = `CONTEXTO DO ATLETA (Apenas para calibração interna, NUNCA recite estes dados na resposta):
+- Nome: ${athleteFirstName}
+- Nível: ${profile?.level || "Iniciante"}
+- Objetivo: ${profile?.goal || "Melhorar condicionamento"}
+- FTP: ${profile?.ftp ? profile.ftp + "W" : "N/D"} | FCmax: ${profile?.maxHeartRate ? profile.maxHeartRate + " bpm" : "N/D"}
+${profile?.limitations ? `- Limitações / Lesões: ${profile.limitations}` : ""}
+${currentPlan ? `- Resumo da Planilha Atual: ${currentPlan.summary || "Ativa"}` : ""}
+
+HISTÓRICO DA CONVERSA:
+${recentDialogue || "(Início de conversa)"}
+
+NOVA MENSAGEM DO ATLETA:
+${athleteFirstName}: "${message || ""}"
+
+Responda agora diretamente à mensagem acima:`;
 
     const response = await withTimeout(
       callGeminiWithFallback((model) =>
