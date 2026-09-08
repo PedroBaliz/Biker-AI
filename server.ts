@@ -1454,26 +1454,39 @@ const checkApiKey = () => {
 // Robust Gemini runner with model fallback and automatic retry for 503/429 errors
 const callGeminiWithFallback = async (
   requestFn: (modelName: string) => Promise<any>,
-  modelsToTry: string[] = ["gemini-3.6-flash", "gemini-2.5-flash", "gemini-flash-latest", "gemini-3.8-flash"]
+  modelsToTry: string[] = ["gemini-3.1-flash-lite", "gemini-2.5-flash", "gemini-3.6-flash", "gemini-flash-latest", "gemini-3.8-flash"]
 ): Promise<any> => {
   let lastError: any = null;
 
   for (let i = 0; i < modelsToTry.length; i++) {
     const model = modelsToTry[i];
     try {
-      return await requestFn(model);
+      // Guard each model call with an internal 9-second timeout so one slow model does not exhaust the whole budget
+      const modelPromise = requestFn(model);
+      const perModelTimeout = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error(`Timeout de 9s no modelo ${model}`)), 9000);
+      });
+      return await Promise.race([modelPromise, perModelTimeout]);
     } catch (err: any) {
       lastError = err;
       const errMsg = String(err?.message || err || "");
-      const isTemporary = errMsg.includes("503") || errMsg.includes("high demand") || errMsg.includes("429") || errMsg.includes("UNAVAILABLE");
+      const isTemporary = errMsg.includes("503") || 
+                          errMsg.includes("high demand") || 
+                          errMsg.includes("429") || 
+                          errMsg.includes("UNAVAILABLE") ||
+                          errMsg.includes("DEADLINE_EXCEEDED") ||
+                          errMsg.includes("Timeout") ||
+                          errMsg.includes("timeout") ||
+                          errMsg.includes("404") ||
+                          errMsg.includes("not found");
       
       if (i < modelsToTry.length - 1 && isTemporary) {
-        console.log(`[AI Model Router] Model ${model} is busy (503/429), switching to alternate model ${modelsToTry[i + 1]}...`);
+        console.log(`[AI Model Router] Modelo ${model} encontrou indisponibilidade temporária (${errMsg.slice(0, 70)}...). Alternando imediatamente para ${modelsToTry[i + 1]}...`);
         // Breve pausa para mitigar concorrência temporária
-        await new Promise(r => setTimeout(r, 400));
+        await new Promise(r => setTimeout(r, 200));
         continue;
       } else if (!isTemporary) {
-        // Se for erro de validação ou chave, não adianta tentar outros modelos
+        // Se for erro permanente de autenticação ou chave inválida, não adianta tentar outros modelos
         throw err;
       }
     }
@@ -1820,43 +1833,205 @@ Continue firme registrando seus treinos e nos vemos no próximo!`;
 
 const fallbackChat = (message: string, profile: any, currentPlan: any): any => {
   const normalized = (message || "").toLowerCase();
+  const athleteName = profile?.name ? profile.name.trim().split(" ")[0] : "Campeão";
+  const athleteLevel = profile?.level || "intermediário";
+  const athleteGoal = profile?.goal || "evolução e resistência no pedal";
+  const athleteFtp = profile?.ftp ? `${profile.ftp}W` : null;
+  const athleteHrMax = profile?.hrMax ? `${profile.hrMax} bpm` : null;
+
   let reply = "";
 
-  if (normalized.includes("mude") || normalized.includes("altera") || normalized.includes("mudar") || normalized.includes("ajusta")) {
-    reply = `Como seu treinador virtual, eu posso ajustar a sua planilha para você! Diga-me qual dia você quer alterar (por exemplo: "mude terça para folga" ou "mude o treino de domingo para endurance") e posso realizar as modificações diretamente no seu histórico.`;
-  } else if (normalized.includes("dor") || normalized.includes("lesao") || normalized.includes("machu") || normalized.includes("joelho")) {
-    reply = `Atleta, muito cuidado! Dores no joelho, costas ou articulações no ciclismo geralmente indicam fadiga local acumulada ou necessidade de bike fit (altura do selim ou posição do carrinho).
+  // 1. Sódio, Hidratação e Eletrólitos
+  if (
+    normalized.includes("sodio") ||
+    normalized.includes("sódio") ||
+    normalized.includes("hidrat") ||
+    normalized.includes("eletról") ||
+    normalized.includes("eletrol") ||
+    normalized.includes("agua") ||
+    normalized.includes("água") ||
+    normalized.includes("suor") ||
+    normalized.includes("isotonic") ||
+    normalized.includes("isotônic") ||
+    normalized.includes("caibra") ||
+    normalized.includes("cãibra") ||
+    normalized.includes("sal")
+  ) {
+    reply = `Olá, ${athleteName}! Como seu treinador, digo com convicção: a hidratação e o balanço de sódio são o motor invisível do seu rendimento no ciclismo.
 
-Recomendo fortemente:
-1. **Reduzir ou adiar treinos fortes** de limiar de lactato até sumir a dor.
-2. Fazer apenas giros de soltura leves na Zona 1.
-3. Aplicar compressas frias por 15-20 minutos e consultar especialista em saúde esportiva se as dores persistirem.
+### 💧 Por Que o Sódio é Crítico no Pedal?
+Quando suamos, não perdemos apenas água. Um ciclista perde em média entre **500mg a 1.200mg de sódio por litro de suor** dependendo do calor e da taxa metabólica individual.
+- **Volume Plasmático:** O sódio é o principal mineral que retém água dentro dos seus vasos sanguíneos. Se o sódio cai, o volume de sangue diminui, fazendo seu coração bater muito mais rápido (desvio cardiovascular) para entregar a mesma potência.
+- **Prevenção de Cãibras e Fadiga:** As contrações musculares dependem da bomba de sódio-potássio. Sem sódio suficiente, ocorrem espasmos involuntários e queda abrupta de potência.
+- **Cuidado com a Hiponatremia:** Beber apenas água pura em pedais longos ou quentes dilui o sódio no sangue, causando fraqueza e náuseas.
 
-O descanso consciente é o seu melhor aliado para evitar lesões mais complexas!`;
-  } else if (normalized.includes("alimenta") || normalized.includes("comer") || normalized.includes("comida") || normalized.includes("carb")) {
-    reply = `A alimentação correta é o segredo para ter um rendimento espetacular! Seguem as três premissas da fisiologia:
+### 📋 Guia Prático para o seu Pedal:
+1. **Treinos curtos (< 1 hora leve):** Água mineral comum (500ml a cada 60min) é suficiente.
+2. **Treinos moderados/longos (> 1h15 ou dias quentes):** Adicione uma caramanhola com isotônico ou tome cápsulas de sal fornecendo de **400mg a 800mg de sódio por hora**.
+3. **Ritmo de Consumo:** Tome goles médios (150-200ml) a cada 10-15 minutos, nunca espere a boca secar.
 
-- **Pré-treino (1h a 2h antes):** Pratos focados em carboidratos de absorção equilibrada (aveia, frutas, pão com geleia de morango). Evite gorduras ou excesso de fibras para não dar desconforto intestinal.
-- **No pedal (treinos com mais de 1h30):** Carboidratos práticos consumidos de forma fracionada (gel, bananinha, isotônico ou mariola). Almeje entre 40g a 80g de carbo por hora.
-- **Pós-treino (recuperação rápida):** Carboidratos para reabastecer seus reservatórios musculares de glicogênio somado a fontes limpas de proteína para reestruturar as fibras das pernas.`;
-  } else if (normalized.includes("zona") || normalized.includes("fc") || normalized.includes("ftp") || normalized.includes("potencia")) {
-    reply = `Compreender as zonas de estímulo é o divisor de águas entre pedalar aleatoriamente e treinar de forma científica!
+No seu nível (**${athleteLevel}**), manter essa disciplina hídrica vai te permitir fechar a última hora de treino com a mesma força do início! 🚴‍♂️⚡`;
 
-Suas zonas são divididas estruturalmente assim:
-- **Z1 (Recuperação):** Rodar super solto, sem esforço, para bombear sangue e oxigenar pernas cansadas.
-- **Z2 (Endurance):** Nosso pilar metabólico! Constrói sua base aeróbica, melhora a queima de gordura e amplia o tamanho das mitocôndrias.
-- **Z3 (Tempo/Ritmo):** Ritmo moderadamente firme, onde a respiração começa a ficar ritmada.
-- **Z4 (Limiar de Lactato):** Intensidade forte perto do FTP. É o treino focado em aumentar a sua potência sustentável em subidas e planos.
-- **Z5 (VO2 Máximo):** Tiros muito curtos e intensos com cansaço agudo, ideais para elevar seu fôlego máximo cardíaco.`;
+  // 2. Subidas, Altimetria e Ritmo em Aclives
+  } else if (
+    normalized.includes("subida") ||
+    normalized.includes("subir") ||
+    normalized.includes("escalad") ||
+    normalized.includes("morro") ||
+    normalized.includes("aclive") ||
+    normalized.includes("altimetr") ||
+    normalized.includes("montanha")
+  ) {
+    reply = `Fala, ${athleteName}! Render bem nas subidas é onde técnica biomecânica e fisiologia se encontram. Para o seu perfil (${athleteLevel}), aqui está a fórmula de ouro:
+
+### 🏔️ Estratégia Fisiológica para Vencer Subidas:
+- **Giro Alto (75 a 85 RPM):** O erro comum é esmagar marcha pesada a 55 RPM. Isso queima as fibras rápidas (Tipo II) e gera excesso de lactato. Use uma marcha mais leve para transferir o trabalho para as fibras aeróbicas (Tipo I) e seu sistema cardiovascular.
+- **Pacing Cauteloso:** Nunca ataque o pé da subida. Comece em um esforço moderado/firme e guarde energia para acelerar somente nos últimos 20% do aclive.
+- **Posição no Selim:** Permaneça sentado a maior parte do tempo, deslizando o quadril 1 a 2 cm para trás no selim para engajar os glúteos e aliviar os quadríceps. Levante apenas para esticar as costas ou vencer rampas muito íngremes.
+- **Parte Superior Relaxada:** Ombros baixos, pegada solta no guidão e peito aberto para garantir máxima captação de oxigênio pelos pulmões.`;
+
+  // 3. Sprint, Explosão e Tiros de Velocidade
+  } else if (
+    normalized.includes("sprint") ||
+    normalized.includes("explos") ||
+    normalized.includes("tiro") ||
+    normalized.includes("velocidade") ||
+    normalized.includes("arrancad")
+  ) {
+    reply = `Sensacional, ${athleteName}! Trabalhar a explosão e o sprint desenvolve sua potência neuromuscular e capacidade anaeróbia de ponta.
+
+### ⚡ Anatomia de um Bom Sprint no Ciclismo:
+- **Sistema ATP-CP (Fosfagênio):** Essa energia pura e imediata dura apenas entre **8 a 15 segundos**. Após isso, a queda de watts é inevitável.
+- **Cadência de Lançamento:** Não tente sprintar com marcha travada. Inicie o tiro a cerca de 90 RPM e deixe o giro explodir até **110–125 RPM**.
+- **Postura:** Mãos obrigatoriamente na parte baixa do guidão (drops) para estabilidade e aerodinâmica máxima. Projete o peso ligeiramente à frente ao ficar em pé.
+- **Recuperação Plena:** Para que cada repetição seja de alta qualidade, descanse de **3 a 5 minutos bem leves (Zona 1)** entre tiros máximos para reabastecer a fosfocreatina muscular.`;
+
+  // 4. Cadência, Marchas e Relação
+  } else if (
+    normalized.includes("cadencia") ||
+    normalized.includes("cadência") ||
+    normalized.includes("rpm") ||
+    normalized.includes("giro") ||
+    normalized.includes("marcha") ||
+    normalized.includes("relacao") ||
+    normalized.includes("relação")
+  ) {
+    reply = `Excelente pergunta, ${athleteName}! A cadência é a engrenagem que define se você está gastando glicogênio muscular ou oxigênio.
+
+### ⚙️ Como Calibrar seu Giro:
+- **No Plano:** Busque uma cadência de cruzeiro entre **85 e 95 RPM**. Nessa faixa, a contração muscular rápida bombeia sangue de volta ao coração, funcionando como uma segunda bomba circulatória.
+- **Nas Subidas:** Mantenha entre **75 e 85 RPM**. Menos de 70 RPM sobrecarrega a patela do joelho e os ligamentos.
+- **Troca Antecipada:** Antecipe a troca de marchas 1 ou 2 segundos antes da inclinação começar, nunca sob torque extremo na corrente.`;
+
+  // 5. Alimentação, Carboidratos e Nutrição
+  } else if (
+    normalized.includes("alimenta") ||
+    normalized.includes("comer") ||
+    normalized.includes("comida") ||
+    normalized.includes("carb") ||
+    normalized.includes("gel") ||
+    normalized.includes("nutri") ||
+    normalized.includes("cafe") ||
+    normalized.includes("café")
+  ) {
+    reply = `A nutrição no ciclismo é tão importante quanto o treino em si, ${athleteName}! Para o seu objetivo (${athleteGoal}), siga este protocolo fisiológico:
+
+### 🍌 Como Abastecer seu Motor:
+- **Antes do Treino (1h30 a 2h antes):** Refeição rica em carboidratos complexos e de fácil digestão (aveia com banana e mel, pão integral com geleia). Pouca gordura e pouca proteína para não retardar o esvaziamento gástrico.
+- **Durante o Treino (>1h15):** Consuma entre **40g a 80g de carboidratos por hora** (géis, bananinhas, isotônicos ou pequenos sanduíches). A regra de ouro é: abasteça a cada 30 a 45 minutos antes de sentir fraqueza.
+- **Pós-Treino (Janela de Recuperação):** Nas primeiras 2 horas após pedalar, seus músculos estão ávidos por glicogênio. Combine 3 partes de carboidratos com 1 parte de proteína magra para recuperação celular acelerada.`;
+
+  // 6. Fadiga, Cansaço, Sono e Recuperação
+  } else if (
+    normalized.includes("fadiga") ||
+    normalized.includes("cansa") ||
+    normalized.includes("descanso") ||
+    normalized.includes("sono") ||
+    normalized.includes("overtraining") ||
+    normalized.includes("recupera") ||
+    normalized.includes("dormir")
+  ) {
+    reply = `Muito sensato você perguntar sobre isso, ${athleteName}! É durante o repouso que as fibras musculares se reconstroem mais fortes e as mitocôndrias se multiplicam.
+
+### 🛌 Estratégia de Recuperação Inteligente:
+- **Descanso Ativo (Giro Solto Z1):** Se as pernas estiverem pesadas mas você quiser rodar, faça um treino curto (30-40 min) em **Zona 1 (abaixo de 60% do seu esforço)** com cadência alta e marcha leve. Isso acelera a depuração de metabólitos sem estressar as fibras.
+- **Qualidade do Sono:** O hormônio do crescimento (GH) é liberado em ondas profundas do sono. Priorize 7 a 8 horas de sono contínuo.
+- **Sinais de Alerta:** Se sua frequência cardíaca em repouso ao acordar estiver 5 a 8 batimentos acima do normal, seu sistema nervoso simpático ainda está estressado: priorize descanso total no dia!`;
+
+  // 7. Dores, Lesões e Bike Fit
+  } else if (
+    normalized.includes("dor") ||
+    normalized.includes("lesao") ||
+    normalized.includes("lesão") ||
+    normalized.includes("machu") ||
+    normalized.includes("joelho") ||
+    normalized.includes("lombar") ||
+    normalized.includes("costas") ||
+    normalized.includes("pescoco") ||
+    normalized.includes("pescoço") ||
+    normalized.includes("fit")
+  ) {
+    reply = `Atenção total aqui, ${athleteName}! No ciclismo, dor articular não é sinal de treino bom — é sinal de sobrecarga mecânica ou posicionamento incorreto.
+
+### 🛡️ Protocolo Imediato de Segurança:
+1. **Suspenda treinos de alta intensidade:** Cancele tiros e esforço em Zona 4/5 até que o desconforto articular desapareça.
+2. **Cheque o Bike Fit:** 
+   - Dor na frente do joelho geralmente indica selim baixo ou avançado demais.
+   - Dor atrás do joelho sugere selim alto demais.
+   - Dor na lombar e pescoço sugere alcance (reach) longo demais no guidão ou falta de mobilidade do core.
+3. Se a dor persistir após 48 horas de repouso, consulte um fisioterapeuta esportivo. Não pedale com dor inflamatória!`;
+
+  // 8. Zonas de Treino, FTP e Frequência Cardíaca
+  } else if (
+    normalized.includes("zona") ||
+    normalized.includes("fc") ||
+    normalized.includes("ftp") ||
+    normalized.includes("potencia") ||
+    normalized.includes("potência") ||
+    normalized.includes("limiar") ||
+    normalized.includes("vo2")
+  ) {
+    const ftpInfo = athleteFtp ? `Seu FTP de referência: **${athleteFtp}**` : "Seu FTP pode ser aferido no teste de 20 min";
+    const hrInfo = athleteHrMax ? `Sua FC máxima: **${athleteHrMax}**` : "FC baseada na sua idade e percepção";
+
+    reply = `Compreender as zonas é o divisor de águas no ciclismo, ${athleteName}! ${ftpInfo} | ${hrInfo}.
+
+### 🎯 Suas 5 Faixas Fisiológicas:
+- **Z1 (Recuperação Ativa - Muito Leve):** Giro regenerativo, regenera vasos e solta as pernas.
+- **Z2 (Endurance/Base Aeróbica - Leve/Moderado):** O alicerce! Onde o corpo aprende a consumir gordura como combustível e poupar glicogênio. 70% a 80% do seu volume semanal deve morar aqui.
+- **Z3 (Tempo/Ritmo - Moderado a Firme):** Ritmo de pelotão sustentável, respiração rítmica.
+- **Z4 (Limiar Funcional - Forte):** O esforço onde o lactato é produzido na mesma taxa em que é depurado. Aumenta a velocidade de cruzeiro.
+- **Z5 (VO2 Máx - Muito Forte/Máximo):** Tiros curtos de 2 a 5 minutos que expandem a capacidade cardiorrespiratória.`;
+
+  // 9. Alteração de Planilha, Troca de Dias ou Folga
+  } else if (
+    normalized.includes("mude") ||
+    normalized.includes("altera") ||
+    normalized.includes("mudar") ||
+    normalized.includes("ajusta") ||
+    normalized.includes("trocar") ||
+    normalized.includes("adiar") ||
+    normalized.includes("folga")
+  ) {
+    reply = `Com certeza, ${athleteName}! A flexibilidade inteligente é a chave da longevidade no ciclismo.
+    
+Se você precisa transferir seu treino de dia (por exemplo, mover o treino longo para o fim de semana ou incluir uma folga na terça), você pode:
+1. Me dizer exatamente a troca: *"Mude o treino de terça para quinta"* ou *"Quero descansar amanhã e fazer endurance no sábado"*.
+2. Ou na aba **Planilha**, clicar no botão de ajuste para reorganizar sua grade semanal mantendo a distribuição equilibrada de cargas.`;
+
+  // 10. Fallback Geral Contextualizado com o Atleta
   } else {
-    reply = `Olá, campeão! Fico feliz em conversar sobre ciclismo e treinamento com você. 
+    reply = `Olá, ${athleteName}! Que ótimo conversar com você sobre o seu desenvolvimento no ciclismo.
 
-Como seu coach de ciclismo virtual, estou por aqui para te auxiliar a:
-- Ajustar ou redefinir sua planilha semanal de treinos nas suas métricas.
-- Tirar dúvidas científicas sobre zonas de intensidade por potência (FTP) ou frequência cardíaca.
-- Dar conselhos de alimentação, respiração correta e recuperação pós-pedal.
+Como atleta de nível **${athleteLevel}** focado em **${athleteGoal}**, cada treino e cada detalhe contam para construir a sua melhor forma física.
 
-Em que posso te ajudar hoje para tornar seu pedal ainda mais estruturado e eficiente?`;
+Para te orientar com máxima precisão, me diga em qual desses pontos você quer focar agora:
+- **Treino de hoje ou da semana:** Como dosar o esforço, cadência ideal ou zonas de frequência cardíaca/potência.
+- **Fisiologia e Estratégia:** Pacing em subidas, técnicas de sprint ou respiração eficiente.
+- **Alimentação & Hidratação:** Quantidade de carboidratos por hora e reposição de eletrólitos/sódio.
+- **Recuperação:** Descanso ativo, sono reparador ou alívio de tensões musculares.
+
+Pode mandar sua dúvida que vamos estruturar seu pedal com base científica! 🚴‍♂️💪`;
   }
 
   return {
@@ -2631,7 +2806,11 @@ Histórico Recente: ${JSON.stringify(messageHistory?.slice(-10) || [])}
     }
     const parsedData = cleanAndParseJson(resultText);
     if (parsedData && parsedData.updatedPlan) {
-      parsedData.updatedPlan = sanitizePlanForUser(parsedData.updatedPlan, profile, userEmailKey);
+      if (!parsedData.updatedPlan.workouts || !Array.isArray(parsedData.updatedPlan.workouts) || parsedData.updatedPlan.workouts.length === 0) {
+        delete parsedData.updatedPlan;
+      } else {
+        parsedData.updatedPlan = sanitizePlanForUser(parsedData.updatedPlan, profile, userEmailKey);
+      }
     }
     res.json(parsedData);
   } catch (error: any) {
@@ -2640,7 +2819,11 @@ Histórico Recente: ${JSON.stringify(messageHistory?.slice(-10) || [])}
     data.geminiError = error.message;
     const userEmailKey = (profile?.email || (req as any).user?.email || "").trim().toLowerCase();
     if (data && data.updatedPlan) {
-      data.updatedPlan = sanitizePlanForUser(data.updatedPlan, profile, userEmailKey);
+      if (!data.updatedPlan.workouts || !Array.isArray(data.updatedPlan.workouts) || data.updatedPlan.workouts.length === 0) {
+        delete data.updatedPlan;
+      } else {
+        data.updatedPlan = sanitizePlanForUser(data.updatedPlan, profile, userEmailKey);
+      }
     }
     res.json(data);
   }
