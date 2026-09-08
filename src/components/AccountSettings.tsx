@@ -639,7 +639,7 @@ export default function AccountSettings({ currentUser, onUpdateAccount, onClose,
                   <div className="p-1 px-2 bg-lime-100 text-lime-800 rounded-lg text-[10px] font-black">AI</div>
                   <div>
                     <strong className="text-xs text-slate-800 block">Treinador Virtual Ilimitado</strong>
-                    <span className="text-[10.5px] text-slate-405 block font-sans">Interações e dicas fisiológicas 24/7 com ajustes dinâmicos</span>
+                    <span className="text-[10.5px] text-slate-405 block font-sans">Interações e dicas fisiológicas com apoio contínuo</span>
                   </div>
                 </div>
 

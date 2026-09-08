@@ -11,7 +11,7 @@ import {
   Dumbbell, ShieldAlert, ShieldCheck, Sparkles, Mail, Lock, User, Eye, EyeOff, Bike, 
   ChevronRight, CheckCircle, Download, Smartphone, Share, X, ExternalLink,
   Activity, TrendingUp, Zap, Award, MessageSquare, Calendar, Heart, Percent, Star, Check,
-  Play, Pause, Sliders, Gauge, Instagram, Loader2
+  Play, Pause, Sliders, Gauge, Instagram, Loader2, Bot, Clock
 } from "lucide-react";
 // @ts-ignore
 import bikerHero from "../assets/images/biker_hero_1780860230528.png";
@@ -649,6 +649,27 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
               <span className="text-[10px] font-bold text-blue-400 uppercase tracking-widest font-mono">Fácil Sem Esforço</span>
             </div>
 
+            {/* Card 5: Coach AI no Chat - Apoio Contínuo */}
+            <div className="p-6 rounded-3xl bg-gradient-to-b from-slate-900/90 to-slate-950 border border-lime-500/30 flex flex-col justify-between hover:border-lime-400/50 hover:shadow-lg transition-all group space-y-4 text-left shadow-md relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-3">
+                <span className="text-[9px] font-mono font-black uppercase text-lime-400 bg-lime-500/10 border border-lime-500/20 px-2 py-0.5 rounded-full flex items-center gap-1">
+                  <Sparkles className="w-2.5 h-2.5" /> Apoio Contínuo
+                </span>
+              </div>
+              <div className="space-y-3">
+                <div className="w-10 h-10 rounded-2xl bg-lime-500/10 border border-lime-500/20 text-lime-400 flex items-center justify-center">
+                  <MessageSquare className="w-5 h-5" />
+                </div>
+                <h4 className="font-heading font-black text-base text-white">Coach AI • Apoio Contínuo</h4>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Tire dúvidas a qualquer hora sobre dosagem de ritmo nas subidas, nutrição intra-treino, hidratação no calor e recuperação muscular.
+                </p>
+              </div>
+              <span className="text-[10px] font-bold text-lime-400 uppercase tracking-widest font-mono flex items-center gap-1">
+                Especialista no Bolso <ChevronRight className="w-3 h-3" />
+              </span>
+            </div>
+
             {/* Card 6 */}
             <div className="p-6 rounded-3xl bg-slate-900/80 border border-slate-800 flex flex-col justify-between hover:border-slate-700 hover:shadow-lg transition-all group space-y-4 text-left shadow-md">
               <div className="space-y-3">
@@ -725,9 +746,9 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
         </div>
       </section>
 
-      {/* Centered Auth Section placed AFTER "Como Funciona" */}
+      {/* Centered Auth Section */}
       <section id="auth-section" className="relative py-24 px-4 sm:px-6 md:px-12 bg-slate-950 border-t border-slate-800/80 scroll-mt-24">
-        <div className="max-w-xl mx-auto w-full relative z-10 space-y-8">
+        <div className="max-w-xl mx-auto w-full relative z-10 space-y-6">
           
           <div className="w-full bg-slate-900/90 border border-slate-800 rounded-3xl shadow-xl p-6 sm:p-8 backdrop-blur-xl relative z-10 space-y-6">
             
@@ -745,6 +766,39 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
                   : "Crie seu cadastro rápido para receber treinos fáceis e personalizados de verdade."
                 }
               </p>
+            </div>
+
+            {/* Destaque de Alto Valor: Coach AI Incluso na sua Conta */}
+            <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 border border-lime-500/30 text-left space-y-3 shadow-md relative overflow-hidden">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-lime-500/15 border border-lime-500/30 text-lime-400 flex items-center justify-center">
+                    <Sparkles className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs sm:text-sm font-heading font-black text-white uppercase tracking-tight flex items-center gap-2">
+                      Incluso: Coach AI • Apoio Contínuo
+                      <span className="text-[9px] font-mono font-bold bg-lime-500/20 text-lime-300 px-2 py-0.5 rounded-full">No seu Bolso</span>
+                    </h4>
+                    <p className="text-[10px] text-slate-400 font-sans">Apoio técnico e fisiológico para cada pedalada</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-2 pt-2 border-t border-slate-800/80 text-[11px] text-slate-300 font-sans">
+                <div className="flex items-start gap-2">
+                  <span className="text-lime-400 font-bold shrink-0 mt-0.5">✓</span>
+                  <span><strong>Estratégia de Fisiologia & Ritmo:</strong> Aprenda a dosar o esforço em subidas longas e a girar na cadência correta (85–90 RPM) para preservar os joelhos e não quebrar no trajeto.</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="text-lime-400 font-bold shrink-0 mt-0.5">✓</span>
+                  <span><strong>Nutrição & Hidratação Precisa:</strong> Saiba exatamente quanto de água, sódio (mg) e carboidrato por hora ingerir de acordo com o seu peso e a temperatura do dia.</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="text-lime-400 font-bold shrink-0 mt-0.5">✓</span>
+                  <span><strong>Mecânica & Prevenção de Dores:</strong> Dicas práticas de calibração de pneus para cada terreno, marchas ideais para aclives e alívio de desconfortos na lombar.</span>
+                </div>
+              </div>
             </div>
 
             {/* Selector de Abas */}
