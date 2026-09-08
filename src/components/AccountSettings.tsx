@@ -24,15 +24,19 @@ import {
   CreditCard
 } from "lucide-react";
 
+import { getUserAccessInfo } from "../utils/subscriptionUtils";
+
 interface AccountSettingsProps {
   currentUser: UserAccount;
   onUpdateAccount: (updatedUser: UserAccount, newPassword?: string) => boolean;
   onClose: () => void;
+  onOpenSubscriptionCheckout?: () => void;
 }
 
-export default function AccountSettings({ currentUser, onUpdateAccount, onClose }: AccountSettingsProps) {
+export default function AccountSettings({ currentUser, onUpdateAccount, onClose, onOpenSubscriptionCheckout }: AccountSettingsProps) {
   // Tabs: 'account', 'athlete', or 'subscription'
   const [activeTab, setActiveTab] = useState<"account" | "athlete" | "subscription">("athlete");
+  const accessInfo = getUserAccessInfo(currentUser.profile, currentUser.email);
 
   // Account inputs
   const [name, setName] = useState(currentUser.profile.name);
@@ -568,24 +572,64 @@ export default function AccountSettings({ currentUser, onUpdateAccount, onClose 
           >
             <div className="bg-slate-900 text-white rounded-2xl p-5 border border-slate-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div className="space-y-1">
-                <span className="text-[10px] text-lime-400 uppercase font-bold tracking-wider font-mono">Assinatura Ativa</span>
+                <span className="text-[10px] text-lime-400 uppercase font-bold tracking-wider font-mono">
+                  {accessInfo.isActiveSubscriber ? "Assinatura Pro Ativa" : accessInfo.isInTrial ? "Período de Teste Gratuito" : "Status da Assinatura"}
+                </span>
                 <h4 className="text-lg font-black font-heading leading-tight">
-                  Plano {currentUser.profile.subscriptionPlan || "Plano Pro"}
+                  Plano {currentUser.profile.subscriptionPlan || "Plano Pro Biker AI"}
                 </h4>
                 <p className="text-xs text-slate-400 font-sans">
-                  {currentUser.profile.subscriptionExpiresAt ? (
+                  {accessInfo.isInTrial ? (
+                    <>Avaliação gratuita: <strong>{accessInfo.trialDaysRemaining > 1 ? `${accessInfo.trialDaysRemaining} dias restantes` : `${accessInfo.trialHoursRemaining}h restantes`}</strong></>
+                  ) : currentUser.profile.subscriptionExpiresAt ? (
                     <>Válido até: <strong>{new Date(currentUser.profile.subscriptionExpiresAt + 'T00:00:00').toLocaleDateString('pt-BR')}</strong></>
+                  ) : accessInfo.isActiveSubscriber || accessInfo.isCoach ? (
+                    "Acesso ilimitado Biker AI"
                   ) : (
-                    "Acesso vitalício ou por tempo indeterminado"
+                    "Acesso aos treinos suspenso ou pendente de ativação"
                   )}
                 </p>
               </div>
 
               <div className="flex items-center gap-2 bg-slate-800/80 px-3 py-1.5 rounded-xl border border-slate-700">
-                <div className="w-2 h-2 rounded-full bg-lime-400 animate-ping"></div>
-                <span className="text-xs font-bold text-lime-400 font-mono uppercase tracking-wide">Status: Ativo</span>
+                <div className={`w-2 h-2 rounded-full ${
+                  accessInfo.isActiveSubscriber || accessInfo.isCoach
+                    ? "bg-lime-400 animate-ping"
+                    : accessInfo.isInTrial
+                    ? "bg-sky-400 animate-pulse"
+                    : "bg-amber-400 animate-pulse"
+                }`}></div>
+                <span className={`text-xs font-bold font-mono uppercase tracking-wide ${
+                  accessInfo.isActiveSubscriber || accessInfo.isCoach
+                    ? "text-lime-400"
+                    : accessInfo.isInTrial
+                    ? "text-sky-300"
+                    : "text-amber-400"
+                }`}>
+                  Status: {accessInfo.statusLabel}
+                </span>
               </div>
             </div>
+
+            {/* Subscribe to plan button */}
+            {onOpenSubscriptionCheckout && (
+              <button
+                type="button"
+                id="account-settings-subscribe-btn"
+                onClick={() => {
+                  onClose();
+                  onOpenSubscriptionCheckout();
+                }}
+                className="w-full py-3.5 px-5 bg-gradient-to-r from-lime-400 via-lime-500 to-emerald-400 hover:from-lime-300 hover:to-emerald-300 text-slate-950 font-heading font-black text-xs uppercase tracking-wider rounded-xl transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2.5 cursor-pointer active:scale-98"
+              >
+                <Sparkles className="w-4 h-4 text-slate-950 shrink-0" />
+                <span>
+                  {accessInfo.isActiveSubscriber 
+                    ? "Ver Informações da Assinatura / Pagamento" 
+                    : "Aderir ao Plano Pro • R$ 16,90/mês"}
+                </span>
+              </button>
+            )}
 
             {/* Benefits detail */}
             <div className="space-y-2.5">

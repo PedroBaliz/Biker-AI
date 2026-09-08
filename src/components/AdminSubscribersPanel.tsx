@@ -28,8 +28,11 @@ import {
   ClipboardList,
   Database,
   Trash2,
-  UploadCloud
+  UploadCloud,
+  Clock,
+  AlertTriangle
 } from "lucide-react";
+import { getUserAccessInfo } from "../utils/subscriptionUtils";
 
 interface AdminUser {
   email: string;
@@ -290,6 +293,45 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
     }
   };
 
+  // Quick action: Extend 3-day trial period by resetting createdAt to now
+  const handleExtendTrial = async (user: AdminUser) => {
+    setError("");
+    setSuccess("");
+    try {
+      const newCreatedAt = new Date().toISOString();
+      const response = await apiFetch("/api/admin/update-user-status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-User-Email": currentUserEmail, "X-Admin-Password": "Pedro23072007" },
+        body: JSON.stringify({
+          adminEmail: currentUserEmail,
+          adminPassword: "Pedro23072007",
+          email: user.email,
+          subscriptionStatus: "pending_payment",
+          createdAt: newCreatedAt
+        })
+      });
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          setSuccess(`Período de teste de ${user.profile.name} estendido por mais 3 dias (reiniciado a partir de agora)!`);
+          if (user.email.toLowerCase() === currentUserEmail.toLowerCase()) {
+            onRefreshCurrentProfile(data.user.profile);
+          }
+          await loadSubscribers();
+          if (selectedUser?.email === user.email) {
+            setSelectedUser({ ...user, profile: { ...user.profile, subscriptionStatus: "pending_payment", createdAt: newCreatedAt } });
+          }
+        } else {
+          setError(data.error || "Falha ao estender teste.");
+        }
+      } else {
+        setError("Erro no servidor ao estender teste.");
+      }
+    } catch (err) {
+      setError("Falha ao estender período de teste.");
+    }
+  };
+
   // Delete user API call
   const handleDeleteUser = async () => {
     if (!userToDelete) return;
@@ -347,8 +389,13 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
 
   const totalAthletes = athletes.length;
   const activeCount = athletes.filter(u => u.profile.subscriptionStatus === 'active').length;
-  const pendingCount = athletes.filter(u => u.profile.subscriptionStatus === 'pending_payment').length;
-  const expiredCount = athletes.filter(u => u.profile.subscriptionStatus === 'expired').length;
+  const trialCount = athletes.filter(u => getUserAccessInfo(u.profile, u.email).isInTrial).length;
+  const trialExpiredCount = athletes.filter(u => {
+    const access = getUserAccessInfo(u.profile, u.email);
+    return access.isTrialExpired && u.profile.subscriptionStatus !== 'active';
+  }).length;
+  const blockedCount = athletes.filter(u => u.profile.subscriptionStatus === 'expired').length;
+  const pendingCount = athletes.filter(u => u.profile.subscriptionStatus === 'pending_payment' && !getUserAccessInfo(u.profile, u.email).isInTrial).length;
   const avgFtp = (athletes.filter(u => u.profile.ftp).reduce((sum, u) => sum + (u.profile.ftp || 0), 0) / (athletes.filter(u => u.profile.ftp).length || 1)).toFixed(0);
 
   // Estimativa de faturamento de MVP (apenas atletas pagantes ativos - R$ 16,90/mês, desconsiderando o coach)
@@ -375,10 +422,19 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
       user.email.toLowerCase().includes(searchTerm.toLowerCase());
     
     let matchesStatus = true;
+    const userAccess = getUserAccessInfo(user.profile, user.email);
     if (statusFilter === "coach") {
       matchesStatus = isCoach;
-    } else if (statusFilter !== "all") {
-      matchesStatus = !isCoach && (user.profile.subscriptionStatus || "active") === statusFilter;
+    } else if (statusFilter === "active") {
+      matchesStatus = !isCoach && user.profile.subscriptionStatus === "active";
+    } else if (statusFilter === "trial") {
+      matchesStatus = !isCoach && userAccess.isInTrial;
+    } else if (statusFilter === "trial_expired") {
+      matchesStatus = !isCoach && userAccess.isTrialExpired && user.profile.subscriptionStatus !== "active";
+    } else if (statusFilter === "pending_payment") {
+      matchesStatus = !isCoach && user.profile.subscriptionStatus === "pending_payment";
+    } else if (statusFilter === "expired") {
+      matchesStatus = !isCoach && user.profile.subscriptionStatus === "expired";
     }
 
     const matchesPlan = planFilter === "all" || (user.profile.subscriptionPlan || "Plano Pro") === planFilter;
@@ -428,7 +484,7 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
       </div>
 
       {/* METRICS DASHBOARD ROW - BENTO GRID STYLE */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         {/* Total Alunos */}
         <div className="bg-white border border-slate-100 rounded-2xl p-4 shadow-xs flex items-center gap-3">
           <div className="p-2.5 bg-slate-100 text-slate-650 rounded-xl shrink-0">
@@ -451,41 +507,52 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
             <CheckCircle className="w-5 h-5" />
           </div>
           <div>
-            <span className="block text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Alunos Pagantes Ativos</span>
+            <span className="block text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Alunos Ativos</span>
             <span className="text-xl font-bold font-heading text-emerald-800">{activeCount}</span>
           </div>
         </div>
 
-        {/* Pendentes */}
-        <div className="bg-amber-50/50 border border-amber-100 rounded-2xl p-4 shadow-xs flex items-center gap-3">
-          <div className="p-2.5 bg-amber-500 text-white rounded-xl shrink-0">
-            <Hourglass className="w-5 h-5" />
+        {/* Em Teste (Trial 3d) */}
+        <div className="bg-sky-50/50 border border-sky-100 rounded-2xl p-4 shadow-xs flex items-center gap-3">
+          <div className="p-2.5 bg-sky-500 text-white rounded-xl shrink-0">
+            <Clock className="w-5 h-5" />
           </div>
           <div>
-            <span className="block text-[10px] font-bold text-amber-600 uppercase tracking-wider">Pendentes/Atraso</span>
-            <span className="text-xl font-bold font-heading text-amber-800">{pendingCount}</span>
+            <span className="block text-[10px] font-bold text-sky-600 uppercase tracking-wider">Em Teste (Trial)</span>
+            <span className="text-xl font-bold font-heading text-sky-800">{trialCount}</span>
           </div>
         </div>
 
-        {/* Expirados */}
+        {/* Teste Expirado */}
+        <div className="bg-amber-50/50 border border-amber-200 rounded-2xl p-4 shadow-xs flex items-center gap-3">
+          <div className="p-2.5 bg-amber-500 text-white rounded-xl shrink-0">
+            <AlertTriangle className="w-5 h-5" />
+          </div>
+          <div>
+            <span className="block text-[10px] font-bold text-amber-700 uppercase tracking-wider">Teste Expirado</span>
+            <span className="text-xl font-bold font-heading text-amber-900">{trialExpiredCount}</span>
+          </div>
+        </div>
+
+        {/* Bloqueados */}
         <div className="bg-rose-50/50 border border-rose-100 rounded-2xl p-4 shadow-xs flex items-center gap-3">
           <div className="p-2.5 bg-rose-500 text-white rounded-xl shrink-0">
             <ShieldAlert className="w-5 h-5" />
           </div>
           <div>
-            <span className="block text-[10px] font-bold text-rose-600 uppercase tracking-wider">Inativos/Bloqueados</span>
-            <span className="text-xl font-bold font-heading text-rose-800">{expiredCount}</span>
+            <span className="block text-[10px] font-bold text-rose-600 uppercase tracking-wider">Bloqueados</span>
+            <span className="text-xl font-bold font-heading text-rose-800">{blockedCount}</span>
           </div>
         </div>
 
         {/* Estimativa Faturamento */}
-        <div className="bg-sky-50/70 border border-sky-100 rounded-2xl p-4 shadow-xs col-span-2 lg:col-span-1 flex items-center gap-3">
-          <div className="p-2.5 bg-sky-500 text-white rounded-xl shrink-0">
+        <div className="bg-slate-900 border border-slate-850 rounded-2xl p-4 shadow-xs flex items-center gap-3 text-white">
+          <div className="p-2.5 bg-lime-500 text-slate-950 rounded-xl shrink-0">
             <DollarSign className="w-5 h-5" />
           </div>
           <div>
-            <span className="block text-[10px] font-bold text-sky-600 uppercase tracking-wider">Receita Mensal Alunos</span>
-            <span className="text-xl font-bold font-heading text-sky-850">R$ {estimatedRevenue}/mês</span>
+            <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Receita Mensal</span>
+            <span className="text-lg font-bold font-heading text-lime-400">R$ {estimatedRevenue}</span>
           </div>
         </div>
       </div>
@@ -533,7 +600,7 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
               />
             </div>
             {/* Filter Status */}
-            <div className="relative w-full sm:w-48 shrink-0">
+            <div className="relative w-full sm:w-56 shrink-0">
               <Filter className="absolute left-3 top-3.5 w-3.5 h-3.5 text-slate-400" />
               <select
                 value={statusFilter}
@@ -542,8 +609,10 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
               >
                 <option value="all">Filtro: Todos ({users.length})</option>
                 <option value="active">Alunos Ativos ({activeCount})</option>
-                <option value="pending_payment">Alunos Pendentes ({pendingCount})</option>
-                <option value="expired">Alunos Bloqueados ({expiredCount})</option>
+                <option value="trial">Em Teste / Trial ({trialCount})</option>
+                <option value="trial_expired">Teste Expirado ({trialExpiredCount})</option>
+                <option value="pending_payment">Pendentes ({pendingCount})</option>
+                <option value="expired">Bloqueados / Suspensos ({blockedCount})</option>
                 {coachesCount > 0 && (
                   <option value="coach">Treinadores / Isentos ({coachesCount})</option>
                 )}
@@ -577,6 +646,7 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
                 {filteredUsers.map((user) => {
                   const isCoach = isCoachUser(user);
                   const subStatus = user.profile.subscriptionStatus || 'active';
+                  const userAccess = getUserAccessInfo(user.profile, user.email);
                   const isCurSelected = selectedUser?.email === user.email;
                   return (
                     <div 
@@ -603,10 +673,45 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
                           )}
                         </div>
                         <span className="block text-[11px] font-mono text-slate-400 break-all">{user.email}</span>
-                        <div className="flex gap-2.5 items-center flex-wrap pt-0.5">
-                          <span className="text-[10px] text-slate-500 font-sans flex items-center gap-1">
-                            <Tag className="w-3 h-3" />
-                            {isCoach ? "Acesso Master (Isento)" : (user.profile.subscriptionPlan || "Plano Pro")}
+                        
+                        {/* Status de Teste ou Assinatura com destaque */}
+                        <div className="flex gap-2 items-center flex-wrap pt-1">
+                          {isCoach ? (
+                            <span className="text-[10px] font-extrabold text-amber-800 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md flex items-center gap-1">
+                              <ShieldCheck className="w-3 h-3 text-amber-600" />
+                              <span>Coach / Acesso Mestre</span>
+                            </span>
+                          ) : subStatus === 'active' ? (
+                            <span className="text-[10px] font-extrabold text-emerald-800 bg-emerald-50 border border-emerald-250 px-2 py-0.5 rounded-md flex items-center gap-1">
+                              <CheckCircle className="w-3 h-3 text-emerald-600" />
+                              <span>Assinante Ativo • {user.profile.subscriptionPlan || "Plano Pro"}</span>
+                            </span>
+                          ) : userAccess.isInTrial ? (
+                            <span className="text-[10px] font-extrabold text-sky-800 bg-sky-50 border border-sky-250 px-2 py-0.5 rounded-md flex items-center gap-1">
+                              <Clock className="w-3 h-3 text-sky-600 animate-pulse" />
+                              <span>PERÍODO DE TESTE ({userAccess.trialDaysRemaining > 1 ? `${userAccess.trialDaysRemaining} dias restantes` : `${userAccess.trialHoursRemaining}h restantes`})</span>
+                            </span>
+                          ) : userAccess.isTrialExpired ? (
+                            <span className="text-[10px] font-extrabold text-rose-800 bg-rose-50 border border-rose-250 px-2 py-0.5 rounded-md flex items-center gap-1">
+                              <AlertTriangle className="w-3 h-3 text-rose-600" />
+                              <span>PERÍODO DE TESTE EXPIRADO (Acesso Bloqueado)</span>
+                            </span>
+                          ) : subStatus === 'expired' ? (
+                            <span className="text-[10px] font-extrabold text-rose-800 bg-rose-50 border border-rose-250 px-2 py-0.5 rounded-md flex items-center gap-1">
+                              <ShieldAlert className="w-3 h-3 text-rose-600" />
+                              <span>Assinatura Expirada / Bloqueada</span>
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-extrabold text-amber-800 bg-amber-50 border border-amber-250 px-2 py-0.5 rounded-md flex items-center gap-1">
+                              <Hourglass className="w-3 h-3 text-amber-600" />
+                              <span>Pagamento Pendente</span>
+                            </span>
+                          )}
+
+                          <span className="text-slate-200">|</span>
+                          <span className="text-[10px] text-slate-500 font-sans flex items-center gap-1" title="Data em que se cadastrou">
+                            <Calendar className="w-3 h-3 text-slate-400" />
+                            {user.profile.createdAt ? `Início: ${new Date(user.profile.createdAt).toLocaleDateString('pt-BR')}` : "Cadastro inicial"}
                           </span>
                           <span className="text-slate-200">|</span>
                           <span className="text-[10px] text-slate-500 font-sans flex items-center gap-1">
@@ -633,13 +738,23 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
                             <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-ping"></span>
                             <span>Ativo</span>
                           </span>
+                        ) : userAccess.isInTrial ? (
+                          <span className="bg-sky-100 border border-sky-250 text-sky-800 text-[10px] font-extrabold px-2.5 py-1 rounded-full flex items-center gap-1">
+                            <Clock className="w-3 h-3 text-sky-600" />
+                            <span>Em Teste ({userAccess.trialDaysRemaining > 1 ? `${userAccess.trialDaysRemaining}d` : `${userAccess.trialHoursRemaining}h`})</span>
+                          </span>
+                        ) : userAccess.isTrialExpired ? (
+                          <span className="bg-rose-100 border border-rose-250 text-rose-800 text-[10px] font-extrabold px-2.5 py-1 rounded-full flex items-center gap-1 animate-pulse">
+                            <AlertTriangle className="w-3 h-3 text-rose-600" />
+                            <span>Teste Expirado</span>
+                          </span>
                         ) : subStatus === 'pending_payment' ? (
                           <span className="bg-amber-100 border border-amber-250 text-amber-800 text-[10px] font-extrabold px-2.5 py-1 rounded-full flex items-center gap-1">
                             <span>Pendente</span>
                           </span>
                         ) : (
-                          <span className="bg-rose-100 border border-rose-250 text-rose-800 text-[10px] font-extrabold px-2.5 py-1 rounded-full flex items-center gap-1 animate-pulse">
-                            <span>Expirado</span>
+                          <span className="bg-rose-100 border border-rose-250 text-rose-800 text-[10px] font-extrabold px-2.5 py-1 rounded-full flex items-center gap-1">
+                            <span>Bloqueado</span>
                           </span>
                         )}
 
@@ -649,30 +764,48 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
                             <span className="text-[9px] font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5">
                               Livre
                             </span>
-                          ) : subStatus === 'active' ? (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleQuickToggleStatus(user, 'expired');
-                              }}
-                              className="text-[9px] font-black text-rose-600 hover:text-rose-800 bg-rose-50 hover:bg-rose-100 border border-rose-100 rounded px-1.5 py-0.5 cursor-pointer transition-all"
-                              title="Clique para suspender o acesso imediatamente"
-                            >
-                              Bloquear
-                            </button>
                           ) : (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleQuickToggleStatus(user, 'active');
-                              }}
-                              className="text-[9px] font-black text-emerald-600 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-100 rounded px-1.5 py-0.5 cursor-pointer transition-all"
-                              title="Clique para liberar acesso imediato"
-                            >
-                              Ativar
-                            </button>
+                            <>
+                              {userAccess.isTrialExpired && subStatus !== 'active' && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleExtendTrial(user);
+                                  }}
+                                  className="text-[9px] font-black text-sky-700 hover:text-sky-900 bg-sky-50 hover:bg-sky-100 border border-sky-200 rounded px-1.5 py-0.5 cursor-pointer transition-all"
+                                  title="Renovar por +3 dias de teste grátis a partir de agora"
+                                >
+                                  +3d Teste
+                                </button>
+                              )}
+
+                              {subStatus === 'active' ? (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleQuickToggleStatus(user, 'expired');
+                                  }}
+                                  className="text-[9px] font-black text-rose-600 hover:text-rose-800 bg-rose-50 hover:bg-rose-100 border border-rose-100 rounded px-1.5 py-0.5 cursor-pointer transition-all"
+                                  title="Clique para suspender o acesso imediatamente"
+                                >
+                                  Bloquear
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleQuickToggleStatus(user, 'active');
+                                  }}
+                                  className="text-[9px] font-black text-emerald-600 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-100 rounded px-1.5 py-0.5 cursor-pointer transition-all"
+                                  title="Clique para liberar acesso Pro imediato"
+                                >
+                                  Ativar
+                                </button>
+                              )}
+                            </>
                           )}
 
                           {user.email.toLowerCase() !== currentUserEmail.toLowerCase() && (
@@ -767,6 +900,121 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
                     Fechar
                   </button>
                 </div>
+
+                {/* Trial / Subscription Status Diagnostic Card */}
+                {(() => {
+                  const selAccess = getUserAccessInfo(selectedUser.profile, selectedUser.email);
+                  const isCoach = isCoachUser(selectedUser);
+                  const createdDate = selectedUser.profile?.createdAt ? new Date(selectedUser.profile.createdAt) : null;
+                  const formattedCreatedAt = createdDate && !isNaN(createdDate.getTime())
+                    ? createdDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+                    : "Data de cadastro inicial";
+
+                  return (
+                    <div className={`p-4 rounded-2xl border text-xs space-y-2.5 transition-all ${
+                      isCoach 
+                        ? "bg-amber-50/80 border-amber-250 text-amber-950"
+                        : selectedUser.profile.subscriptionStatus === 'active'
+                        ? "bg-emerald-50/80 border-emerald-250 text-emerald-950"
+                        : selAccess.isInTrial
+                        ? "bg-sky-50/80 border-sky-250 text-sky-950"
+                        : "bg-rose-50/80 border-rose-250 text-rose-950"
+                    }`}>
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          {isCoach ? (
+                            <ShieldCheck className="w-4 h-4 text-amber-600 shrink-0" />
+                          ) : selectedUser.profile.subscriptionStatus === 'active' ? (
+                            <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+                          ) : selAccess.isInTrial ? (
+                            <Clock className="w-4 h-4 text-sky-600 shrink-0 animate-pulse" />
+                          ) : (
+                            <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                          )}
+                          <span className="font-heading font-black text-xs uppercase tracking-wide">
+                            {isCoach 
+                              ? "Acesso Mestre (Treinador)" 
+                              : selectedUser.profile.subscriptionStatus === 'active'
+                              ? "Assinante Ativo (Mensalidade em dia)"
+                              : selAccess.isInTrial
+                              ? "Em Período de Teste Grátis"
+                              : "Período de Teste Expirado"}
+                          </span>
+                        </div>
+                        <span className={`text-[9.5px] font-black uppercase px-2 py-0.5 rounded-full border ${
+                          isCoach 
+                            ? "bg-amber-100 text-amber-800 border-amber-300"
+                            : selectedUser.profile.subscriptionStatus === 'active'
+                            ? "bg-emerald-100 text-emerald-800 border-emerald-300"
+                            : selAccess.isInTrial
+                            ? "bg-sky-100 text-sky-800 border-sky-300"
+                            : "bg-rose-100 text-rose-800 border-rose-300"
+                        }`}>
+                          {isCoach ? "Coach" : selectedUser.profile.subscriptionStatus === 'active' ? "Ativo" : selAccess.isInTrial ? "Em Teste" : "Expirado"}
+                        </span>
+                      </div>
+
+                      <div className="pt-0.5 text-[11px] leading-relaxed space-y-1">
+                        <div className="flex justify-between items-center text-slate-500">
+                          <span>Início / Cadastro:</span>
+                          <span className="font-semibold text-slate-700">{formattedCreatedAt}</span>
+                        </div>
+                        {!isCoach && selectedUser.profile.subscriptionStatus !== 'active' && (
+                          <div className="flex justify-between items-center">
+                            <span className="text-slate-500">Situação do Teste (3 dias):</span>
+                            <span className={`font-bold ${selAccess.isInTrial ? "text-sky-700" : "text-rose-700"}`}>
+                              {selAccess.isInTrial 
+                                ? `Ativo — restam ${selAccess.trialDaysRemaining > 1 ? `${selAccess.trialDaysRemaining} dias` : `${selAccess.trialHoursRemaining} horas`}`
+                                : "Expirado — paywall bloqueando treinos"}
+                            </span>
+                          </div>
+                        )}
+                        <div className="flex justify-between items-center">
+                          <span className="text-slate-500">Permissão de Treinos:</span>
+                          <span className={`font-bold ${selAccess.hasFullAccess ? "text-emerald-700" : "text-rose-700"}`}>
+                            {selAccess.hasFullAccess ? "Totalmente Liberado" : "Bloqueado (Requer Assinatura)"}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Quick extension or toggle buttons */}
+                      {!isCoach && (
+                        <div className="pt-1 flex gap-2">
+                          {selAccess.isTrialExpired && selectedUser.profile.subscriptionStatus !== 'active' && (
+                            <button
+                              type="button"
+                              onClick={() => handleExtendTrial(selectedUser)}
+                              className="flex-1 bg-white hover:bg-sky-50 border border-sky-300 text-sky-800 font-extrabold text-[10px] uppercase tracking-wider py-2 px-2.5 rounded-xl cursor-pointer transition-all flex items-center justify-center gap-1.5 shadow-xs"
+                              title="Renova o período de teste por mais 3 dias a partir de agora"
+                            >
+                              <Clock className="w-3.5 h-3.5 text-sky-600" />
+                              <span>Dar +3 Dias de Teste</span>
+                            </button>
+                          )}
+                          {selectedUser.profile.subscriptionStatus !== 'active' ? (
+                            <button
+                              type="button"
+                              onClick={() => handleQuickToggleStatus(selectedUser, 'active')}
+                              className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-[10px] uppercase tracking-wider py-2 px-2.5 rounded-xl cursor-pointer transition-all flex items-center justify-center gap-1.5 shadow-xs"
+                            >
+                              <CheckCircle className="w-3.5 h-3.5" />
+                              <span>Liberar Acesso Pro</span>
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => handleQuickToggleStatus(selectedUser, 'expired')}
+                              className="flex-1 bg-rose-50 hover:bg-rose-100 border border-rose-250 text-rose-700 font-extrabold text-[10px] uppercase tracking-wider py-2 px-2.5 rounded-xl cursor-pointer transition-all flex items-center justify-center gap-1.5 shadow-xs"
+                            >
+                              <ShieldAlert className="w-3.5 h-3.5" />
+                              <span>Suspender Acesso</span>
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
 
                 <form onSubmit={handleSaveUser} className="space-y-4">
                   {/* 1. Subscription Status */}

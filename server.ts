@@ -325,6 +325,28 @@ async function requireAuth(req: any, res: any, next: any) {
   }
 }
 
+// Helper to look up a user in the in-memory/retrieved database by email, with case-insensitive and key-format fallbacks
+function findUserInDb(db: Record<string, any>, email: string): { key: string; user: any } | null {
+  if (!email || !db) return null;
+  const emailKey = email.trim().toLowerCase();
+  const cleanKey = emailKey.replace(/[^a-z0-9]/g, "_");
+
+  if (db[emailKey]) return { key: emailKey, user: db[emailKey] };
+  if (db[cleanKey]) return { key: cleanKey, user: db[cleanKey] };
+
+  const targetKey = Object.keys(db).find((k) => {
+    const kLower = k.trim().toLowerCase();
+    const kClean = kLower.replace(/[^a-z0-9]/g, "_");
+    const userEmail = db[k]?.email?.trim()?.toLowerCase();
+    return kLower === emailKey || kClean === cleanKey || userEmail === emailKey;
+  });
+
+  if (targetKey && db[targetKey]) {
+    return { key: targetKey, user: db[targetKey] };
+  }
+  return null;
+}
+
 // Middleware to prevent cross-user data scraping or alteration
 async function verifyUserMatch(req: any, res: any, next: any) {
   if (req.user) {
@@ -337,9 +359,8 @@ async function verifyUserMatch(req: any, res: any, next: any) {
       if (!isCoach && authEmail !== bodyEmail) {
         try {
           const db = await getDatabase();
-          const emailKey = authEmail.replace(/[^a-z0-9]/g, "_");
-          const user = db[emailKey] || db[authEmail];
-          if (user && user.profile && user.profile.role === "coach") {
+          const userFound = findUserInDb(db, authEmail);
+          if (userFound && userFound.user?.profile && (userFound.user.profile.role === "coach" || userFound.user.profile.role === "admin")) {
             return next();
           }
         } catch (e) {
@@ -352,10 +373,35 @@ async function verifyUserMatch(req: any, res: any, next: any) {
   next();
 }
 
+// Check if user is in 3-day free trial period
+function isTrialActive(profile: any): boolean {
+  if (!profile || !profile.createdAt) return false;
+  // If explicitly expired or blocked by coach/admin, trial is no longer active
+  if (profile.subscriptionStatus === "expired") return false;
+  const created = new Date(profile.createdAt).getTime();
+  if (isNaN(created)) return false;
+  const TRIAL_DURATION_MS = 3 * 24 * 60 * 60 * 1000;
+  return (Date.now() - created) <= TRIAL_DURATION_MS;
+}
+
+// Master access verification: returns true only for coach, active subscriber, or active 3-day trial
+function hasActiveAccess(profile: any, userEmail?: string): boolean {
+  if (!profile) return false;
+  const emailToCheck = (profile?.email || userEmail || "").trim().toLowerCase();
+  const isCoach = profile?.role === "coach" || profile?.role === "admin" || emailToCheck === "pedro.bramos@sempreceub.com";
+  if (isCoach) return true;
+  // If explicitly expired or blocked by coach/admin, access is immediately revoked
+  if (profile.subscriptionStatus === "expired") return false;
+  // Active paying subscriber
+  if (profile.subscriptionStatus === "active") return true;
+  // Check 3-day trial window
+  return isTrialActive(profile);
+}
+
 // Helper to scrub/lock sensitive execution details for non-subscribers
-function sanitizePlanForUser(plan: any, profile: any) {
+function sanitizePlanForUser(plan: any, profile: any, userEmail?: string) {
   if (!plan) return null;
-  const isSubscriber = profile?.subscriptionStatus === "active" || profile?.role === "coach";
+  const isSubscriber = hasActiveAccess(profile, userEmail);
   
   if (isSubscriber) {
     return {
@@ -402,9 +448,8 @@ async function requireAdmin(req: any, res: any, next: any) {
   if (authEmail) {
     try {
       const db = await getDatabase();
-      const emailKey = authEmail.replace(/[^a-z0-9]/g, "_");
-      const user = db[emailKey] || db[authEmail];
-      if (user && user.profile && (user.profile.role === "coach" || user.profile.role === "admin" || user.profile.isCoach === true)) {
+      const userFound = findUserInDb(db, authEmail);
+      if (userFound && userFound.user?.profile && (userFound.user.profile.role === "coach" || userFound.user.profile.role === "admin" || userFound.user.profile.isCoach === true)) {
         req.user = req.user || {};
         req.user.email = authEmail;
         return next();
@@ -1031,6 +1076,7 @@ app.post("/api/auth/register", async (req, res) => {
     const customWelcomeText = `Olá, ${name.trim()}! Que excelente ver você aqui na Biker AI. Eu sou o seu Treinador de Ciclismo pessoal.\n\nMinhas planilhas e conselhos são focados em melhorar o seu fôlego e resistência de forma simples e segura, ajustando seus treinos por potência, batimentos do coração ou pelas suas percepções de cansaço.\n\nPara começarmos a planejar sua evolução de forma personalizada, preciso te conhecer melhor através de algumas perguntas rápidas no nosso chat.\n\nComo você já se cadastrou, podemos iniciar o questionário agora mesmo. **Qual é o seu tempo médio pedalando ou seu nível atual no ciclismo?**`;
 
     const isCoachEmail = email.trim().toLowerCase() === "pedro.bramos@sempreceub.com";
+    const nowIso = new Date().toISOString();
     const newProfile = {
       name: name.trim(),
       level: "intermediário",
@@ -1048,7 +1094,8 @@ app.post("/api/auth/register", async (req, res) => {
       subscriptionStatus: isCoachEmail ? "active" : "pending_payment",
       subscriptionPlan: "Plano Pro",
       subscriptionExpiresAt: "2026-12-31",
-      role: isCoachEmail ? "coach" : "athlete"
+      role: isCoachEmail ? "coach" : "athlete",
+      createdAt: nowIso
     };
 
     const initialChat = [
@@ -1064,6 +1111,7 @@ app.post("/api/auth/register", async (req, res) => {
       email: email.trim(),
       password: hashPassword(password), // Hashed & Secured!
       profile: newProfile,
+      createdAt: nowIso,
       chatHistory: initialChat,
       plan: null
     };
@@ -1090,12 +1138,13 @@ app.post("/api/auth/login", async (req, res) => {
     }
 
     const db = await getDatabase();
-    const emailKey = email.trim().toLowerCase();
-    const user = db[emailKey];
+    const userFound = findUserInDb(db, email);
 
-    if (!user) {
+    if (!userFound) {
       return res.status(400).json({ error: "Nenhum cadastro encontrado com este e-mail. Crie uma conta ao lado!" });
     }
+    const user = userFound.user;
+    const userKey = userFound.key;
 
     if (!verifyPassword(password, user.password)) {
       return res.status(400).json({ error: "Senha incorreta. Verifique os dados e tente novamente." });
@@ -1104,7 +1153,7 @@ app.post("/api/auth/login", async (req, res) => {
     // Auto-migrate plaintext legacy password to PBKDF2 hash on successful login
     if (!user.password.includes(":")) {
       user.password = hashPassword(password);
-      await saveDatabase(db, emailKey, getAuthToken(req));
+      await saveDatabase(db, userKey, getAuthToken(req));
     }
 
     // Ensure older users get default subscription parameters gracefully
@@ -1117,6 +1166,9 @@ app.post("/api/auth/login", async (req, res) => {
       }
       if (!user.profile.subscriptionPlan) user.profile.subscriptionPlan = "Plano Pro";
       if (!user.profile.subscriptionExpiresAt) user.profile.subscriptionExpiresAt = "2026-12-31";
+      if (!user.profile.createdAt) {
+        user.profile.createdAt = (user as any).createdAt;
+      }
     }
 
     const responseUser = { ...user };
@@ -1124,9 +1176,10 @@ app.post("/api/auth/login", async (req, res) => {
     if (responseUser.profile) {
       if (!responseUser.profile.goal) responseUser.profile.goal = "melhorar condicionamento";
       if (!responseUser.profile.level) responseUser.profile.level = "intermediário";
+      if (!responseUser.profile.createdAt) responseUser.profile.createdAt = (user as any).createdAt;
     }
     if (responseUser.plan) {
-      responseUser.plan = sanitizePlanForUser(responseUser.plan, responseUser.profile);
+      responseUser.plan = sanitizePlanForUser(responseUser.plan, responseUser.profile, responseUser.email);
     }
 
     res.json({ success: true, user: responseUser });
@@ -1145,25 +1198,29 @@ app.post("/api/auth/save-user", requireAuth, verifyUserMatch, async (req, res) =
     }
 
     const db = await getDatabase();
-    const emailKey = email.trim().toLowerCase();
-    const cleanKey = emailKey.replace(/[^a-z0-9]/g, "_");
+    const userFound = findUserInDb(db, email);
 
-    // Locate existing key in db
-    const targetKey = Object.keys(db).find((k) => {
-      const kLower = k.trim().toLowerCase();
-      const kClean = kLower.replace(/[^a-z0-9]/g, "_");
-      const userEmail = db[k]?.email?.trim()?.toLowerCase();
-      return kLower === emailKey || kClean === cleanKey || userEmail === emailKey;
-    });
-
-    if (!targetKey || !db[targetKey]) {
+    if (!userFound) {
       return res.status(404).json({ error: "Usuário não encontrado. Conta pode ter sido desativada ou excluída." });
+    }
+    const targetKey = userFound.key;
+    const existingUser = userFound.user;
+
+    // Preserve createdAt to guarantee trial duration isn't lost during updates
+    const existingCreatedAt = existingUser?.profile?.createdAt || existingUser?.createdAt;
+    if (existingCreatedAt) {
+      if (userAccount.profile && !userAccount.profile.createdAt) {
+        userAccount.profile.createdAt = existingCreatedAt;
+      }
+      if (!userAccount.createdAt) {
+        userAccount.createdAt = existingUser?.createdAt || existingCreatedAt;
+      }
     }
 
     // Maintain password securely
-    const fallbackPassword = emailKey === "pedro.bramos@sempreceub.com" ? "Pedro23072007" : "123456";
-    let preservedPassword = db[targetKey]?.password;
-    if (password && password !== db[targetKey]?.password) {
+    const fallbackPassword = email.trim().toLowerCase() === "pedro.bramos@sempreceub.com" ? "Pedro23072007" : "123456";
+    let preservedPassword = existingUser?.password;
+    if (password && password !== existingUser?.password) {
       // If client sent a new password, check if it's already hashed. If not, hash it!
       preservedPassword = password.includes(":") ? password : hashPassword(password);
     } else if (!preservedPassword) {
@@ -1191,20 +1248,21 @@ app.post("/api/auth/session", requireAuth, verifyUserMatch, async (req, res) => 
       return res.status(400).json({ error: "E-mail é obrigatório." });
     }
     const db = await getDatabase();
-    const emailKey = email.trim().toLowerCase();
-    const user = db[emailKey];
-    if (!user) {
+    const userFound = findUserInDb(db, email);
+    if (!userFound) {
       return res.status(404).json({ error: "Usuário não encontrado." });
     }
+    const user = userFound.user;
     
     const responseUser = { ...user };
     delete (responseUser as any).password; // Sanitize for privacy
     if (responseUser.profile) {
       if (!responseUser.profile.goal) responseUser.profile.goal = "melhorar condicionamento";
       if (!responseUser.profile.level) responseUser.profile.level = "intermediário";
+      if (!responseUser.profile.createdAt) responseUser.profile.createdAt = (user as any).createdAt;
     }
     if (responseUser.plan) {
-      responseUser.plan = sanitizePlanForUser(responseUser.plan, responseUser.profile);
+      responseUser.plan = sanitizePlanForUser(responseUser.plan, responseUser.profile, responseUser.email);
     }
 
     res.json({ success: true, user: responseUser });
@@ -1222,18 +1280,23 @@ app.post("/api/auth/check-status", async (req, res) => {
       return res.status(400).json({ error: "E-mail é obrigatório." });
     }
     const db = await getDatabase();
-    const emailKey = email.trim().toLowerCase();
-    const user = db[emailKey];
-    if (!user) {
+    const userFound = findUserInDb(db, email);
+    if (!userFound) {
       return res.status(404).json({ error: "Usuário não encontrado." });
     }
+    const user = userFound.user;
+    const emailKey = email.trim().toLowerCase();
 
     const isCoach = emailKey === "pedro.bramos@sempreceub.com" || user.profile?.role === "coach";
     const status = user.profile?.subscriptionStatus || (isCoach ? "active" : "pending_payment");
+    const isTrial = isTrialActive(user.profile);
+    const hasAccess = hasActiveAccess(user.profile, emailKey);
 
     res.json({
       success: true,
       subscriptionStatus: status,
+      isTrial,
+      hasAccess,
       profile: user.profile
     });
   } catch (error: any) {
@@ -1250,11 +1313,12 @@ app.post("/api/user/notify-payment", async (req, res) => {
       return res.status(400).json({ error: "E-mail é obrigatório." });
     }
     const db = await getDatabase();
-    const emailKey = email.trim().toLowerCase();
-    const user = db[emailKey];
-    if (!user) {
+    const userFound = findUserInDb(db, email);
+    if (!userFound) {
       return res.status(404).json({ error: "Usuário não encontrado." });
     }
+    const user = userFound.user;
+    const userKey = userFound.key;
 
     if (!user.feedbacks) {
       user.feedbacks = [];
@@ -1269,7 +1333,7 @@ app.post("/api/user/notify-payment", async (req, res) => {
     };
 
     user.feedbacks.unshift(paymentFeedback);
-    await saveDatabase(db, emailKey);
+    await saveDatabase(db, userKey, getAuthToken(req));
 
     res.json({
       success: true,
@@ -1289,11 +1353,11 @@ app.post("/api/auth/verify-password", requireAuth, verifyUserMatch, async (req, 
       return res.status(400).json({ error: "E-mail e senha são obrigatórios para verificação." });
     }
     const db = await getDatabase();
-    const emailKey = email.trim().toLowerCase();
-    const user = db[emailKey];
-    if (!user) {
+    const userFound = findUserInDb(db, email);
+    if (!userFound) {
       return res.status(404).json({ error: "Usuário não encontrado." });
     }
+    const user = userFound.user;
     const isValid = verifyPassword(password, user.password);
     res.json({ success: isValid });
   } catch (error: any) {
@@ -1365,10 +1429,12 @@ app.get("/api/diagnostics", async (req, res) => {
       throw new Error("GEMINI_API_KEY is completely empty or missing from environment variables.");
     }
     const client = getAiClient();
-    const testCall = await client.models.generateContent({
-      model: "gemini-3.6-flash",
-      contents: "Hi, please answer with exactly 'OK'."
-    });
+    const testCall = await callGeminiWithFallback((model) =>
+      getAiClient().models.generateContent({
+        model,
+        contents: "Hi, please answer with exactly 'OK'."
+      })
+    );
     responses.geminiConnection = "SUCCESS";
     responses.geminiResponse = testCall.text;
   } catch (err: any) {
@@ -1385,8 +1451,39 @@ const checkApiKey = () => {
   getAiClient();
 };
 
+// Robust Gemini runner with model fallback and automatic retry for 503/429 errors
+const callGeminiWithFallback = async (
+  requestFn: (modelName: string) => Promise<any>,
+  modelsToTry: string[] = ["gemini-3.6-flash", "gemini-2.5-flash", "gemini-flash-latest", "gemini-3.8-flash"]
+): Promise<any> => {
+  let lastError: any = null;
+
+  for (let i = 0; i < modelsToTry.length; i++) {
+    const model = modelsToTry[i];
+    try {
+      return await requestFn(model);
+    } catch (err: any) {
+      lastError = err;
+      const errMsg = String(err?.message || err || "");
+      const isTemporary = errMsg.includes("503") || errMsg.includes("high demand") || errMsg.includes("429") || errMsg.includes("UNAVAILABLE");
+      
+      if (i < modelsToTry.length - 1 && isTemporary) {
+        console.log(`[AI Model Router] Model ${model} is busy (503/429), switching to alternate model ${modelsToTry[i + 1]}...`);
+        // Breve pausa para mitigar concorrência temporária
+        await new Promise(r => setTimeout(r, 400));
+        continue;
+      } else if (!isTemporary) {
+        // Se for erro de validação ou chave, não adianta tentar outros modelos
+        throw err;
+      }
+    }
+  }
+
+  throw lastError;
+};
+
 // Helper to implement a fast, client-side safety ceiling to avoid Vercel Serverless 10s execution timeout
-const withTimeout = <T>(promise: Promise<T>, ms: number, errorMessage = "Timeout exceeding limit"): Promise<T> => {
+const withTimeout = <T>(promise: Promise<T>, ms: number = 25000, errorMessage = "Timeout exceeding limit"): Promise<T> => {
   let timeoutId: NodeJS.Timeout;
   const timeoutPromise = new Promise<never>((_, reject) => {
     timeoutId = setTimeout(() => {
@@ -1801,8 +1898,8 @@ Você DEVE responder rigorosamente no formato JSON com duas chaves:
 
 Mapeamento do parsedProfile (mande apenas o que extraiu ou corrigiu neste turno, sem apagar o resto):
 - name: string
-- level: "iniciante" | "intermediário" | "avançado" (ou vazio se não souber)
-- goal: "perder peso" | "melhorar condicionamento" | "completar um evento" | "competir" (ou vazio se não souber)
+- level: "iniciante" | "intermediário" | "avançado" (omita o campo se não souber ou não tiver sido informado)
+- goal: "perder peso" | "melhorar condicionamento" | "completar um evento" | "competir" (omita o campo se não souber ou não tiver sido informado)
 - daysPerWeek: number (ex: 3)
 - durationPerSession: number (em minutos, ex: 90)
 - eventDate: string (data ou descrição, ex: "GFNY em Outubro")
@@ -1832,46 +1929,48 @@ Analise a resposta, atualize o "parsedProfile" de acordo (pode preencher múltip
 Se o ciclista já respondeu a tudo, diga que o perfil está completo e que ele pode confirmar os dados na tela para gerar sua planilha semanal personalizada.`;
 
     const response = await withTimeout(
-      getAiClient().models.generateContent({
-        model: "gemini-3.6-flash",
-        contents: updatedPrompt,
-        config: {
-          systemInstruction,
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            required: ["reply", "parsedProfile"],
-            properties: {
-              reply: {
-                type: Type.STRING,
-                description: "Mensagem amigável do treinador respondendo ao atleta e fazendo a próxima pergunta"
-              },
-              parsedProfile: {
-                type: Type.OBJECT,
-                required: ["onboardingStep"],
-                description: "Campos atualizados do perfil obtidos a partir da resposta",
-                properties: {
-                  name: { type: Type.STRING },
-                  level: { type: Type.STRING, enum: ["iniciante", "intermediário", "avançado", ""] },
-                  goal: { type: Type.STRING, enum: ["perder peso", "melhorar condicionamento", "completar um evento", "competir", ""] },
-                  daysPerWeek: { type: Type.INTEGER },
-                  durationPerSession: { type: Type.INTEGER },
-                  eventDate: { type: Type.STRING },
-                  hasPowerMeter: { type: Type.BOOLEAN },
-                  ftp: { type: Type.INTEGER },
-                  hasHeartRate: { type: Type.BOOLEAN },
-                  maxHeartRate: { type: Type.INTEGER },
-                  limitations: { type: Type.STRING },
-                  recentActivity: { type: Type.STRING },
-                  onboardingStep: { type: Type.INTEGER }
+      callGeminiWithFallback((model) =>
+        getAiClient().models.generateContent({
+          model,
+          contents: updatedPrompt,
+          config: {
+            systemInstruction,
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: Type.OBJECT,
+              required: ["reply", "parsedProfile"],
+              properties: {
+                reply: {
+                  type: Type.STRING,
+                  description: "Mensagem amigável do treinador respondendo ao atleta e fazendo a próxima pergunta"
+                },
+                parsedProfile: {
+                  type: Type.OBJECT,
+                  required: ["onboardingStep"],
+                  description: "Campos atualizados do perfil obtidos a partir da resposta",
+                  properties: {
+                    name: { type: Type.STRING },
+                    level: { type: Type.STRING, enum: ["iniciante", "intermediário", "avançado"] },
+                    goal: { type: Type.STRING, enum: ["perder peso", "melhorar condicionamento", "completar um evento", "competir"] },
+                    daysPerWeek: { type: Type.INTEGER },
+                    durationPerSession: { type: Type.INTEGER },
+                    eventDate: { type: Type.STRING },
+                    hasPowerMeter: { type: Type.BOOLEAN },
+                    ftp: { type: Type.INTEGER },
+                    hasHeartRate: { type: Type.BOOLEAN },
+                    maxHeartRate: { type: Type.INTEGER },
+                    limitations: { type: Type.STRING },
+                    recentActivity: { type: Type.STRING },
+                    onboardingStep: { type: Type.INTEGER }
+                  }
                 }
               }
             }
           }
-        }
-      }),
-      5500,
-      "Tempo limite de 5.5s esgotado ao estruturar diálogo com o Coach."
+        })
+      ),
+      25000,
+      "Tempo limite de 25s esgotado ao estruturar diálogo com o Coach."
     );
 
     const resultText = response.text;
@@ -1966,42 +2065,44 @@ Limitações físicas: ${profile?.limitations || "Nenhuma"}
 Atividade recente cadastrada: ${profile?.recentActivity || "Nenhuma registrada"}`;
 
     const response = await withTimeout(
-      getAiClient().models.generateContent({
-        model: "gemini-3.6-flash",
-        contents: userBrief,
-        config: {
-          systemInstruction,
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            required: ["workouts", "summary", "observations", "evaluation"],
-            properties: {
-              workouts: {
-                type: Type.ARRAY,
-                items: {
-                  type: Type.OBJECT,
-                  required: ["day", "type", "duration", "goal", "structure", "targetZone", "rpe", "tip"],
-                  properties: {
-                    day: { type: Type.STRING },
-                    type: { type: Type.STRING },
-                    duration: { type: Type.INTEGER },
-                    goal: { type: Type.STRING },
-                    structure: { type: Type.STRING },
-                    targetZone: { type: Type.STRING },
-                    rpe: { type: Type.INTEGER },
-                    tip: { type: Type.STRING }
+      callGeminiWithFallback((model) =>
+        getAiClient().models.generateContent({
+          model,
+          contents: userBrief,
+          config: {
+            systemInstruction,
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: Type.OBJECT,
+              required: ["workouts", "summary", "observations", "evaluation"],
+              properties: {
+                workouts: {
+                  type: Type.ARRAY,
+                  items: {
+                    type: Type.OBJECT,
+                    required: ["day", "type", "duration", "goal", "structure", "targetZone", "rpe", "tip"],
+                    properties: {
+                      day: { type: Type.STRING },
+                      type: { type: Type.STRING },
+                      duration: { type: Type.INTEGER },
+                      goal: { type: Type.STRING },
+                      structure: { type: Type.STRING },
+                      targetZone: { type: Type.STRING },
+                      rpe: { type: Type.INTEGER },
+                      tip: { type: Type.STRING }
+                    }
                   }
-                }
-              },
-              summary: { type: Type.STRING },
-              observations: { type: Type.STRING },
-              evaluation: { type: Type.STRING }
+                },
+                summary: { type: Type.STRING },
+                observations: { type: Type.STRING },
+                evaluation: { type: Type.STRING }
+              }
             }
           }
-        }
-      }),
-      5800,
-      "Tempo limite de 5.8s excedido ao tentar extrair a periodização inicial."
+        })
+      ),
+      25000,
+      "Tempo limite de 25s excedido ao tentar extrair a periodização inicial."
     );
 
     const resultText = response.text;
@@ -2014,16 +2115,17 @@ Atividade recente cadastrada: ${profile?.recentActivity || "Nenhuma registrada"}
     const userEmailKey = (profile?.email || (req as any).user?.email || "").trim().toLowerCase();
     if (userEmailKey) {
       getDatabase().then(db => {
-        if (db[userEmailKey]) {
-          db[userEmailKey].plan = fullPlanData;
-          saveDatabase(db, userEmailKey, getAuthToken(req)).catch(err => 
+        const userFound = findUserInDb(db, userEmailKey);
+        if (userFound) {
+          db[userFound.key].plan = fullPlanData;
+          saveDatabase(db, userFound.key, getAuthToken(req)).catch(err => 
             console.warn("[Async Save Plan Error]:", err.message)
           );
         }
       }).catch(err => console.warn("[Async Get DB Error]:", err.message));
     }
 
-    res.json(sanitizePlanForUser(fullPlanData, profile));
+    res.json(sanitizePlanForUser(fullPlanData, profile, userEmailKey));
   } catch (error: any) {
     console.warn("Fadiga periférica na chamada do Gemini para plano personalizado. Ativando treinador local resiliente:", error.message);
     const data = fallbackGeneratePlan(profile, 1);
@@ -2032,16 +2134,17 @@ Atividade recente cadastrada: ${profile?.recentActivity || "Nenhuma registrada"}
     const userEmailKey = (profile?.email || (req as any).user?.email || "").trim().toLowerCase();
     if (userEmailKey) {
       getDatabase().then(db => {
-        if (db[userEmailKey]) {
-          db[userEmailKey].plan = data;
-          saveDatabase(db, userEmailKey, getAuthToken(req)).catch(err => 
+        const userFound = findUserInDb(db, userEmailKey);
+        if (userFound) {
+          db[userFound.key].plan = data;
+          saveDatabase(db, userFound.key, getAuthToken(req)).catch(err => 
             console.warn("[Async Save Fallback Plan Error]:", err.message)
           );
         }
       }).catch(err => console.warn("[Async Get DB Error]:", err.message));
     }
 
-    res.json(sanitizePlanForUser(data, profile));
+    res.json(sanitizePlanForUser(data, profile, userEmailKey));
   }
 });
 
@@ -2053,6 +2156,14 @@ Atividade recente cadastrada: ${profile?.recentActivity || "Nenhuma registrada"}
 app.post("/api/generate-next-week", requireAuth, verifyUserMatch, async (req, res) => {
   const { profile, currentPlan, athleteFeedback, nextWeekNumber } = req.body;
   try {
+    const userEmailKey = (profile?.email || (req as any).user?.email || "").trim().toLowerCase();
+    if (!hasActiveAccess(profile, userEmailKey)) {
+      return res.status(403).json({
+        error: "Acesso bloqueado. Seu período de teste expirou ou sua assinatura está inativa. Assine o Biker AI para continuar gerando novas semanas de treino.",
+        isBlocked: true
+      });
+    }
+
     checkApiKey();
 
     // Analyze the previous plan's workouts
@@ -2111,56 +2222,59 @@ Planilha da Semana que passou: ${JSON.stringify(currentPlan?.workouts || [])}
 Gere o planejamento estruturado completo para a Semana ${nextWeekNumber} seguindo rigorosamente a estrutura JSON solicitada.`;
 
     const response = await withTimeout(
-      getAiClient().models.generateContent({
-        model: "gemini-3.6-flash",
-        contents: userBrief,
-        config: {
-          systemInstruction,
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            required: ["workouts", "summary", "observations", "evaluation", "weekNumber", "coachMessage"],
-            properties: {
-              workouts: {
-                type: Type.ARRAY,
-                items: {
-                  type: Type.OBJECT,
-                  required: ["day", "type", "duration", "goal", "structure", "targetZone", "rpe", "tip"],
-                  properties: {
-                    day: { type: Type.STRING },
-                    type: { type: Type.STRING },
-                    duration: { type: Type.INTEGER },
-                    goal: { type: Type.STRING },
-                    structure: { type: Type.STRING },
-                    targetZone: { type: Type.STRING },
-                    rpe: { type: Type.INTEGER },
-                    tip: { type: Type.STRING }
+      callGeminiWithFallback((model) =>
+        getAiClient().models.generateContent({
+          model,
+          contents: userBrief,
+          config: {
+            systemInstruction,
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: Type.OBJECT,
+              required: ["workouts", "summary", "observations", "evaluation", "weekNumber", "coachMessage"],
+              properties: {
+                workouts: {
+                  type: Type.ARRAY,
+                  items: {
+                    type: Type.OBJECT,
+                    required: ["day", "type", "duration", "goal", "structure", "targetZone", "rpe", "tip"],
+                    properties: {
+                      day: { type: Type.STRING },
+                      type: { type: Type.STRING },
+                      duration: { type: Type.INTEGER },
+                      goal: { type: Type.STRING },
+                      structure: { type: Type.STRING },
+                      targetZone: { type: Type.STRING },
+                      rpe: { type: Type.INTEGER },
+                      tip: { type: Type.STRING }
+                    }
                   }
-                }
-              },
-              summary: { type: Type.STRING },
-              observations: { type: Type.STRING },
-              evaluation: { type: Type.STRING },
-              weekNumber: { type: Type.INTEGER },
-              coachMessage: { type: Type.STRING }
+                },
+                summary: { type: Type.STRING },
+                observations: { type: Type.STRING },
+                evaluation: { type: Type.STRING },
+                weekNumber: { type: Type.INTEGER },
+                coachMessage: { type: Type.STRING }
+              }
             }
           }
-        }
-      }),
-      5800,
-      "Tempo limite de 5.8s esgotado ao recalcular o macrociclo para a próxima semana."
+        })
+      ),
+      25000,
+      "Tempo limite de 25s esgotado ao recalcular o macrociclo para a próxima semana."
     );
 
     const resultText = response.text;
     if (!resultText) {
       throw new Error("No response from Gemini API for next week generation");
     }
-    res.json(cleanAndParseJson(resultText));
+    res.json(sanitizePlanForUser(cleanAndParseJson(resultText), profile, userEmailKey));
   } catch (error: any) {
     console.warn("Fadiga periférica na chamada do Gemini para próxima semana. Ativando treinador local resiliente:", error.message);
     const data = fallbackGeneratePlan(profile, nextWeekNumber || 2);
     data.geminiError = error.message;
-    res.json(data);
+    const userEmailKey = (profile?.email || (req as any).user?.email || "").trim().toLowerCase();
+    res.json(sanitizePlanForUser(data, profile, userEmailKey));
   }
 });
 
@@ -2173,6 +2287,14 @@ Gere o planejamento estruturado completo para a Semana ${nextWeekNumber} seguind
 app.post("/api/evaluate-workout", requireAuth, verifyUserMatch, async (req, res) => {
   const { profile, workout } = req.body;
   try {
+    const userEmailKey = (profile?.email || (req as any).user?.email || "").trim().toLowerCase();
+    if (!hasActiveAccess(profile, userEmailKey)) {
+      return res.status(403).json({
+        error: "Acesso bloqueado. Seu período de teste expirou ou sua assinatura está inativa. Assine o Biker AI para concluir e avaliar treinos.",
+        isBlocked: true
+      });
+    }
+
     checkApiKey();
 
     const systemInstruction = `Você é um treinador de ciclismo de alto rendimento com profundo conhecimento em fisiologia do exercício, periodização clássica e moderna. O atleta acabou de registrar a conclusão de um treino presencial ou virtual e enviou os dados reais de realização para avaliação.
@@ -2218,23 +2340,25 @@ TREINO REALIZADO PELO ATLETA:
 Faça uma avaliação amigável de coach de alto nível, comentando detalhadamente sobre essa performance e as métricas do pedal, e retorne o resultado em JSON.`;
 
     const response = await withTimeout(
-      getAiClient().models.generateContent({
-        model: "gemini-3.6-flash",
-        contents: prompt,
-        config: {
-          systemInstruction,
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            required: ["aiFeedback"],
-            properties: {
-              aiFeedback: { type: Type.STRING }
+      callGeminiWithFallback((model) =>
+        getAiClient().models.generateContent({
+          model,
+          contents: prompt,
+          config: {
+            systemInstruction,
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: Type.OBJECT,
+              required: ["aiFeedback"],
+              properties: {
+                aiFeedback: { type: Type.STRING }
+              }
             }
           }
-        }
-      }),
-      5500,
-      "Tempo limite de 5.5s excedido no feedback fisiológico do selim."
+        })
+      ),
+      25000,
+      "Tempo limite de 25s excedido no feedback fisiológico do selim."
     );
 
     const resultText = response.text;
@@ -2313,6 +2437,14 @@ const fallbackParseStrava = (stravaLink: string, workout: any, profile: any) => 
 app.post("/api/parse-strava", requireAuth, verifyUserMatch, async (req, res) => {
   const { stravaLink, workout, profile } = req.body;
   try {
+    const userEmailKey = (profile?.email || (req as any).user?.email || "").trim().toLowerCase();
+    if (!hasActiveAccess(profile, userEmailKey)) {
+      return res.status(403).json({
+        error: "Acesso bloqueado. Assine o Biker AI para importar dados de treino do Strava.",
+        isBlocked: true
+      });
+    }
+
     checkApiKey();
     
     const systemInstruction = `Você é um integrador inteligente de dados do Strava para uma planilha de ciclismo estruturada.
@@ -2355,40 +2487,42 @@ PERFIL DO ATLETA:
 Por favor, gere e retorne o JSON estruturado com os dados reais e sensações extraídos desta pedalada.`;
 
     const response = await withTimeout(
-      getAiClient().models.generateContent({
-        model: "gemini-3.6-flash",
-        contents: prompt,
-        config: {
-          systemInstruction,
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            required: [
-              "actualDuration",
-              "actualRpe",
-              "actualHr",
-              "actualPower",
-              "actualDistance",
-              "actualAvgSpeed",
-              "actualElevation",
-              "actualCalories",
-              "athleteNotes"
-            ],
-            properties: {
-              actualDuration: { type: Type.INTEGER },
-              actualRpe: { type: Type.INTEGER },
-              actualHr: { type: Type.STRING },
-              actualPower: { type: Type.STRING },
-              actualDistance: { type: Type.STRING },
-              actualAvgSpeed: { type: Type.STRING },
-              actualElevation: { type: Type.STRING },
-              actualCalories: { type: Type.STRING },
-              athleteNotes: { type: Type.STRING }
+      callGeminiWithFallback((model) =>
+        getAiClient().models.generateContent({
+          model,
+          contents: prompt,
+          config: {
+            systemInstruction,
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: Type.OBJECT,
+              required: [
+                "actualDuration",
+                "actualRpe",
+                "actualHr",
+                "actualPower",
+                "actualDistance",
+                "actualAvgSpeed",
+                "actualElevation",
+                "actualCalories",
+                "athleteNotes"
+              ],
+              properties: {
+                actualDuration: { type: Type.INTEGER },
+                actualRpe: { type: Type.INTEGER },
+                actualHr: { type: Type.STRING },
+                actualPower: { type: Type.STRING },
+                actualDistance: { type: Type.STRING },
+                actualAvgSpeed: { type: Type.STRING },
+                actualElevation: { type: Type.STRING },
+                actualCalories: { type: Type.STRING },
+                athleteNotes: { type: Type.STRING }
+              }
             }
           }
-        }
-      }),
-      5500,
+        })
+      ),
+      25000,
       "Tempo limite de processamento de dados do Strava excedido."
     );
 
@@ -2414,6 +2548,14 @@ Por favor, gere e retorne o JSON estruturado com os dados reais e sensações ex
 app.post("/api/chat", requireAuth, verifyUserMatch, async (req, res) => {
   const { message, profile, currentPlan, messageHistory } = req.body;
   try {
+    const userEmailKey = (profile?.email || (req as any).user?.email || "").trim().toLowerCase();
+    if (currentPlan && !hasActiveAccess(profile, userEmailKey)) {
+      return res.json({
+        reply: "Olá, atleta! Notei que o seu período de teste gratuito de 3 dias expirou (ou sua conta está aguardando ativação/bloqueada). Para que eu possa continuar ajustando seus treinos, tirando dúvidas fisiológicas e analisando suas métricas, assine o Plano Pro da Biker AI por apenas R$ 16,90/mês. Clique em 'Desbloquear Assinatura' para continuar!",
+        isBlocked: true
+      });
+    }
+
     checkApiKey();
 
     const systemInstruction = `Você é um treinador de ciclismo especialista de classe mundial com profundo entendimento em fisiologia esportiva.
@@ -2437,59 +2579,69 @@ Histórico Recente: ${JSON.stringify(messageHistory?.slice(-10) || [])}
 Última Mensagem do Atleta: "${message || ""}"`;
 
     const response = await withTimeout(
-      getAiClient().models.generateContent({
-        model: "gemini-3.6-flash",
-        contents: userBrief,
-        config: {
-          systemInstruction,
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            required: ["reply"],
-            properties: {
-              reply: { type: Type.STRING },
-              updatedPlan: {
-                type: Type.OBJECT,
-                properties: {
-                  workouts: {
-                    type: Type.ARRAY,
-                    items: {
-                      type: Type.OBJECT,
-                      required: ["day", "type", "duration", "goal", "structure", "targetZone", "rpe", "tip"],
-                      properties: {
-                        day: { type: Type.STRING },
-                        type: { type: Type.STRING },
-                        duration: { type: Type.INTEGER },
-                        goal: { type: Type.STRING },
-                        structure: { type: Type.STRING },
-                        targetZone: { type: Type.STRING },
-                        rpe: { type: Type.INTEGER },
-                        tip: { type: Type.STRING }
+      callGeminiWithFallback((model) =>
+        getAiClient().models.generateContent({
+          model,
+          contents: userBrief,
+          config: {
+            systemInstruction,
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: Type.OBJECT,
+              required: ["reply"],
+              properties: {
+                reply: { type: Type.STRING },
+                updatedPlan: {
+                  type: Type.OBJECT,
+                  properties: {
+                    workouts: {
+                      type: Type.ARRAY,
+                      items: {
+                        type: Type.OBJECT,
+                        required: ["day", "type", "duration", "goal", "structure", "targetZone", "rpe", "tip"],
+                        properties: {
+                          day: { type: Type.STRING },
+                          type: { type: Type.STRING },
+                          duration: { type: Type.INTEGER },
+                          goal: { type: Type.STRING },
+                          structure: { type: Type.STRING },
+                          targetZone: { type: Type.STRING },
+                          rpe: { type: Type.INTEGER },
+                          tip: { type: Type.STRING }
+                        }
                       }
-                    }
-                  },
-                  summary: { type: Type.STRING },
-                  observations: { type: Type.STRING },
-                  evaluation: { type: Type.STRING }
+                    },
+                    summary: { type: Type.STRING },
+                    observations: { type: Type.STRING },
+                    evaluation: { type: Type.STRING }
+                  }
                 }
               }
             }
           }
-        }
-      }),
-      5500,
-      "Tempo limite de 5.5s atingido no acompanhamento do Coach."
+        })
+      ),
+      25000,
+      "Tempo limite de 25s atingido no acompanhamento do Coach."
     );
 
     const resultText = response.text;
     if (!resultText) {
       throw new Error("No response from Gemini API");
     }
-    res.json(cleanAndParseJson(resultText));
+    const parsedData = cleanAndParseJson(resultText);
+    if (parsedData && parsedData.updatedPlan) {
+      parsedData.updatedPlan = sanitizePlanForUser(parsedData.updatedPlan, profile, userEmailKey);
+    }
+    res.json(parsedData);
   } catch (error: any) {
     console.warn("Fadiga central na chamada do Gemini para chat personalizado. Ativando treinador local resiliente:", error.message);
     const data = fallbackChat(message, profile, currentPlan);
     data.geminiError = error.message;
+    const userEmailKey = (profile?.email || (req as any).user?.email || "").trim().toLowerCase();
+    if (data && data.updatedPlan) {
+      data.updatedPlan = sanitizePlanForUser(data.updatedPlan, profile, userEmailKey);
+    }
     res.json(data);
   }
 });
@@ -2507,10 +2659,42 @@ app.get("/api/admin/users", requireAuth, requireAdmin, async (req, res) => {
       const user = db[key];
       const isCoach = user.email?.trim().toLowerCase() === "pedro.bramos@sempreceub.com" || user.profile?.role === "coach";
       const uRole = user.profile?.role || (isCoach ? "coach" : "athlete");
+      const createdAt = user.profile?.createdAt || (user as any).createdAt;
+
+      let trialStatus: 'coach' | 'active' | 'trial' | 'trial_expired' | 'expired' = 'trial_expired';
+      let trialDaysRemaining = 0;
+      let trialHoursRemaining = 0;
+
+      if (isCoach) {
+        trialStatus = 'coach';
+      } else if (user.profile?.subscriptionStatus === 'active') {
+        trialStatus = 'active';
+      } else if (user.profile?.subscriptionStatus === 'expired') {
+        trialStatus = 'expired';
+      } else if (createdAt) {
+        const createdMs = new Date(createdAt).getTime();
+        if (!isNaN(createdMs)) {
+          const remainingMs = (3 * 24 * 60 * 60 * 1000) - (Date.now() - createdMs);
+          if (remainingMs > 0) {
+            trialStatus = 'trial';
+            trialDaysRemaining = Math.max(1, Math.ceil(remainingMs / (24 * 60 * 60 * 1000)));
+            trialHoursRemaining = Math.max(1, Math.ceil(remainingMs / (60 * 60 * 1000)));
+          }
+        }
+      }
+
       return {
         email: user.email,
+        createdAt,
+        trialStatus,
+        trialDaysRemaining,
+        trialHoursRemaining,
         profile: {
           ...user.profile,
+          createdAt,
+          trialStatus,
+          trialDaysRemaining,
+          trialHoursRemaining,
           subscriptionStatus: user.profile?.subscriptionStatus || (isCoach ? "active" : "pending_payment"),
           subscriptionPlan: isCoach ? "Acesso Master (Coach)" : (user.profile?.subscriptionPlan || "Plano Pro"),
           subscriptionExpiresAt: user.profile?.subscriptionExpiresAt || "2026-12-31",
@@ -2532,27 +2716,20 @@ app.get("/api/admin/users", requireAuth, requireAdmin, async (req, res) => {
 // Update profile status / subscription details of a user
 app.post("/api/admin/update-user-status", requireAuth, requireAdmin, async (req, res) => {
   try {
-    const { email, subscriptionStatus, subscriptionPlan, subscriptionExpiresAt, role, ftp, maxHeartRate } = req.body;
+    const { email, subscriptionStatus, subscriptionPlan, subscriptionExpiresAt, role, ftp, maxHeartRate, createdAt } = req.body;
     if (!email) {
       return res.status(400).json({ error: "E-mail do usuário é obrigatório." });
     }
 
     const db = await getDatabase();
-    const emailKey = email.trim().toLowerCase();
-    const cleanKey = emailKey.replace(/[^a-z0-9]/g, "_");
+    const userFound = findUserInDb(db, email);
 
-    const targetKey = Object.keys(db).find((k) => {
-      const kLower = k.trim().toLowerCase();
-      const kClean = kLower.replace(/[^a-z0-9]/g, "_");
-      const userEmail = db[k]?.email?.trim()?.toLowerCase();
-      return kLower === emailKey || kClean === cleanKey || userEmail === emailKey;
-    });
-
-    if (!targetKey || !db[targetKey]) {
+    if (!userFound) {
       return res.status(404).json({ error: "Usuário não encontrado." });
     }
 
-    const user = db[targetKey];
+    const targetKey = userFound.key;
+    const user = userFound.user;
 
     // Update profile fields
     user.profile = {
@@ -2562,6 +2739,11 @@ app.post("/api/admin/update-user-status", requireAuth, requireAdmin, async (req,
       subscriptionExpiresAt: subscriptionExpiresAt || user.profile.subscriptionExpiresAt || "2026-12-31",
       role: role || user.profile.role || "athlete"
     };
+
+    if (createdAt !== undefined) {
+      user.profile.createdAt = createdAt;
+      (user as any).createdAt = createdAt;
+    }
 
     if (ftp !== undefined) {
       user.profile.ftp = ftp ? Number(ftp) : null;

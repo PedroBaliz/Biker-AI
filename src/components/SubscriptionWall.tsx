@@ -20,7 +20,7 @@ import {
 interface SubscriptionWallProps {
   userEmail: string;
   userName: string;
-  currentStatus: 'expired' | 'pending_payment';
+  currentStatus: 'expired' | 'pending_payment' | 'trial_expired' | 'trial';
   onActivated: (updatedProfile: UserProfile) => void;
 }
 
@@ -71,16 +71,46 @@ export default function SubscriptionWall({ userEmail, userName, currentStatus, o
   return (
     <div id="subscription-wall-container" className="max-w-4xl mx-auto w-full bg-white rounded-2xl sm:rounded-3xl border border-slate-100 shadow-xl overflow-hidden p-4 sm:p-8 space-y-5 sm:space-y-6 animate-fadeInUp">
       {/* Alert Header */}
-      <div className="flex items-start gap-3 sm:gap-4 p-3.5 sm:p-4 rounded-2xl bg-amber-50 border border-amber-200">
-        <div className="p-2.5 sm:p-3 bg-amber-500 rounded-xl text-white shrink-0 shadow-sm animate-pulse">
+      <div className={`flex items-start gap-3 sm:gap-4 p-3.5 sm:p-4 rounded-2xl border ${
+        currentStatus === "expired"
+          ? "bg-rose-50 border-rose-200 text-rose-900"
+          : currentStatus === "trial_expired"
+          ? "bg-amber-50 border-amber-200 text-amber-900"
+          : currentStatus === "trial"
+          ? "bg-emerald-50 border-emerald-200 text-emerald-950"
+          : "bg-sky-50 border-sky-200 text-sky-900"
+      }`}>
+        <div className={`p-2.5 sm:p-3 rounded-xl text-white shrink-0 shadow-sm animate-pulse ${
+          currentStatus === "expired" 
+            ? "bg-rose-600" 
+            : currentStatus === "trial_expired" 
+            ? "bg-amber-500" 
+            : currentStatus === "trial"
+            ? "bg-emerald-600"
+            : "bg-sky-500"
+        }`}>
           <ShieldAlert className="w-5 h-5 sm:w-6 sm:h-6" />
         </div>
         <div className="space-y-1">
-          <h3 className="font-heading font-extrabold text-amber-900 text-xs sm:text-base">
-            {currentStatus === "expired" ? "Sua Assinatura Expirou" : "Pagamento de Assinatura Pendente"}
+          <h3 className="font-heading font-extrabold text-xs sm:text-base">
+            {currentStatus === "expired" 
+              ? "Acesso aos Treinos Bloqueado / Assinatura Expirada" 
+              : currentStatus === "trial_expired"
+              ? "Período de Teste Gratuito Expirado (3 dias)"
+              : currentStatus === "trial"
+              ? "Aderir ao Plano Pro Biker AI • R$ 16,90/mês"
+              : "Pagamento de Assinatura Pendente"}
           </h3>
-          <p className="text-[11px] sm:text-xs text-amber-800 leading-relaxed font-sans">
-            Olá, <strong>{userName}</strong>. O seu fôlego e evolução no pedal não podem parar! Para liberar ou manter o seu acesso total ao treinador e às planilhas personalizadas do <strong>Biker AI</strong>, conclua a sua assinatura.
+          <p className="text-[11px] sm:text-xs leading-relaxed font-sans opacity-90">
+            {currentStatus === "expired" ? (
+              <>Olá, <strong>{userName}</strong>. O seu acesso aos treinos estruturados foi bloqueado ou sua assinatura expirou. Para reativar seu plano e liberar imediatamente a conclusão de treinos e estruturas minuto a minuto, assine o <strong>Biker AI</strong>.</>
+            ) : currentStatus === "trial_expired" ? (
+              <>Olá, <strong>{userName}</strong>. Seus 3 dias de avaliação gratuita foram concluídos com sucesso! Para desbloquear os treinos estruturados minuto a minuto, continuar evoluindo de semana e registrando suas conclusões, ative sua assinatura do <strong>Biker AI</strong>.</>
+            ) : currentStatus === "trial" ? (
+              <>Olá, <strong>{userName}</strong>. Você está em período de teste gratuito! Antecipe sua adesão por apenas <strong>R$ 16,90/mês</strong> e assegure treinos ilimitados, evolução contínua e suporte do treinador inteligente.</>
+            ) : (
+              <>Olá, <strong>{userName}</strong>. O seu fôlego e evolução no pedal não podem parar! Para liberar o seu acesso total ao treinador e às planilhas personalizadas do <strong>Biker AI</strong>, conclua a sua assinatura.</>
+            )}
           </p>
         </div>
       </div>
@@ -93,7 +123,7 @@ export default function SubscriptionWall({ userEmail, userName, currentStatus, o
           className="w-full py-4 px-6 bg-slate-900 hover:bg-slate-800 active:scale-[0.99] text-lime-400 font-heading font-black text-xs sm:text-sm uppercase tracking-wider rounded-2xl shadow-lg hover:shadow-xl transition-all text-center flex items-center justify-center gap-2.5 cursor-pointer group border border-slate-800 ring-2 ring-lime-400/60 hover:ring-lime-400"
         >
           <Zap className="w-4 h-4 sm:w-5 sm:h-5 fill-lime-400 text-lime-400 shrink-0" />
-          <span>Assinar Agora • R$ 16,90/mês</span>
+          <span>Aderir ao Plano Agora • R$ 16,90/mês</span>
           <ExternalLink className="w-4 h-4 group-hover:translate-x-0.5 transition-transform shrink-0" />
         </button>
       </div>
@@ -196,7 +226,7 @@ export default function SubscriptionWall({ userEmail, userName, currentStatus, o
             onClick={handleProceedToMercadoPago}
             className="w-full sm:flex-1 py-4 px-6 bg-slate-900 hover:bg-slate-800 text-lime-400 font-heading font-black text-xs uppercase tracking-wider rounded-2xl shadow-lg hover:shadow-xl transition-all text-center flex items-center justify-center gap-2 cursor-pointer group"
           >
-            <span>Assinar Agora no Mercado Pago</span>
+            <span>Aderir ao Plano • Mercado Pago</span>
             <ExternalLink className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
           </button>
 

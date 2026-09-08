@@ -207,11 +207,11 @@ export const OnboardingForm: React.FC<OnboardingFormProps> = ({
         <button
           type="button"
           onClick={() => setShowAdvancedOnboarding(prev => !prev)}
-          className="text-xs font-extrabold text-slate-600 hover:text-slate-900 flex items-center gap-2 transition-colors cursor-pointer py-1"
+          className="px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-900 border border-slate-200 rounded-xl text-xs font-heading font-extrabold flex items-center gap-2 transition-all cursor-pointer shadow-2xs"
         >
-          <Settings className="w-4 h-4 text-slate-500" />
+          <Settings className="w-4 h-4 text-slate-700 shrink-0" />
           <span>{showAdvancedOnboarding ? "Ocultar Ajustes Avançados" : "Ajustes Avançados Opcionais (Potência, FCmáx e Limitações)"}</span>
-          <ChevronDown className={`w-4 h-4 transition-transform ${showAdvancedOnboarding ? "rotate-180" : ""}`} />
+          <ChevronDown className={`w-4 h-4 text-slate-700 transition-transform ${showAdvancedOnboarding ? "rotate-180" : ""}`} />
         </button>
 
         {showAdvancedOnboarding && (

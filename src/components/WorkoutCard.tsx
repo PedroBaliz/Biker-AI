@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import SmartHydrationTip from "./SmartHydrationTip";
 import { getSimplifiedText } from "../utils/translation";
+import { getUserAccessInfo } from "../utils/subscriptionUtils";
 
 interface WorkoutCardProps {
   workout: Workout;
@@ -139,11 +140,7 @@ function getCleanWorkoutTitle(type: string, isSimpleMode: boolean): string {
 }
 
 function getShortZoneBadge(zone: string, isSimpleMode: boolean): string {
-  if (!zone) return "Z2";
-  if (!isSimpleMode) {
-    if (zone.length > 20) return zone.slice(0, 18) + "...";
-    return zone;
-  }
+  if (!zone || !zone.trim()) return "Z2 • Leve";
   
   const z = zone.toUpperCase();
   if (z.includes("Z1") || z.includes("RECUPERAÇÃO") || z.includes("REGENERATIVO")) return "Z1 • Muito Leve";
@@ -153,8 +150,13 @@ function getShortZoneBadge(zone: string, isSimpleMode: boolean): string {
   if (z.includes("Z5") || z.includes("VO2") || z.includes("MÁXIMO")) return "Z5 • Muito Forte";
   if (z.includes("Z6") || z.includes("ANAERÓBICA")) return "Z6 • Explosivo";
   if (z.includes("Z7") || z.includes("NEUROMUSCULAR")) return "Z7 • Explosão";
+  if (z.includes("DESCANSO") || z.includes("FOLGA") || z.includes("OFF")) return "Descanso";
   
-  if (zone.length > 20) return zone.slice(0, 18) + "...";
+  if (!isSimpleMode) {
+    if (zone.length > 20) return zone.slice(0, 18) + "...";
+    return zone;
+  }
+  
   return zone;
 }
 
@@ -272,13 +274,33 @@ function WorkoutCardInner({ workout, onUpdate, onDelete, profile, allWorkouts, i
     }
   };
 
-  // Determine severity border & shadow based on effort level
+  // Determine severity border & shadow based on effort level with high contrast text
   const getRpeStyles = (rpe: number) => {
-    if (rpe <= 2) return { text: "text-emerald-600 bg-emerald-50 border-emerald-200", bar: "bg-emerald-500", glow: "border-l-4 border-l-emerald-500" };
-    if (rpe <= 4) return { text: "text-sky-600 bg-sky-50 border-sky-200", bar: "bg-sky-400", glow: "border-l-4 border-l-sky-500" };
-    if (rpe <= 6) return { text: "text-amber-600 bg-amber-50 border-amber-200", bar: "bg-amber-500", glow: "border-l-4 border-l-amber-500" };
-    if (rpe <= 8) return { text: "text-orange-600 bg-orange-50 border-orange-200", bar: "bg-orange-500", glow: "border-l-4 border-l-orange-500" };
-    return { text: "text-rose-600 bg-rose-50 border-rose-200", bar: "bg-rose-500", glow: "border-l-4 border-l-rose-500" };
+    if (rpe <= 2) return { 
+      text: "text-emerald-950 bg-emerald-100/90 border-emerald-300 hover:bg-emerald-200/90 shadow-2xs", 
+      bar: "bg-emerald-500", 
+      glow: "border-l-4 border-l-emerald-500" 
+    };
+    if (rpe <= 4) return { 
+      text: "text-sky-950 bg-sky-100/90 border-sky-300 hover:bg-sky-200/90 shadow-2xs", 
+      bar: "bg-sky-400", 
+      glow: "border-l-4 border-l-sky-500" 
+    };
+    if (rpe <= 6) return { 
+      text: "text-amber-950 bg-amber-100/90 border-amber-300 hover:bg-amber-200/90 shadow-2xs", 
+      bar: "bg-amber-500", 
+      glow: "border-l-4 border-l-amber-500" 
+    };
+    if (rpe <= 8) return { 
+      text: "text-orange-950 bg-orange-100/90 border-orange-300 hover:bg-orange-200/90 shadow-2xs", 
+      bar: "bg-orange-500", 
+      glow: "border-l-4 border-l-orange-500" 
+    };
+    return { 
+      text: "text-rose-950 bg-rose-100/90 border-rose-300 hover:bg-rose-200/90 shadow-2xs", 
+      bar: "bg-rose-500", 
+      glow: "border-l-4 border-l-rose-500" 
+    };
   };
 
   const getSimpleEffortText = (rpe: number) => {
@@ -316,17 +338,18 @@ function WorkoutCardInner({ workout, onUpdate, onDelete, profile, allWorkouts, i
     setIsEditing(false);
   };
 
+  const accessInfo = getUserAccessInfo(profile);
   const isPendingUser = Boolean(
     workout.isLocked || 
     (workout.structure && (workout.structure.includes("🔒") || workout.structure.includes("[Conteúdo Exclusivo]"))) || 
-    (profile?.subscriptionStatus && profile.subscriptionStatus !== "active" && profile.role !== "coach")
+    accessInfo.isPendingUser
   );
 
   const toggleCompleted = () => {
     if (isPastAndUncompleted) {
       return;
     }
-    if (isPendingUser && !workout.completed) {
+    if (isPendingUser) {
       if (onUnlockClick) {
         onUnlockClick();
       }
@@ -367,6 +390,10 @@ function WorkoutCardInner({ workout, onUpdate, onDelete, profile, allWorkouts, i
   };
 
   const handleSimpleSave = () => {
+    if (isPendingUser) {
+      onUnlockClick?.();
+      return;
+    }
     onUpdate({
       ...workout,
       completed: true,
@@ -386,6 +413,10 @@ function WorkoutCardInner({ workout, onUpdate, onDelete, profile, allWorkouts, i
   };
 
   const handleEvaluateAndSave = async () => {
+    if (isPendingUser) {
+      onUnlockClick?.();
+      return;
+    }
     setIsEvaluating(true);
     const updatedWorkout: Workout = {
       ...workout,
@@ -536,7 +567,7 @@ function WorkoutCardInner({ workout, onUpdate, onDelete, profile, allWorkouts, i
           <button
             type="button"
             onClick={handleSave}
-            className="flex-1 bg-lime-500 hover:bg-lime-450 text-slate-950 py-2 px-3 rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 shadow-xs transition-colors cursor-pointer font-heading"
+            className="flex-1 bg-lime-400 hover:bg-lime-350 text-slate-950 py-2 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 shadow-xs transition-colors cursor-pointer font-heading border border-lime-500/40"
           >
             <Save className="w-3.5 h-3.5" />
             <span>Salvar</span>
@@ -544,7 +575,7 @@ function WorkoutCardInner({ workout, onUpdate, onDelete, profile, allWorkouts, i
           <button
             type="button"
             onClick={handleCancel}
-            className="flex-1 bg-slate-205 hover:bg-slate-300 text-slate-700 py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer font-sans"
+            className="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-800 py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer font-sans"
           >
             <X className="w-3.5 h-3.5" />
             <span>Cancelar</span>
@@ -822,7 +853,7 @@ function WorkoutCardInner({ workout, onUpdate, onDelete, profile, allWorkouts, i
               type="button"
               disabled={isEvaluating || (isPendingUser && !workout.completed)}
               onClick={handleSimpleSave}
-              className="flex-1 bg-sky-105 hover:bg-sky-200 text-sky-800 border border-sky-100 py-2 px-3 rounded-xl text-xs font-bold transition-colors cursor-pointer font-sans disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 bg-sky-100 hover:bg-sky-200 text-sky-900 border border-sky-300 py-2.5 px-3 rounded-xl text-xs font-bold transition-colors cursor-pointer font-sans disabled:opacity-50 disabled:cursor-not-allowed shadow-2xs"
             >
               {workout.completed ? "Apenas Salvar Alterações" : "Concluir sem Feedback IA"}
             </button>
@@ -830,7 +861,7 @@ function WorkoutCardInner({ workout, onUpdate, onDelete, profile, allWorkouts, i
               type="button"
               disabled={isEvaluating}
               onClick={() => setIsCompleting(false)}
-              className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-550 py-2 px-3 rounded-xl text-xs font-medium transition-colors cursor-pointer font-sans disabled:opacity-50"
+              className="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-800 py-2.5 px-3 rounded-xl text-xs font-bold transition-colors cursor-pointer font-sans disabled:opacity-50 border border-slate-300 shadow-2xs"
             >
               Cancelar
             </button>
@@ -859,7 +890,7 @@ function WorkoutCardInner({ workout, onUpdate, onDelete, profile, allWorkouts, i
 
       <div id="card-top-header" className={workout.completed ? "opacity-95" : ""}>
         {/* Day & Label Badge */}
-        <div className="flex justify-between items-start gap-2 mb-4 pr-6">
+        <div className={`flex justify-between items-start gap-2 mb-4 ${workout.completed ? 'pr-14' : 'pr-1'}`}>
           <div className="min-w-0 flex-1">
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono block leading-none mb-1.5">
               {workout.day}
@@ -871,11 +902,10 @@ function WorkoutCardInner({ workout, onUpdate, onDelete, profile, allWorkouts, i
           <button 
             type="button"
             onClick={() => setShowZoneExplanation(!showZoneExplanation)}
-            className={`px-2.5 py-1 text-[10px] font-mono font-bold rounded-full border shrink-0 transition-all flex items-center gap-1 active:scale-95 cursor-pointer whitespace-nowrap ${rpeStyles.text}`}
-            title="Clique para ver o que significa esta zona de esforço"
+            className={`px-3 py-1.5 text-xs font-heading font-black rounded-xl border shrink-0 transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer whitespace-nowrap shadow-xs ${rpeStyles.text}`}
           >
-            <span>{displayTargetZone}</span>
-            <Info className="w-3 h-3 text-current shrink-0" />
+            <span className="font-black tracking-wide text-inherit">{displayTargetZone}</span>
+            <Info className="w-3.5 h-3.5 text-current shrink-0 stroke-[2.5]" />
           </button>
         </div>
 
@@ -1073,7 +1103,7 @@ function WorkoutCardInner({ workout, onUpdate, onDelete, profile, allWorkouts, i
             <Bike className="w-3.5 h-3.5 shrink-0" />
             <span className="text-[9px] font-extrabold uppercase tracking-widest font-heading">Estrutura de Ritmo</span>
           </div>
-          {workout.isLocked || (workout.structure && (workout.structure.includes("🔒") || workout.structure.includes("[Conteúdo Exclusivo]"))) || (profile?.subscriptionStatus && profile.subscriptionStatus !== "active" && profile.role !== "coach") ? (
+          {isPendingUser ? (
             <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 text-white shadow-md space-y-2.5 min-w-0">
               <div className="flex items-center justify-between gap-2 flex-wrap">
                 <div className="flex items-center gap-2 text-lime-400 font-bold text-xs font-heading min-w-0">
@@ -1089,7 +1119,7 @@ function WorkoutCardInner({ workout, onUpdate, onDelete, profile, allWorkouts, i
                 <button
                   type="button"
                   onClick={onUnlockClick}
-                  className="w-full bg-linear-to-r from-lime-500 to-emerald-500 hover:from-lime-450 hover:to-emerald-450 active:scale-98 text-slate-950 font-extrabold text-xs py-2.5 px-3 rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm"
+                  className="w-full bg-linear-to-r from-lime-400 to-emerald-400 hover:from-lime-350 hover:to-emerald-350 active:scale-98 text-slate-950 font-black text-xs py-2.5 px-3 rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm border border-lime-500/40"
                 >
                   <Zap className="w-4 h-4 fill-slate-950 shrink-0" />
                   <span>Desbloquear Plano Completo</span>
@@ -1166,34 +1196,34 @@ function WorkoutCardInner({ workout, onUpdate, onDelete, profile, allWorkouts, i
               <Lock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
               <span>Sem conclusão (Prazo expirado)</span>
             </div>
-          ) : isPendingUser && !workout.completed ? (
+          ) : isPendingUser ? (
             <button
               type="button"
               onClick={onUnlockClick}
-              className="flex-1 py-2.5 px-3 rounded-xl text-[10px] font-extrabold uppercase font-heading tracking-wider flex items-center justify-center gap-1.5 transition-all bg-slate-100 text-slate-400 border border-slate-200/80 cursor-pointer hover:bg-slate-200/60"
-              title="Assinatura pendente - Clique para desbloquear e concluir treinos"
+              className="flex-1 py-2.5 px-3 rounded-xl text-[10px] font-extrabold uppercase font-heading tracking-wider flex items-center justify-center gap-1.5 transition-all bg-slate-100 text-slate-500 border border-slate-200/80 cursor-pointer hover:bg-slate-200/60 shadow-2xs"
+              title="Acesso aos treinos bloqueado - Clique para assinar e liberar"
             >
               <Lock className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-              <span>Concluir (Bloqueado)</span>
+              <span>{workout.completed ? "Concluído (Bloqueado)" : "Concluir (Bloqueado)"}</span>
             </button>
           ) : (
             <button
               type="button"
               onClick={toggleCompleted}
-              className={`flex-1 py-2.5 px-3 rounded-xl text-[10px] font-extrabold uppercase font-heading tracking-wider flex items-center justify-center gap-1.5 transition-all shadow-2xs active:scale-95 cursor-pointer ${
+              className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-black uppercase font-heading tracking-wider flex items-center justify-center gap-1.5 transition-all shadow-xs active:scale-95 cursor-pointer ${
                 workout.completed
-                  ? "bg-emerald-500 text-white hover:bg-emerald-600"
-                  : "bg-slate-100 text-slate-750 hover:bg-slate-200"
+                  ? "bg-emerald-600 text-white hover:bg-emerald-700"
+                  : "bg-slate-900 text-lime-400 hover:bg-slate-850 hover:text-lime-300"
               }`}
             >
               {workout.completed ? (
                 <>
-                  <Check className="w-3.5 h-3.5 stroke-[3.5]" />
+                  <Check className="w-4 h-4 stroke-[3.5]" />
                   <span>Concluído</span>
                 </>
               ) : (
                 <>
-                  <Circle className="w-3.5 h-3.5" />
+                  <Circle className="w-4 h-4 stroke-[2.5]" />
                   <span>Concluir</span>
                 </>
               )}
@@ -1210,6 +1240,10 @@ function WorkoutCardInner({ workout, onUpdate, onDelete, profile, allWorkouts, i
         <button
           type="button"
           onClick={() => {
+            if (isPendingUser) {
+              onUnlockClick?.();
+              return;
+            }
             if (workout.completed) {
               // Open log edit dialog instead of plan structure edit
               setActualDuration(workout.actualDuration || workout.duration);
@@ -1229,25 +1263,31 @@ function WorkoutCardInner({ workout, onUpdate, onDelete, profile, allWorkouts, i
             }
           }}
           disabled={isPastAndUncompleted}
-          className={`p-2.5 border rounded-xl transition-colors flex items-center justify-center active:scale-95 ${
+          className={`py-2.5 px-3 border rounded-xl transition-all flex items-center justify-center gap-1.5 active:scale-95 text-xs font-bold font-heading ${
             isPastAndUncompleted
               ? "bg-slate-50 text-slate-350 border-slate-150 cursor-not-allowed opacity-40"
-              : "bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-600 cursor-pointer"
+              : "bg-slate-100 hover:bg-slate-200 border-slate-200 text-slate-700 cursor-pointer"
           }`}
-          title={workout.completed ? "Reavaliar / Atualizar Log" : "Editar prescrição"}
         >
-          <Edit2 className="w-4 h-4" />
+          <Edit2 className="w-3.5 h-3.5 text-slate-600 shrink-0" />
+          <span>Editar</span>
         </button>
 
         {/* Trigger Delete if supplied */}
         {onDelete && (
           <button
             type="button"
-            onClick={onDelete}
-            className="p-2.5 bg-rose-50/50 hover:bg-rose-100/70 border border-rose-100 text-rose-600 rounded-xl transition-colors cursor-pointer flex items-center justify-center flex-shrink-0 active:scale-95"
-            title="Excluir este treino"
+            onClick={() => {
+              if (isPendingUser) {
+                onUnlockClick?.();
+                return;
+              }
+              onDelete();
+            }}
+            className="py-2.5 px-3 bg-rose-50 hover:bg-rose-100/80 border border-rose-200 text-rose-700 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 shrink-0 active:scale-95 text-xs font-bold font-heading"
           >
-            <Trash2 className="w-4 h-4" />
+            <Trash2 className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+            <span>Excluir</span>
           </button>
         )}
       </div>

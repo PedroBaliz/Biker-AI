@@ -18,7 +18,9 @@ import VolumeEvolutionChart from "./components/VolumeEvolutionChart";
 import WeeklyCalorieChart from "./components/WeeklyCalorieChart";
 import AchievementsDashboard from "./components/AchievementsDashboard";
 import OnboardingForm from "./components/OnboardingForm";
+import { CoachChat } from "./components/CoachChat";
 import { MetaPixelEvents } from "./lib/metaPixel";
+import { getUserAccessInfo } from "./utils/subscriptionUtils";
 import { motion, AnimatePresence } from "motion/react";
 import { 
   Users,
@@ -64,7 +66,10 @@ import {
   ArrowRight,
   Settings,
   ChevronDown,
-  Menu
+  Menu,
+  Crown,
+  CreditCard,
+  Bot
 } from "lucide-react";
 
 export default function App() {
@@ -147,9 +152,8 @@ export default function App() {
   const [isTyping, setIsTyping] = useState(false);
   
   // Dashboard Tabs & Onboarding Setup Mode
-  const [onboardingMode, setOnboardingMode] = useState<"express" | "chat">("express");
   const [showAdvancedOnboarding, setShowAdvancedOnboarding] = useState(false);
-  const [activeTab, setActiveTab] = useState<"planilha" | "desempenho" | "zonas">("planilha");
+  const [activeTab, setActiveTab] = useState<"planilha" | "desempenho" | "zonas" | "chat">("planilha");
   const [showMyWorkouts, setShowMyWorkouts] = useState(false);
   const [showPseExplanation, setShowPseExplanation] = useState(false);
   const [showSubscriptionCheckout, setShowSubscriptionCheckout] = useState(false);
@@ -223,10 +227,9 @@ export default function App() {
 
   const [isGeneratingPlan, setIsGeneratingPlan] = useState(false);
 
-  // Derived training metrics (excluding rest/off sessions from training counts)
-  const isPendingUser = Boolean(
-    profile?.subscriptionStatus && profile.subscriptionStatus !== "active" && profile.role !== "coach"
-  );
+  // Derived user access status (handles 3-day trial and active subscriptions)
+  const accessInfo = useMemo(() => getUserAccessInfo(profile, currentUser?.email), [profile, currentUser?.email]);
+  const isPendingUser = accessInfo.isPendingUser;
 
   const derivedMetrics = useMemo(() => {
     const workouts = plan?.workouts || [];
@@ -240,6 +243,10 @@ export default function App() {
 
   const handleUpdateWorkout = useCallback((index: number, updatedWorkout: Workout) => {
     if (!plan) return;
+    if (isPendingUser) {
+      setShowSubscriptionCheckout(true);
+      return;
+    }
     const previousWorkout = plan.workouts[index];
     const isNowCompleted = updatedWorkout.completed && (!previousWorkout || !previousWorkout.completed);
 
@@ -263,10 +270,14 @@ export default function App() {
         console.error("Erro ao rodar animação de confetes:", err);
       }
     }
-  }, [plan]);
+  }, [plan, isPendingUser]);
 
   const handleDeleteWorkout = useCallback((index: number) => {
     if (!plan) return;
+    if (isPendingUser) {
+      setShowSubscriptionCheckout(true);
+      return;
+    }
     const updatedWorkouts = plan.workouts.filter((_, i) => i !== index);
     const updatedPlan = {
       ...plan,
@@ -274,7 +285,7 @@ export default function App() {
     };
     setPlan(updatedPlan);
     setCurrentUser(prev => prev ? { ...prev, plan: updatedPlan } : prev);
-  }, [plan]);
+  }, [plan, isPendingUser]);
 
   const handleExportPDF = useCallback(() => {
     if (!plan) return;
@@ -567,24 +578,13 @@ export default function App() {
       setTextFeedback("");
       setSubjFeedback("otimo");
 
-      // Adcciona mensagem ao histórico do chat do treinador
-      setChatHistory(prev => {
-        const history = [...prev, {
-          id: `gen-week-${Date.now()}`,
-          sender: "treinador",
-          text: `**Sua Semana ${nextWeek} de Treinos Iniciou!**\n\n${data.coachMessage || "Preparei estímulos novos na planilha baseando-me nas suas sensações, cargas anteriores e nas conclusões!"}`,
-          timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-        }];
-        if (data.geminiError) {
-          history.push({
-            id: `system-warn-${Date.now()}`,
-            sender: "treinador",
-            text: `**Modo de Segurança Ativado (Treinador Local)**\n\nSua nova semana foi evoluída utilizando as regras de periodização embarcada para progressão de carga (supercompensação clássica) por conta de um erro técnico na IA.\n\n**Causa do erro:** \`${data.geminiError}\`\n\n*Para obter comentários analíticos profundos de IA integrada, configure uma chave de acesso GEMINI_API_KEY válida em seu painel.*`,
-            timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-          });
-        }
-        return history;
-      });
+      // Adiciona mensagem ao histórico do chat do treinador
+      setChatHistory(prev => [...prev, {
+        id: `gen-week-${Date.now()}`,
+        sender: "treinador",
+        text: `**Sua Semana ${nextWeek} de Treinos Iniciou!**\n\n${data.coachMessage || "Preparei estímulos novos na planilha baseando-me nas suas sensações, cargas anteriores e nas conclusões!"}`,
+        timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+      }]);
 
     } catch (err: any) {
       alert("Erro detalhado ao evoluir a planilha:\n\n" + err.message + "\n\nPor favor, tente novamente ou verifique se as credenciais do servidor estão corretas.");
@@ -807,20 +807,20 @@ export default function App() {
   }, [chatHistory, isTyping]);
 
   // Handle message sending for onboarding or custom chat
-  const handleSendMessage = async (e?: React.FormEvent) => {
+  const handleSendMessage = async (e?: React.FormEvent, customMsg?: string) => {
     if (e) e.preventDefault();
-    if (!inputMessage.trim()) return;
+    const messageToSend = (customMsg !== undefined ? customMsg : inputMessage).trim();
+    if (!messageToSend) return;
 
     const userMsg: ChatMessage = {
       id: `msg-${Date.now()}`,
       sender: "atleta",
-      text: inputMessage,
+      text: messageToSend,
       timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
     };
 
     setChatHistory(prev => [...prev, userMsg]);
     MetaPixelEvents.contact();
-    const messageToSend = inputMessage;
     setInputMessage("");
     setIsTyping(true);
 
@@ -867,18 +867,7 @@ export default function App() {
         timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
       };
 
-      setChatHistory(prev => {
-        const history = [...prev, coachMsg];
-        if (data && data.geminiError) {
-          history.push({
-            id: `system-warn-${Date.now()}`,
-            sender: "treinador",
-            text: `**Aviso de Chamada Off-line**\n\nO coach respondeu usando respostas dinâmicas embarcadas de salvaguarda, pois a busca avançada por IA personalizada falhou.\n\n**Causa do erro:** \`${data.geminiError}\``,
-            timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-          });
-        }
-        return history;
-      });
+      setChatHistory(prev => [...prev, coachMsg]);
 
       // If in onboarding, update parsed fields
       if (isOnboarding && data.parsedProfile) {
@@ -956,23 +945,12 @@ export default function App() {
       setActiveTab("planilha");
 
       // Add coach announcement to chat
-      setChatHistory(prev => {
-        const history = [...prev, {
-          id: `gen-${Date.now()}`,
-          sender: "treinador",
-          text: `**Planilha Semanal Gerada com Sucesso!**\n\n${effectiveProfile.name}, montei uma planilha de treinos sob medida baseada no seu nível (**${effectiveProfile.level}**) e seu objetivo de **${effectiveProfile.goal}**. Confira a aba de planilha para ver os passos e dicas de cada dia! Let's ride!`,
-          timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-        }];
-        if (data.geminiError) {
-          history.push({
-            id: `system-warn-${Date.now()}`,
-            sender: "treinador",
-            text: `**Modo de Segurança Ativado (Treinador Local)**\n\nSeus treinos foram calculados utilizando nosso motor fisiológico embarcado com base profissional na grade dos 80/20, pois a chamada para a inteligência de IA personalizada retornou um erro.\n\n**Causa do erro:** \`${data.geminiError}\`\n\n*Geralmente isso ocorre por uma chave do Gemini que expirou ou foi bloqueada pelo Google como vazada (como a chave de demonstração padrão do projeto). Para utilizar a inteligência de IA personalizada completa, atualize a chave **GEMINI_API_KEY** no seu painel de Segredos/Configurações.*`,
-            timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-          });
-        }
-        return history;
-      });
+      setChatHistory(prev => [...prev, {
+        id: `gen-${Date.now()}`,
+        sender: "treinador",
+        text: `**Planilha Semanal Gerada com Sucesso!**\n\n${effectiveProfile.name}, montei uma planilha de treinos sob medida baseada no seu nível (**${effectiveProfile.level}**) e seu objetivo de **${effectiveProfile.goal}**. Confira a aba de planilha para ver os passos e dicas de cada dia! Let's ride!`,
+        timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+      }]);
 
     } catch (err: any) {
       alert("Erro detalhado ao gerar a planilha:\n\n" + err.message + "\n\nPor favor, tente novamente ou verifique se as credenciais do servidor estão corretas.");
@@ -1247,13 +1225,21 @@ export default function App() {
                             {currentUser.email}
                           </p>
                           <span className={`inline-block mt-1 text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded-md ${
-                            (profile.role === "coach" || currentUser.profile?.role === "coach" || currentUser.email?.toLowerCase() === "pedro.bramos@sempreceub.com")
+                            accessInfo.isCoach
                               ? "bg-amber-400/15 text-amber-300 border border-amber-400/30"
-                              : "bg-lime-400/10 text-lime-400 border border-lime-400/30"
+                              : accessInfo.isActiveSubscriber
+                              ? "bg-emerald-400/15 text-emerald-300 border border-emerald-400/30"
+                              : accessInfo.isInTrial
+                              ? "bg-sky-400/15 text-sky-300 border border-sky-400/30"
+                              : "bg-rose-400/15 text-rose-300 border border-rose-400/30"
                           }`}>
-                            {(profile.role === "coach" || currentUser.profile?.role === "coach" || currentUser.email?.toLowerCase() === "pedro.bramos@sempreceub.com") 
-                              ? "Coach / Admin" 
-                              : "Atleta Biker AI"}
+                            {accessInfo.isCoach
+                              ? "Coach / Admin"
+                              : accessInfo.isActiveSubscriber
+                              ? "Assinante Ativo"
+                              : accessInfo.isInTrial
+                              ? `Teste (${accessInfo.trialDaysRemaining}d restantes)`
+                              : "Teste Expirado"}
                           </span>
                         </div>
                       </div>
@@ -1407,7 +1393,8 @@ export default function App() {
           <AccountSettings 
             currentUser={currentUser} 
             onUpdateAccount={handleUpdateAccount} 
-            onClose={() => setShowAccountSettings(false)} 
+            onClose={() => setShowAccountSettings(false)}
+            onOpenSubscriptionCheckout={() => setShowSubscriptionCheckout(true)}
           />
         </main>
       ) : showAdminPanel ? (
@@ -1429,6 +1416,119 @@ export default function App() {
       ) : (
         <main className="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-6 lg:p-8 flex flex-col gap-8">
         
+        {/* Account Suspended / Expired Banner - only show if athlete already has a plan generated */}
+        {plan && accessInfo.accessType === "expired" && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            id="account-blocked-banner"
+            className="w-full bg-rose-950/90 border border-rose-800/80 text-white rounded-2xl p-4 sm:px-6 sm:py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-lg"
+          >
+            <div className="flex items-center gap-3.5">
+              <div className="p-2.5 bg-rose-500/20 border border-rose-500/30 text-rose-300 rounded-xl shrink-0">
+                <Lock className="w-5 h-5" />
+              </div>
+              <div className="text-xs font-sans space-y-0.5">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-heading font-black text-rose-100 text-sm">
+                    Acesso aos Treinos Bloqueado
+                  </span>
+                  <span className="bg-rose-500/30 border border-rose-500/40 text-rose-200 font-mono text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">
+                    Assinatura Inativa
+                  </span>
+                </div>
+                <p className="text-rose-200/90 text-xs">
+                  Sua assinatura está inativa ou o acesso foi suspenso. As estruturas minuto a minuto, conclusões de treinos e evolução semanal estão bloqueadas.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              id="account-blocked-subscribe-btn"
+              onClick={() => setShowSubscriptionCheckout(true)}
+              className="px-4 py-2.5 bg-lime-500 hover:bg-lime-400 text-slate-950 font-heading font-black text-xs uppercase tracking-wider rounded-xl transition-all shadow-sm hover:shadow-md shrink-0 self-start sm:self-auto cursor-pointer active:scale-98"
+            >
+              Aderir ao Plano • R$ 16,90
+            </button>
+          </motion.div>
+        )}
+
+        {/* Trial Expired Banner - only show if athlete already has a plan generated */}
+        {plan && accessInfo.accessType === "trial_expired" && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            id="trial-expired-banner"
+            className="w-full bg-amber-950/90 border border-amber-800/80 text-white rounded-2xl p-4 sm:px-6 sm:py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-lg"
+          >
+            <div className="flex items-center gap-3.5">
+              <div className="p-2.5 bg-amber-500/20 border border-amber-500/30 text-amber-300 rounded-xl shrink-0">
+                <Lock className="w-5 h-5" />
+              </div>
+              <div className="text-xs font-sans space-y-0.5">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-heading font-black text-amber-100 text-sm">
+                    Período de Teste Gratuito Expirado
+                  </span>
+                  <span className="bg-amber-500/30 border border-amber-500/40 text-amber-200 font-mono text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">
+                    3 Dias Concluídos
+                  </span>
+                </div>
+                <p className="text-amber-200/90 text-xs">
+                  Seu período de teste gratuito de 3 dias terminou. Para continuar registrando pedaladas, destravando as estruturas e evoluindo de semana, ative sua assinatura.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              id="trial-expired-subscribe-btn"
+              onClick={() => setShowSubscriptionCheckout(true)}
+              className="px-4 py-2.5 bg-lime-500 hover:bg-lime-400 text-slate-950 font-heading font-black text-xs uppercase tracking-wider rounded-xl transition-all shadow-sm hover:shadow-md shrink-0 self-start sm:self-auto cursor-pointer active:scale-98"
+            >
+              Aderir ao Plano • R$ 16,90
+            </button>
+          </motion.div>
+        )}
+
+        {/* Discreet Trial Countdown Banner - only show if athlete already has a plan generated */}
+        {plan && accessInfo.isInTrial && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            id="trial-countdown-banner"
+            className="w-full bg-slate-900 border border-slate-800 text-white rounded-2xl p-4 sm:px-6 sm:py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-lg"
+          >
+            <div className="flex items-center gap-3.5">
+              <div className="p-2.5 bg-sky-500/10 border border-sky-500/20 text-sky-400 rounded-xl shrink-0">
+                <Clock className="w-5 h-5" />
+              </div>
+              <div className="text-xs font-sans space-y-0.5">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-heading font-black text-slate-100 text-sm">
+                    Período de Teste Gratuito Ativo
+                  </span>
+                  <span className="bg-sky-500/20 border border-sky-500/30 text-sky-300 font-mono text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">
+                    {accessInfo.trialDaysRemaining > 1 
+                      ? `${accessInfo.trialDaysRemaining} dias restantes` 
+                      : `${accessInfo.trialHoursRemaining}h restantes`}
+                  </span>
+                </div>
+                <p className="text-slate-300 text-xs">
+                  Você tem acesso total aos treinos, estruturas minuto a minuto e métricas. Garanta a continuidade dos seus treinos após o teste.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              id="trial-banner-subscribe-btn"
+              onClick={() => setShowSubscriptionCheckout(true)}
+              className="px-4 py-2.5 bg-lime-500 hover:bg-lime-400 text-slate-950 font-heading font-black text-xs uppercase tracking-wider rounded-xl transition-all shadow-sm hover:shadow-md shrink-0 self-start sm:self-auto cursor-pointer active:scale-98"
+            >
+              Aderir ao Plano • R$ 16,90
+            </button>
+          </motion.div>
+        )}
+
         {/* Scenario A: Simplified Express Onboarding Screen */}
         <AnimatePresence mode="wait">
           {!plan ? (
@@ -1456,166 +1556,18 @@ export default function App() {
                     <span>Monte Sua Planilha Personalizada</span>
                   </h2>
                   <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-xl font-sans">
-                    Responda às 5 perguntas rápidas abaixo para nossa IA estruturar seus treinos da semana sob medida.
+                    Responda às perguntas abaixo para nossa IA estruturar seus treinos da semana sob medida.
                   </p>
-                </div>
-
-                <div className="flex items-center gap-2 shrink-0 self-start md:self-center relative z-10">
-                  <button
-                    onClick={() => setOnboardingMode(prev => prev === "express" ? "chat" : "express")}
-                    className="text-xs text-lime-400 hover:text-lime-300 bg-slate-800/80 hover:bg-slate-800 px-4 py-2.5 rounded-xl border border-slate-700/80 font-bold transition-all flex items-center gap-2 cursor-pointer shadow-sm"
-                  >
-                    {onboardingMode === "express" ? (
-                      <>
-                        <MessageSquare className="w-4 h-4" />
-                        <span>Prefere Conversar via Chat?</span>
-                      </>
-                    ) : (
-                      <>
-                        <Zap className="w-4 h-4 text-lime-400" />
-                        <span>Voltar ao Formulário Rápido</span>
-                      </>
-                    )}
-                  </button>
                 </div>
               </div>
 
-              {onboardingMode === "express" ? (
-                /* Express Onboarding Form Card */
-                <OnboardingForm 
-                  profile={profile} 
-                  setProfile={setProfile} 
-                  onGeneratePlan={generateTrainingPlan} 
-                  isGeneratingPlan={isGeneratingPlan} 
-                />
-              ) : (
-                /* Chat Mode (if user prefers typing with AI coach) */
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-                  <div className="lg:col-span-7 flex flex-col bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden h-[580px]">
-                    <div className="bg-slate-900 text-white px-5 py-4 flex items-center gap-3 border-b border-slate-800 shrink-0">
-                      <div className="w-10 h-10 rounded-full bg-lime-500 flex items-center justify-center font-bold text-slate-950 font-heading shrink-0 shadow-sm relative">
-                        AI
-                        <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-slate-900"></span>
-                      </div>
-                      <div>
-                        <h3 className="font-heading font-bold text-sm">Treinador de Ciclismo AI</h3>
-                        <p className="text-[10px] text-slate-300 flex items-center gap-1 font-mono">
-                          <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-ping"></span> Especialista em Ciclismo & Cargas
-                        </p>
-                      </div>
-                    </div>
-
-                    <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 bg-slate-50/50">
-                      {chatHistory.map((msg) => (
-                        <div 
-                          key={msg.id} 
-                          className={`flex gap-3 max-w-[85%] ${msg.sender === "atleta" ? "ml-auto flex-row-reverse" : "mr-auto"}`}
-                        >
-                          <div className={`w-8 h-8 rounded-full shrink-0 flex items-center justify-center text-xs font-bold leading-none ${
-                            msg.sender === "atleta" ? "bg-slate-200 text-slate-700" : "bg-slate-900 text-lime-400"
-                          }`}>
-                            {msg.sender === "atleta" ? <User className="w-4 h-4" /> : "TR"}
-                          </div>
-                          <div className="space-y-1">
-                            <div className={`rounded-2xl p-3 text-xs leading-relaxed font-sans shadow-xs whitespace-pre-wrap ${
-                              msg.sender === "atleta" 
-                                ? "bg-slate-900 text-white rounded-tr-none" 
-                                : "bg-white text-slate-800 rounded-tl-none border border-slate-100"
-                            }`}>
-                              {msg.text}
-                            </div>
-                            <span className={`text-[9px] text-slate-400 font-mono tracking-wider block ${
-                              msg.sender === "atleta" ? "text-right" : "text-left"
-                            }`}>
-                              {msg.timestamp}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                      
-                      {isTyping && (
-                        <div className="flex gap-3 mr-auto">
-                          <div className="w-8 h-8 rounded-full bg-slate-900 text-lime-400 flex items-center justify-center text-xs font-bold shrink-0">
-                            TR
-                          </div>
-                          <div className="bg-white px-4 py-3 rounded-2xl rounded-tl-none border border-slate-100 flex items-center gap-1 shrink-0">
-                            <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce"></span>
-                            <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce [animation-delay:0.2s]"></span>
-                            <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce [animation-delay:0.4s]"></span>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    <form onSubmit={handleSendMessage} className="p-4 bg-white border-t border-slate-100 shrink-0 flex gap-2">
-                      <input 
-                        type="text" 
-                        value={inputMessage}
-                        onChange={(e) => setInputMessage(e.target.value)}
-                        disabled={isTyping}
-                        placeholder="Responda seu treinador aqui ou pergunte algo..."
-                        className="flex-1 bg-slate-100 hover:bg-slate-150 focus:bg-white text-xs text-slate-800 rounded-xl px-4 py-3 outline-hidden border border-slate-100 focus:border-slate-300 focus:ring-1 focus:ring-slate-300 font-sans transition-all disabled:opacity-50"
-                      />
-                      <button 
-                        type="submit"
-                        disabled={!inputMessage.trim() || isTyping}
-                        className="bg-slate-900 hover:bg-slate-800 text-lime-400 disabled:bg-slate-100 disabled:text-slate-400 rounded-xl px-4 flex items-center justify-center font-bold tracking-wide transition-all disabled:cursor-not-allowed shrink-0 cursor-pointer"
-                      >
-                        <Send className="w-4 h-4" />
-                      </button>
-                    </form>
-                  </div>
-
-                  <div className="lg:col-span-5 space-y-6">
-                    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 space-y-4">
-                      <div className="flex items-center justify-between border-b border-slate-50 pb-3">
-                        <div className="flex items-center gap-2">
-                          <ClipboardList className="w-5 h-5 text-slate-800" />
-                          <h3 className="font-heading font-extrabold text-sm text-slate-800">Ficha Técnica do Atleta</h3>
-                        </div>
-                        <span className="text-[10px] bg-slate-100 text-slate-500 font-mono font-bold uppercase py-0.5 px-2 rounded-full">RESUMO</span>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div>
-                          <label className="text-[10px] uppercase font-bold text-slate-400">Nome</label>
-                          <p className="text-xs font-bold text-slate-800">{profile.name || "Atleta"}</p>
-                        </div>
-                        <div>
-                          <label className="text-[10px] uppercase font-bold text-slate-400">Nível</label>
-                          <p className="text-xs font-bold text-slate-800">{formatLevel(profile.level)}</p>
-                        </div>
-                        <div>
-                          <label className="text-[10px] uppercase font-bold text-slate-400">Foco / Objetivo</label>
-                          <p className="text-xs font-bold text-slate-800">{formatGoal(profile.goal)}</p>
-                        </div>
-                        <div>
-                          <label className="text-[10px] uppercase font-bold text-slate-400">Frequência</label>
-                          <p className="text-xs font-bold text-slate-800">{profile.daysPerWeek || 3} dias / semana</p>
-                        </div>
-                      </div>
-
-                      <button 
-                        onClick={generateTrainingPlan}
-                        disabled={isGeneratingPlan}
-                        className="w-full bg-slate-900 text-lime-400 border border-slate-800 rounded-xl py-3 px-4 font-heading font-bold text-sm hover:bg-slate-800 transition-all flex items-center justify-center gap-2 shadow-sm cursor-pointer"
-                      >
-                        {isGeneratingPlan ? (
-                          <>
-                            <RefreshCw className="w-4 h-4 animate-spin" />
-                            <span>Gerando Planilha Semanal...</span>
-                          </>
-                        ) : (
-                          <>
-                            <FileCheck className="w-4 h-4 text-lime-400" />
-                            <span>Gerar Planilha Semanal Agora</span>
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
+              {/* Express Onboarding Form Card */}
+              <OnboardingForm 
+                profile={profile} 
+                setProfile={setProfile} 
+                onGeneratePlan={generateTrainingPlan} 
+                isGeneratingPlan={isGeneratingPlan} 
+              />
             </motion.div>
           ) : (
             
@@ -1686,6 +1638,18 @@ export default function App() {
                   </button>
                   <button 
                     onClick={() => {
+                      setActiveTab("chat");
+                      MetaPixelEvents.viewContent("Chat Treinador IA", "Navegação do Atleta");
+                    }}
+                    className={`flex items-center justify-center gap-1.5 px-3 py-2.5 sm:px-4 text-[11px] sm:text-xs font-black leading-none font-heading uppercase rounded-xl transition-all cursor-pointer ${
+                      activeTab === "chat" ? "bg-slate-900 text-lime-400 shadow-sm" : "text-slate-600 hover:bg-slate-200 hover:text-slate-900"
+                    }`}
+                  >
+                    <Bot className="w-4 h-4 shrink-0" />
+                    <span className="truncate">Coach IA</span>
+                  </button>
+                  <button 
+                    onClick={() => {
                       setFeedbackText("");
                       setFeedbackSuccess(false);
                       setShowFeedbackModal(true);
@@ -1723,8 +1687,8 @@ export default function App() {
                     transition={{ duration: 0.2 }}
                     className="space-y-8"
                   >
-                    {/* Render Preview Header if plan exists and user is non-subscriber */}
-                    {plan && profile.subscriptionStatus !== "active" && profile.role !== "coach" && (
+                    {/* Render Preview Header if plan exists and user access is blocked/pending */}
+                    {plan && isPendingUser && (
                       <WorkoutPlanPreview 
                         plan={plan} 
                         profile={profile} 
@@ -1965,14 +1929,14 @@ export default function App() {
                                           onClick={() => setSubjFeedback("otimo")}
                                           className={`text-left p-3.5 rounded-xl border text-xs font-sans transition-all flex items-start gap-2.5 cursor-pointer ${
                                             subjFeedback === "otimo"
-                                              ? "border-emerald-500 bg-emerald-50/50 text-slate-800 font-medium ring-2 ring-emerald-500/10"
-                                              : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                                              ? "border-emerald-500 bg-emerald-50 text-slate-900 font-semibold ring-2 ring-emerald-500/20 shadow-xs"
+                                              : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 shadow-2xs"
                                           }`}
                                         >
-                                          <Dumbbell className="w-4 h-4 text-emerald-500 mt-1 shrink-0" />
+                                          <Dumbbell className="w-4 h-4 text-emerald-600 mt-1 shrink-0" />
                                           <div>
-                                            <p className="font-bold text-emerald-800 text-[11px] uppercase tracking-wide">Excelente / Forte</p>
-                                            <p className="text-[10px] text-slate-550 leading-tight mt-0.5">Me senti muito forte, pernas recuperadas e com energia de sobra.</p>
+                                            <p className="font-bold text-emerald-900 text-[11px] uppercase tracking-wide">Excelente / Forte</p>
+                                            <p className="text-[10px] text-slate-600 leading-tight mt-0.5">Me senti muito forte, pernas recuperadas e com energia de sobra.</p>
                                           </div>
                                         </button>
 
@@ -1981,14 +1945,14 @@ export default function App() {
                                           onClick={() => setSubjFeedback("moderado")}
                                           className={`text-left p-3.5 rounded-xl border text-xs font-sans transition-all flex items-start gap-2.5 cursor-pointer ${
                                             subjFeedback === "moderado"
-                                              ? "border-amber-500 bg-amber-50/40 text-slate-800 font-medium ring-2 ring-amber-500/10"
-                                              : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                                              ? "border-amber-500 bg-amber-50 text-slate-900 font-semibold ring-2 ring-amber-500/20 shadow-xs"
+                                              : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 shadow-2xs"
                                           }`}
                                         >
-                                          <CheckCircle2 className="w-4 h-4 text-amber-500 mt-1 shrink-0" />
+                                          <CheckCircle2 className="w-4 h-4 text-amber-600 mt-1 shrink-0" />
                                           <div>
-                                            <p className="font-bold text-amber-800 text-[11px] uppercase tracking-wide">Equilibrado / Normal</p>
-                                            <p className="text-[10px] text-slate-550 leading-tight mt-0.5">Cansaço normal esperado das sessões, mas completei bem.</p>
+                                            <p className="font-bold text-amber-900 text-[11px] uppercase tracking-wide">Equilibrado / Normal</p>
+                                            <p className="text-[10px] text-slate-600 leading-tight mt-0.5">Cansaço normal esperado das sessões, mas completei bem.</p>
                                           </div>
                                         </button>
 
@@ -1997,14 +1961,14 @@ export default function App() {
                                           onClick={() => setSubjFeedback("muito_cansado")}
                                           className={`text-left p-3.5 rounded-xl border text-xs font-sans transition-all flex items-start gap-2.5 cursor-pointer ${
                                             subjFeedback === "muito_cansado"
-                                              ? "border-rose-500 bg-rose-50/30 text-slate-800 font-medium ring-2 ring-rose-500/10"
-                                              : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                                              ? "border-rose-500 bg-rose-50 text-slate-900 font-semibold ring-2 ring-rose-500/20 shadow-xs"
+                                              : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 shadow-2xs"
                                           }`}
                                         >
-                                          <AlertTriangle className="w-4 h-4 text-rose-500 mt-1 shrink-0" />
+                                          <AlertTriangle className="w-4 h-4 text-rose-600 mt-1 shrink-0" />
                                           <div>
-                                            <p className="font-bold text-rose-800 text-[11px] uppercase tracking-wide">Exausto / Dores</p>
-                                            <p className="text-[10px] text-slate-550 leading-tight mt-0.5">Sinto dores articulares persistentes, exaustão física ou queimação pesada.</p>
+                                            <p className="font-bold text-rose-900 text-[11px] uppercase tracking-wide">Exausto / Dores</p>
+                                            <p className="text-[10px] text-slate-600 leading-tight mt-0.5">Sinto dores articulares persistentes, exaustão física ou queimação pesada.</p>
                                           </div>
                                         </button>
                                       </div>
@@ -2020,13 +1984,13 @@ export default function App() {
                                         value={textFeedback}
                                         onChange={(e) => setTextFeedback(e.target.value)}
                                         placeholder="Ex: Tive um pouco de desconforto de quinta em diante ou gostaria de treinos mais focados em subidas..."
-                                        className="w-full bg-white border border-slate-200 focus:border-lime-550 focus:ring-1 focus:ring-lime-550 rounded-xl p-3 text-xs text-slate-800 outline-hidden font-sans placeholder:text-slate-400 leading-normal"
+                                        className="w-full bg-white border border-slate-200 focus:border-lime-500 focus:ring-1 focus:ring-lime-500 rounded-xl p-3 text-xs text-slate-800 outline-hidden font-sans placeholder:text-slate-400 leading-normal"
                                       />
                                     </div>
 
                                     {/* Progression rule visual tips based on stats */}
-                                    <div className="bg-slate-200/45 p-3 rounded-xl text-[11px] text-slate-625 flex items-start gap-2.5 border border-slate-250/50">
-                                      <TrendingDown className="w-4 h-4 text-slate-500 mt-0.5 shrink-0" />
+                                    <div className="bg-slate-100 p-3 rounded-xl text-[11px] text-slate-700 flex items-start gap-2.5 border border-slate-200">
+                                      <TrendingDown className="w-4 h-4 text-slate-600 mt-0.5 shrink-0" />
                                       <p className="leading-relaxed font-sans">
                                         {pctW >= 75 ? (
                                           <span>Análise Fisiológica: Você concluiu <strong>{pctW}% dos treinos</strong> propostos! Atleta exemplar! Iremos propor um microciclo de <strong>Progressão de Cargas e Supercompensação Aeróbica</strong> para a Semana {(plan.weekNumber || 1) + 1}.</span>
@@ -2037,8 +2001,9 @@ export default function App() {
                                     </div>
 
                                     {/* Action button */}
-                                    <div className="flex justify-end pt-2 border-t border-slate-200/50">
+                                    <div className="flex justify-end pt-3 border-t border-slate-200/60">
                                       <button
+                                        id="save-progress-evolve-btn"
                                         type="button"
                                         disabled={isGeneratingNextWeek}
                                         onClick={() => {
@@ -2048,22 +2013,22 @@ export default function App() {
                                           }
                                           handleGenerateNextWeek();
                                         }}
-                                        className="w-full sm:w-auto px-6 py-2.5 bg-slate-900 hover:bg-slate-850 text-lime-450 hover:text-lime-400 rounded-xl text-xs font-black font-heading tracking-wide flex items-center justify-center gap-2 transition-all disabled:opacity-50 cursor-pointer shadow-sm active:scale-98"
+                                        className="w-full sm:w-auto px-6 py-3.5 bg-lime-400 hover:bg-lime-350 text-slate-950 font-heading font-black text-xs sm:text-sm uppercase tracking-wide rounded-xl flex items-center justify-center gap-2 transition-all disabled:opacity-50 cursor-pointer shadow-md border-2 border-lime-500 active:scale-98"
                                       >
                                         {isGeneratingNextWeek ? (
                                           <>
-                                            <RefreshCw className="w-4 h-4 animate-spin text-lime-400" />
-                                            <span>Montando Nova Planilha e Cargas...</span>
+                                            <RefreshCw className="w-4 h-4 animate-spin text-slate-950 shrink-0" />
+                                            <span className="text-slate-950 font-black">Montando Nova Planilha e Cargas...</span>
                                           </>
                                         ) : isPendingUser ? (
                                           <>
-                                            <Lock className="w-4 h-4 text-amber-400" />
-                                            <span>Desbloquear Assinatura p/ Evoluir</span>
+                                            <Lock className="w-4 h-4 text-slate-950 shrink-0" />
+                                            <span className="text-slate-950 font-black">Desbloquear Assinatura p/ Evoluir</span>
                                           </>
                                         ) : (
                                           <>
-                                            <Sparkles className="w-4 h-4 text-lime-450" />
-                                            <span>Salvar Progresso & Evoluir p/ Semana {(plan.weekNumber || 1) + 1}</span>
+                                            <Sparkles className="w-4 h-4 text-slate-950 fill-slate-950/20 shrink-0" />
+                                            <span className="text-slate-950 font-black">Salvar Progresso & Evoluir p/ Semana {(plan.weekNumber || 1) + 1}</span>
                                           </>
                                         )}
                                       </button>
@@ -2427,11 +2392,63 @@ export default function App() {
                     <ZoneCalculator profile={profile} isSimpleMode={displayMode === "simples"} />
                   </motion.div>
                 )}
+
+                {activeTab === "chat" && (
+                  <motion.div 
+                    key="tab-chat" 
+                    initial={{ opacity: 0, scale: 0.98 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.98 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <CoachChat 
+                      chatHistory={chatHistory}
+                      onSendMessage={(msg) => handleSendMessage(undefined, msg)}
+                      isTyping={isTyping}
+                      profile={profile}
+                      plan={plan}
+                      onResetChat={() => {
+                        const welcomeMsg: ChatMessage = {
+                          id: `welcome-${Date.now()}`,
+                          sender: "treinador",
+                          text: `Olá, ${profile.name || "atleta"}! Estou pronto para acompanhar seus treinos da Semana ${plan?.weekNumber || 1}. Como posso te ajudar hoje?`,
+                          timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+                        };
+                        setChatHistory([welcomeMsg]);
+                      }}
+                      onApplyPlanUpdate={(updatedPlan) => setPlan(updatedPlan)}
+                      isPendingUser={isPendingUser}
+                      onUnlockClick={() => setShowSubscriptionCheckout(true)}
+                    />
+                  </motion.div>
+                )}
               </AnimatePresence>
 
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Floating Action Shortcut for AI Coach */}
+        {plan && activeTab !== "chat" && (
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab("chat");
+              MetaPixelEvents.viewContent("Chat Treinador IA", "Navegação do Atleta");
+            }}
+            className="fixed bottom-6 right-6 z-40 bg-slate-950 hover:bg-slate-900 text-white p-3 sm:px-4 sm:py-3 rounded-2xl shadow-2xl border border-slate-800 flex items-center gap-2.5 hover:scale-105 active:scale-95 transition-all cursor-pointer group"
+            title="Falar com o Treinador IA"
+          >
+            <div className="w-9 h-9 rounded-xl bg-lime-400 text-slate-950 flex items-center justify-center font-heading font-black shadow-xs relative">
+              <Bot className="w-5 h-5 text-slate-950" />
+              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-slate-950"></span>
+            </div>
+            <div className="hidden sm:flex flex-col text-left pr-1">
+              <span className="text-[10px] font-mono text-lime-400 uppercase font-black tracking-wider leading-none">Online</span>
+              <span className="text-xs font-heading font-black text-white leading-tight">Coach IA</span>
+            </div>
+          </button>
+        )}
 
       </main>
       )}
@@ -2728,7 +2745,7 @@ export default function App() {
               <SubscriptionWall 
                 userEmail={currentUser.email}
                 userName={profile.name || currentUser.profile?.name || "Atleta"}
-                currentStatus={profile.subscriptionStatus === "active" ? "pending_payment" : (profile.subscriptionStatus || "pending_payment")}
+                currentStatus={accessInfo.accessType === "expired" ? "expired" : accessInfo.accessType === "trial_expired" ? "trial_expired" : "pending_payment"}
                 onActivated={(updatedProfile) => {
                   setProfile(updatedProfile);
                   if (currentUser) {

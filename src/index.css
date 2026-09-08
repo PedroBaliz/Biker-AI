@@ -5,6 +5,20 @@
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-heading: "Outfit", sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  --color-slate-105: #f4f6f8;
+  --color-slate-150: #e8ecf1;
+  --color-slate-205: #dbe1e8;
+  --color-slate-350: #8896a8;
+  --color-slate-405: #718096;
+  --color-slate-450: #5d6d82;
+  --color-slate-550: #415166;
+  --color-slate-650: #2d3748;
+  --color-slate-655: #283344;
+  --color-slate-705: #1e293b;
+  --color-slate-750: #172033;
+  --color-slate-805: #111827;
+  --color-slate-850: #0a0f1d;
 }
 
 /* Custom scrollbar to keep layout super neat */
