@@ -807,7 +807,7 @@ export default function App() {
         if (data.user) {
           setCurrentUser(data.user);
           setProfile(data.user.profile);
-          setChatHistory(data.user.chatHistory || []);
+          // O chat do Coach AI agora opera com sessão efêmera limpa; não restaura histórico anterior
           setPlan(data.user.plan || null);
           setFeedbacks(data.user.feedbacks || []);
           setWorkoutLogs(data.user.workoutLogs || []);
@@ -876,7 +876,7 @@ export default function App() {
     const updatedUser: UserAccount = {
       email: currentUser.email,
       profile,
-      chatHistory,
+      chatHistory: currentUser.chatHistory || [], // Preserva dados existentes no Firestore sem poluir com sessões efêmeras
       plan,
       feedbacks,
       workoutLogs,
@@ -913,16 +913,7 @@ export default function App() {
         clearTimeout(saveTimeoutRef.current);
       }
     };
-  }, [profile, chatHistory, plan, feedbacks, workoutLogs, currentUser?.email]);
-
-  useEffect(() => {
-    if (chatContainerRef.current) {
-      chatContainerRef.current.scrollTo({
-        top: chatContainerRef.current.scrollHeight,
-        behavior: "smooth"
-      });
-    }
-  }, [chatHistory, isTyping]);
+  }, [profile, plan, feedbacks, workoutLogs, currentUser?.email]);
 
   // Handle message sending for onboarding or custom chat
   const handleSendMessage = async (e?: React.FormEvent, customMsg?: string) => {
@@ -1089,7 +1080,7 @@ export default function App() {
     window.scrollTo(0, 0);
     setCurrentUser(user);
     setProfile(user.profile);
-    setChatHistory(user.chatHistory);
+    // Chat do Coach AI inicia sempre com sessão limpa; não carrega histórico anterior
     setPlan(user.plan);
     setFeedbacks(user.feedbacks || []);
     setWorkoutLogs(user.workoutLogs || []);
@@ -2555,20 +2546,8 @@ export default function App() {
                     transition={{ duration: 0.2 }}
                   >
                     <CoachChat 
-                      chatHistory={chatHistory}
-                      onSendMessage={(msg) => handleSendMessage(undefined, msg)}
-                      isTyping={isTyping}
                       profile={profile}
                       plan={plan}
-                      onResetChat={() => {
-                        const welcomeMsg: ChatMessage = {
-                          id: `welcome-${Date.now()}`,
-                          sender: "treinador",
-                          text: `Olá, ${profile.name || "atleta"}! Estou pronto para acompanhar seus treinos da Semana ${plan?.weekNumber || 1}. Como posso te ajudar hoje?`,
-                          timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-                        };
-                        setChatHistory([welcomeMsg]);
-                      }}
                       onApplyPlanUpdate={(updatedPlan) => setPlan(updatedPlan)}
                       isPendingUser={isPendingUser}
                       onUnlockClick={() => setShowSubscriptionCheckout(true)}

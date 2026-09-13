@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { ChatMessage, UserProfile, TrainingPlan } from "../types";
+import { apiFetch } from "../firebase";
+import { MetaPixelEvents } from "../lib/metaPixel";
 import { 
   Send, 
   Bot, 
@@ -10,59 +12,155 @@ import {
   Zap, 
   Heart, 
   Droplet, 
-  CheckCircle2, 
-  Lock,
-  ArrowRight,
-  ShieldCheck
+  ShieldCheck,
+  RotateCcw
 } from "lucide-react";
 
 interface CoachChatProps {
-  chatHistory: ChatMessage[];
-  onSendMessage: (message: string) => Promise<void>;
-  isTyping: boolean;
   profile: UserProfile;
   plan: TrainingPlan | null;
-  onResetChat?: () => void;
   onApplyPlanUpdate?: (updatedPlan: TrainingPlan) => void;
   isPendingUser?: boolean;
   onUnlockClick?: () => void;
+  // Optional backwards-compatible props (if passed by caller, ignored in favor of fresh session)
+  chatHistory?: ChatMessage[];
+  onSendMessage?: (message: string) => Promise<void>;
+  isTyping?: boolean;
+  onResetChat?: () => void;
 }
 
+const createInitialMessage = (profile: UserProfile, plan: TrainingPlan | null): ChatMessage => {
+  const athleteFirstName = profile.name ? profile.name.trim().split(" ")[0] : "atleta";
+  const welcomeText = plan
+    ? `Olá, ${athleteFirstName}! Estou pronto para tirar dúvidas sobre seus treinos da Semana ${plan.weekNumber || 1}, nutrição, intensidade ou adaptar sua planilha. Como posso te ajudar hoje?`
+    : `Olá, ${athleteFirstName}! Sou o seu Treinador de Ciclismo AI. Como posso te ajudar hoje com seus treinos, nutrição, ritmo ou evolução no pedal?`;
+
+  return {
+    id: `welcome-${Date.now()}`,
+    sender: "treinador",
+    text: welcomeText,
+    timestamp: new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
+  };
+};
+
 export const CoachChat: React.FC<CoachChatProps> = ({
-  chatHistory,
-  onSendMessage,
-  isTyping,
   profile,
   plan,
-  onResetChat,
   onApplyPlanUpdate,
   isPendingUser,
   onUnlockClick,
+  onResetChat,
 }) => {
+  // Ephemeral in-memory session state: always starts fresh on component mount
+  const [messages, setMessages] = useState<ChatMessage[]>(() => [createInitialMessage(profile, plan)]);
+  const [isTyping, setIsTyping] = useState(false);
   const [inputMessage, setInputMessage] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Auto scroll to bottom
+  // Auto scroll to bottom of active conversation
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
   useEffect(() => {
     scrollToBottom();
-  }, [chatHistory, isTyping]);
+  }, [messages, isTyping]);
+
+  // Start a fresh, clean conversation session
+  const handleStartNewSession = () => {
+    setMessages([createInitialMessage(profile, plan)]);
+    setInputMessage("");
+    if (onResetChat) {
+      onResetChat();
+    }
+  };
+
+  const handleSendMessage = async (textToSend: string) => {
+    const cleanText = textToSend.trim();
+    if (!cleanText || isTyping) return;
+
+    // Check if user is pending / expired and prompt unlock
+    if (isPendingUser && onUnlockClick) {
+      onUnlockClick();
+      return;
+    }
+
+    const userMsg: ChatMessage = {
+      id: `msg-${Date.now()}`,
+      sender: "atleta",
+      text: cleanText,
+      timestamp: new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
+    };
+
+    // Keep messages strictly in memory for this active session
+    const currentSessionHistory = [...messages, userMsg];
+    setMessages(currentSessionHistory);
+    setInputMessage("");
+    setIsTyping(true);
+
+    try {
+      MetaPixelEvents.contact();
+
+      const response = await apiFetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: cleanText,
+          profile,
+          currentPlan: plan,
+          messageHistory: currentSessionHistory
+        })
+      });
+
+      let data: any = null;
+      try {
+        data = await response.json();
+      } catch (e) {
+        // non-json response
+      }
+
+      if (!response.ok) {
+        const errMsg = data?.error || data?.message || "Falha ao comunicar com o treinador.";
+        throw new Error(errMsg);
+      }
+
+      const coachMsg: ChatMessage = {
+        id: `msg-${Date.now() + 1}`,
+        sender: "treinador",
+        text: data?.reply || "Entendido! Como posso ajudar mais com sua preparação?",
+        timestamp: new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
+      };
+
+      setMessages(prev => [...prev, coachMsg]);
+
+      // If user requested a plan adjustment and AI returned the updated plan
+      if (data?.updatedPlan && onApplyPlanUpdate) {
+        onApplyPlanUpdate(data.updatedPlan);
+      }
+    } catch (err: any) {
+      console.error("Erro na comunicação com o Coach AI:", err);
+      const errorMsg: ChatMessage = {
+        id: `err-${Date.now()}`,
+        sender: "treinador",
+        text: `⚠️ Desculpe, não consegui processar a resposta neste momento: ${err.message || "Tente novamente em instantes."}`,
+        timestamp: new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
+      };
+      setMessages(prev => [...prev, errorMsg]);
+    } finally {
+      setIsTyping(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputMessage.trim() || isTyping) return;
-    const text = inputMessage.trim();
-    setInputMessage("");
-    await onSendMessage(text);
+    await handleSendMessage(inputMessage);
   };
 
-  const handleQuickQuestion = async (q: string) => {
+  const handleQuickQuestion = async (question: string) => {
     if (isTyping) return;
-    await onSendMessage(q);
+    await handleSendMessage(question);
   };
 
   // Quick suggestion chips
@@ -143,6 +241,18 @@ export const CoachChat: React.FC<CoachChatProps> = ({
             </p>
           </div>
         </div>
+
+        {/* Action button to reset / start a new clean session */}
+        <button
+          type="button"
+          onClick={handleStartNewSession}
+          disabled={isTyping}
+          className="relative z-10 flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-850 hover:bg-slate-800 active:scale-95 text-slate-300 hover:text-white border border-slate-750 text-xs font-semibold font-sans transition-all cursor-pointer shadow-xs shrink-0 disabled:opacity-50"
+          title="Limpar e iniciar uma nova conversa com o Coach AI"
+        >
+          <RotateCcw className="w-3.5 h-3.5 text-lime-400" />
+          <span className="hidden sm:inline">Nova Conversa</span>
+        </button>
       </div>
 
       {/* Athlete Status & Plan Banner */}
@@ -167,7 +277,7 @@ export const CoachChat: React.FC<CoachChatProps> = ({
 
       {/* Message Stream */}
       <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 bg-slate-50/40">
-        {chatHistory.length === 0 ? (
+        {messages.length === 0 ? (
           <div className="text-center py-12 space-y-3">
             <div className="w-12 h-12 bg-lime-100 text-lime-700 rounded-2xl flex items-center justify-center mx-auto">
               <Sparkles className="w-6 h-6" />
@@ -178,7 +288,7 @@ export const CoachChat: React.FC<CoachChatProps> = ({
             </p>
           </div>
         ) : (
-          chatHistory.map((msg) => {
+          messages.map((msg) => {
             const isUser = msg.sender === "atleta";
             return (
               <div 
