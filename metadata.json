@@ -1,6 +1,6 @@
 {
   "name": "Biker AI",
-  "description": "Treinador de ciclismo inteligente com onboarding amigável perguntando dados um a um, controle de zonas de potência e batimentos cardíacos, e geração estilizada de planilha de treino semanal personalizada com evolução dinâmica.",
+  "description": "Crie treinos de ciclismo personalizados de acordo com seu objetivo, nível e rotina. Planeje sua evolução com o Biker AI.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

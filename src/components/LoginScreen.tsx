@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { UserAccount, UserProfile, ChatMessage } from "../types";
 import { motion, AnimatePresence } from "motion/react";
 import { 
@@ -7,20 +7,29 @@ import {
 } from "firebase/auth";
 import { auth, apiFetch } from "../firebase";
 import { MetaPixelEvents } from "../lib/metaPixel";
+import { updateSeoMeta, HOME_SEO_CONFIG } from "../utils/seoHead";
+import { SEO_ARTICLES } from "../data/seoArticlesData";
 import { 
   Dumbbell, ShieldAlert, ShieldCheck, Sparkles, Mail, Lock, User, Eye, EyeOff, Bike, 
   ChevronRight, CheckCircle, Download, Smartphone, Share, X, ExternalLink,
   Activity, TrendingUp, Zap, Award, MessageSquare, Calendar, Heart, Percent, Star, Check,
-  Play, Pause, Sliders, Gauge, Instagram, Loader2, Bot, Clock
+  Play, Pause, Sliders, Gauge, Instagram, Loader2, Bot, Clock, Flame, Smile, Compass, Target, MessageSquareCode, BookOpen
 } from "lucide-react";
 // @ts-ignore
 import bikerHero from "../assets/images/biker_hero_1780860230528.png";
+import TermsOfUseModal from "./TermsOfUseModal";
+import PrivacyPolicyModal from "./PrivacyPolicyModal";
+import ContactModal from "./ContactModal";
 
 interface LoginScreenProps {
   onLoginSuccess: (user: UserAccount) => void;
+  onNavigateSlug?: (slug: string) => void;
 }
 
-export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
+export default function LoginScreen({ onLoginSuccess, onNavigateSlug }: LoginScreenProps) {
+  useEffect(() => {
+    updateSeoMeta(HOME_SEO_CONFIG);
+  }, []);
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -30,6 +39,11 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
   const [successMsg, setSuccessMsg] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Estados para modais de termos, privacidade e contato
+  const [showTerms, setShowTerms] = useState(false);
+  const [showPrivacy, setShowPrivacy] = useState(false);
+  const [showContact, setShowContact] = useState(false);
 
   // Estados para a seção de Preview Interativo do App
   const [previewTab, setPreviewTab] = useState<"planilha" | "desempenho" | "zonas" | "chat">("planilha");
@@ -42,6 +56,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
     { sender: "bot", text: "Olá! Como está o seu corpo após a pedalada de ontem? Quer ajustar as metas para os próximos dias?" }
   ]);
   const [isTypingSimulated, setIsTypingSimulated] = useState(false);
+  const [demoActiveDay, setDemoActiveDay] = useState<"segunda" | "terca" | "quarta" | "quinta" | "sabado">("terca");
 
   React.useEffect(() => {
     let timer: any;
@@ -65,7 +80,18 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
     }, 1250);
   };
 
-  const scrollToSection = (id: string) => {
+  const MERCADO_PAGO_CHECKOUT_URL = "https://mpago.la/24PgikU";
+
+  const scrollToSection = (id: string, signupMode?: boolean) => {
+    if (signupMode === true) {
+      setIsLogin(false);
+      setError("");
+      setSuccessMsg("");
+    } else if (signupMode === false) {
+      setIsLogin(true);
+      setError("");
+      setSuccessMsg("");
+    }
     const el = document.getElementById(id);
     if (el) {
       el.scrollIntoView({ behavior: "smooth" });
@@ -330,101 +356,267 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
             </button>
             <button 
               type="button" 
+              onClick={() => scrollToSection("exemplo-treino")} 
+              className="text-xs font-semibold text-slate-300 hover:text-white transition-colors cursor-pointer bg-transparent border-none p-0"
+            >
+              Exemplo de Treino
+            </button>
+            <button 
+              type="button" 
               onClick={() => scrollToSection("beneficios")} 
               className="text-xs font-semibold text-slate-300 hover:text-white transition-colors cursor-pointer bg-transparent border-none p-0"
             >
               Benefícios
             </button>
+            <button 
+              type="button" 
+              onClick={() => scrollToSection("planos")} 
+              className="text-xs font-semibold text-slate-400 hover:text-slate-200 transition-colors cursor-pointer bg-transparent border-none p-0"
+            >
+              Ver Planos
+            </button>
+            <button 
+              type="button" 
+              onClick={() => scrollToSection("auth-section", false)} 
+              className="text-xs font-semibold text-slate-400 hover:text-white transition-colors cursor-pointer bg-transparent border-none p-0"
+            >
+              Entrar
+            </button>
           </div>
           <div>
             <button 
               type="button" 
-              onClick={() => scrollToSection("auth-section")} 
-              className="px-4 py-2 bg-gradient-to-r from-lime-400 to-emerald-400 hover:from-lime-300 hover:to-emerald-300 text-slate-950 rounded-xl text-xs font-black uppercase transition-all shadow-md shadow-lime-500/20 cursor-pointer border-none"
+              onClick={() => scrollToSection("auth-section", true)} 
+              className="px-4 py-2 bg-gradient-to-r from-lime-400 to-emerald-400 hover:from-lime-300 hover:to-emerald-300 active:scale-[0.98] text-slate-950 rounded-xl text-xs font-black uppercase transition-all shadow-md shadow-lime-500/20 cursor-pointer border-none"
             >
-              Gerar Planilha Grátis
+              Criar meu treino grátis
             </button>
           </div>
         </div>
       </header>
 
-      {/* Hero Split Section */}
-      <section className="relative pt-12 pb-20 px-4 sm:px-6 md:px-12 max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-        
-        {/* Hero Copy (Left 7 Cols) */}
-        <div className="lg:col-span-7 space-y-6 text-left">
+      {/* Hero Section */}
+      <section className="relative pt-10 sm:pt-16 pb-14 sm:pb-18 px-4 sm:px-6 md:px-12 max-w-7xl mx-auto w-full">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-center">
           
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-lime-500/10 border border-lime-500/20 text-lime-400 rounded-full text-[10px] font-black uppercase tracking-wider">
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>Treino de Ciclismo Simples e Personalizado</span>
+          {/* Hero Copy (Left 7 Cols) */}
+          <div className="lg:col-span-7 space-y-6 text-left">
+            
+            {/* Pill de Categoria & Público */}
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-lime-500/10 border border-lime-500/25 text-lime-400 rounded-full text-xs font-bold font-mono tracking-wide">
+              <Sparkles className="w-3.5 h-3.5 text-lime-400 shrink-0" />
+              <span>Para ciclistas de estrada, MTB e iniciantes</span>
+            </div>
+
+            {/* Título Principal */}
+            <h2 className="text-4xl sm:text-5xl lg:text-6xl font-heading font-black tracking-tight text-white leading-[1.08]">
+              Seu treinador de ciclismo <span className="bg-gradient-to-r from-lime-300 via-emerald-400 to-teal-300 bg-clip-text text-transparent">com IA</span>
+            </h2>
+
+            {/* Subtítulo */}
+            <p className="text-base sm:text-xl text-slate-300 font-sans leading-relaxed max-w-2xl font-normal">
+              Receba treinos personalizados para seu objetivo, nível e rotina em menos de 1 minuto.
+            </p>
+
+            {/* CTAs: Principal de Alta Conversão + Secundários */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-2">
+              <button 
+                type="button" 
+                onClick={() => scrollToSection("auth-section", true)}
+                className="inline-flex items-center justify-center gap-2.5 px-8 py-4 bg-gradient-to-r from-lime-400 to-emerald-400 hover:from-lime-300 hover:to-emerald-300 active:scale-[0.98] text-slate-950 text-sm font-black uppercase tracking-wider rounded-2xl shadow-xl shadow-lime-500/20 hover:shadow-lime-500/30 transition-all cursor-pointer border-none group"
+              >
+                <span>Criar meu treino grátis</span>
+                <ChevronRight className="w-4 h-4 stroke-[3] group-hover:translate-x-0.5 transition-transform" />
+              </button>
+              <button 
+                type="button" 
+                onClick={() => scrollToSection("como-funciona")} 
+                className="inline-flex items-center justify-center gap-2 px-6 py-4 bg-slate-900/90 hover:bg-slate-800 text-slate-200 hover:text-white text-sm font-bold tracking-wide rounded-2xl border border-slate-700/80 hover:border-slate-600 transition-all cursor-pointer shadow-sm"
+              >
+                <span>Ver como funciona</span>
+              </button>
+              <button 
+                type="button" 
+                onClick={() => scrollToSection("planos")} 
+                className="inline-flex items-center justify-center gap-1.5 px-4 py-4 text-xs font-semibold text-slate-400 hover:text-slate-200 transition-colors cursor-pointer bg-transparent border-none"
+              >
+                <span>Ver planos</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            {/* Micro Prova / Fricção Zero & Elementos Discretos de Confiança */}
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-slate-400 pt-2 font-medium">
+              <span className="flex items-center gap-1.5 text-slate-300">
+                <Check className="w-3.5 h-3.5 text-lime-400 stroke-[3]" />
+                100% Gratuito para começar
+              </span>
+              <span className="flex items-center gap-1.5 text-slate-300">
+                <Check className="w-3.5 h-3.5 text-lime-400 stroke-[3]" />
+                Sem cartão de crédito
+              </span>
+              <span className="flex items-center gap-1.5 text-slate-300">
+                <Check className="w-3.5 h-3.5 text-lime-400 stroke-[3]" />
+                Pronto em menos de 1 minuto
+              </span>
+            </div>
+
+            {/* Selos Discretos de Confiança no Hero */}
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 pt-2 text-[11px] text-slate-400">
+              <span className="flex items-center gap-1.5 text-slate-300">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                Pagamento seguro
+              </span>
+              <span className="text-slate-700 hidden sm:inline">•</span>
+              <span className="flex items-center gap-1.5 text-slate-300">
+                <CheckCircle className="w-3.5 h-3.5 text-lime-400 shrink-0" />
+                Cancele quando quiser
+              </span>
+              <span className="text-slate-700 hidden sm:inline">•</span>
+              <span className="flex items-center gap-1.5 text-slate-300">
+                <Lock className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+                Seus dados protegidos
+              </span>
+            </div>
+
           </div>
 
-          <h2 className="text-4xl sm:text-5xl md:text-6xl font-heading font-black tracking-tight text-white leading-[1.1]">
-            Sua planilha de treino.<br />
-            Do seu jeito.<br />
-            <span className="bg-gradient-to-r from-lime-300 via-emerald-400 to-teal-300 bg-clip-text text-transparent">Sem complicação.</span>
-          </h2>
-
-          <p className="text-sm sm:text-base text-slate-300 font-sans leading-relaxed max-w-2xl">
-            Monte seu plano de treinos semanal em menos de 1 minuto. Ajustamos o volume e a intensidade de acordo com o seu tempo livre e seu nível no pedal. Chega de treinar no escuro com PDFs estáticos ou tabelas genéricas!
-          </p>
-
-          <div className="flex flex-col sm:flex-row gap-4 pt-2 pb-4">
-            <button 
-              type="button" 
-              onClick={() => scrollToSection("auth-section")}
-              className="inline-flex items-center justify-center gap-2.5 px-6 py-4 bg-gradient-to-r from-lime-400 to-emerald-400 hover:from-lime-300 hover:to-emerald-300 active:scale-98 text-slate-950 text-xs font-black uppercase tracking-wider rounded-2xl shadow-lg shadow-lime-500/20 transition-all cursor-pointer border-none"
+          {/* Hero Image Graphic (Right 5 Cols) */}
+          <div className="lg:col-span-5 relative flex justify-center items-center">
+            <div className="absolute inset-0 bg-lime-500/10 rounded-full blur-3xl -z-10 opacity-60"></div>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.6, delay: 0.1 }}
+              className="relative rounded-3xl overflow-hidden border border-slate-800 shadow-2xl bg-slate-900/60 p-2.5 group w-full max-w-md"
             >
-              <span>Gerar Minha Planilha Grátis</span>
-              <ChevronRight className="w-4 h-4" />
-            </button>
-            <button 
-              type="button" 
-              onClick={() => scrollToSection("como-funciona")} 
-              className="inline-flex items-center justify-center gap-2 px-6 py-4 bg-slate-900/90 hover:bg-slate-800 text-white text-xs font-bold uppercase tracking-wider rounded-2xl border border-slate-700 hover:border-slate-600 transition-all cursor-pointer shadow-sm"
-            >
-              <span>Ver Como Funciona</span>
-            </button>
-          </div>
+              <img 
+                src={bikerHero} 
+                alt="Biker AI Hero" 
+                className="rounded-2xl max-w-full h-auto object-cover opacity-95 group-hover:opacity-100 group-hover:scale-[1.01] transition-all duration-500"
+                referrerPolicy="no-referrer"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-slate-950/10 to-transparent pointer-events-none rounded-2xl"></div>
 
-          {/* Key Metrics grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-slate-800">
-            <div className="space-y-0.5">
-              <p className="text-xl sm:text-3xl font-heading font-black text-lime-400 tracking-tight">Mais Força</p>
-              <p className="text-[10px] uppercase font-bold text-slate-300 tracking-wider">Aumente seus watts</p>
-              <p className="text-[10px] text-slate-400 leading-normal font-sans">Pedale com mais facilidade e canse muito menos</p>
-            </div>
-            <div className="space-y-0.5 border-t sm:border-t-0 sm:border-l border-slate-800 pt-3 sm:pt-0 pl-0 sm:pl-4">
-              <p className="text-xl sm:text-3xl font-heading font-black text-emerald-400 tracking-tight">Mais Fôlego</p>
-              <p className="text-[10px] uppercase font-bold text-slate-300 tracking-wider">Subidas fáceis</p>
-              <p className="text-[10px] text-slate-400 leading-normal font-sans">Sinta menos cansaço nas pernas e suba no seu ritmo</p>
-            </div>
-            <div className="space-y-0.5 border-t sm:border-t-0 sm:border-l border-slate-800 pt-3 sm:pt-0 pl-0 sm:pl-4">
-              <p className="text-xl sm:text-3xl font-heading font-black text-amber-400 tracking-tight font-heading">No Seu Tempo</p>
-              <p className="text-[10px] uppercase font-bold text-slate-300 tracking-wider">Treinos Flexíveis</p>
-              <p className="text-[10px] text-slate-400 leading-normal font-sans">As sessões cabem no seu tempo livre, dia a dia</p>
-            </div>
+              {/* Floating Badge 1: Treino com IA */}
+              <div className="absolute top-5 left-5 bg-slate-900/90 border border-slate-700/80 backdrop-blur-md rounded-xl px-3 py-2 flex items-center gap-2.5 shadow-lg">
+                <div className="w-7 h-7 rounded-lg bg-lime-500/20 text-lime-400 flex items-center justify-center font-bold">
+                  <Zap className="w-3.5 h-3.5" />
+                </div>
+                <div className="text-left">
+                  <p className="text-[10px] font-mono uppercase text-slate-400 font-bold leading-none">Prescrição com IA</p>
+                  <p className="text-xs font-heading font-black text-white leading-tight mt-0.5">Zonas & Ritmo Sob Medida</p>
+                </div>
+              </div>
+
+              {/* Floating Badge 2: Evolução Real */}
+              <div className="absolute bottom-5 right-5 bg-slate-900/90 border border-slate-700/80 backdrop-blur-md rounded-xl px-3.5 py-2 flex items-center gap-2.5 shadow-lg">
+                <div className="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold">
+                  <TrendingUp className="w-3.5 h-3.5" />
+                </div>
+                <div className="text-left">
+                  <p className="text-[10px] font-mono uppercase text-emerald-400 font-bold leading-none">Evolução Contínua</p>
+                  <p className="text-xs font-heading font-black text-white leading-tight mt-0.5">+Fôlego e Menos Fadiga</p>
+                </div>
+              </div>
+            </motion.div>
           </div>
 
         </div>
+      </section>
 
-        {/* Hero Image Graphic (Right 5 Cols) */}
-        <div className="lg:col-span-5 relative flex justify-center items-center">
-          <div className="absolute inset-0 bg-lime-500/10 rounded-full blur-3xl -z-10 opacity-50"></div>
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.8, delay: 0.2 }}
-            className="relative rounded-3xl overflow-hidden border border-slate-800 shadow-2xl bg-slate-900/60 p-2 group"
-          >
-            <img 
-              src={bikerHero} 
-              alt="Biker AI Hero" 
-              className="rounded-2xl max-w-full h-auto object-cover opacity-95 group-hover:opacity-100 group-hover:scale-[1.02] transition-all duration-700"
-              referrerPolicy="no-referrer"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-slate-950/60 via-transparent to-transparent opacity-60"></div>
-          </motion.div>
+      {/* SEÇÃO PRINCIPAIS BENEFÍCIOS (VISUAL & MINIMALISTA) */}
+      <section className="relative py-14 sm:py-18 px-4 sm:px-6 md:px-12 bg-slate-900/40 border-y border-slate-800/80">
+        <div className="max-w-7xl mx-auto w-full space-y-10">
+          
+          <div className="text-center space-y-2 max-w-2xl mx-auto">
+            <span className="text-[10px] bg-lime-500/10 border border-lime-500/20 text-lime-400 font-black px-3.5 py-1 rounded-full uppercase tracking-widest font-mono">
+              Vantagens Principais
+            </span>
+            <h3 className="text-2xl sm:text-3xl font-heading font-black text-white tracking-tight">
+              Tudo o que você precisa para pedalar melhor
+            </h3>
+            <p className="text-xs sm:text-sm text-slate-400 font-sans">
+              Sem tabelas confusas ou métodos ultrapassados. Desenvolvido para a sua realidade.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            
+            {/* Benefício 1: Treinos personalizados */}
+            <div className="p-6 rounded-3xl bg-slate-900/80 border border-slate-800/90 hover:border-lime-500/40 hover:bg-slate-900 transition-all text-left flex flex-col justify-between space-y-4 group shadow-md">
+              <div className="space-y-3.5">
+                <div className="w-12 h-12 rounded-2xl bg-lime-500/10 border border-lime-500/25 text-lime-400 flex items-center justify-center group-hover:scale-105 transition-transform">
+                  <Sliders className="w-6 h-6" />
+                </div>
+                <h4 className="text-lg font-heading font-black text-white tracking-tight leading-snug">
+                  Treinos personalizados
+                </h4>
+                <p className="text-xs text-slate-300 leading-relaxed font-sans">
+                  Sessões calculadas sob medida para o seu ritmo, tempo disponível e capacidade física, sem planilhas genéricas.
+                </p>
+              </div>
+              <span className="text-[10px] font-mono font-bold text-lime-400 uppercase tracking-wider pt-2 border-t border-slate-800/80 flex items-center gap-1">
+                100% Individualizado
+              </span>
+            </div>
+
+            {/* Benefício 2: Planejamento semanal */}
+            <div className="p-6 rounded-3xl bg-slate-900/80 border border-slate-800/90 hover:border-emerald-500/40 hover:bg-slate-900 transition-all text-left flex flex-col justify-between space-y-4 group shadow-md">
+              <div className="space-y-3.5">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 flex items-center justify-center group-hover:scale-105 transition-transform">
+                  <Calendar className="w-6 h-6" />
+                </div>
+                <h4 className="text-lg font-heading font-black text-white tracking-tight leading-snug">
+                  Planejamento semanal
+                </h4>
+                <p className="text-xs text-slate-300 leading-relaxed font-sans">
+                  Sua semana organizada com o equilíbrio perfeito entre treinos intensos, rodagens leves e descansos programados.
+                </p>
+              </div>
+              <span className="text-[10px] font-mono font-bold text-emerald-400 uppercase tracking-wider pt-2 border-t border-slate-800/80 flex items-center gap-1">
+                Rotina Organizada
+              </span>
+            </div>
+
+            {/* Benefício 3: Adaptação ao nível e objetivo do ciclista */}
+            <div className="p-6 rounded-3xl bg-slate-900/80 border border-slate-800/90 hover:border-sky-500/40 hover:bg-slate-900 transition-all text-left flex flex-col justify-between space-y-4 group shadow-md">
+              <div className="space-y-3.5">
+                <div className="w-12 h-12 rounded-2xl bg-sky-500/10 border border-sky-500/25 text-sky-400 flex items-center justify-center group-hover:scale-105 transition-transform">
+                  <Gauge className="w-6 h-6" />
+                </div>
+                <h4 className="text-lg font-heading font-black text-white tracking-tight leading-snug">
+                  Adaptação ao nível e objetivo
+                </h4>
+                <p className="text-xs text-slate-300 leading-relaxed font-sans">
+                  Do iniciante ao atleta experiente: ganhe fôlego em subidas, aumente sua velocidade ou prepare-se para desafios longos.
+                </p>
+              </div>
+              <span className="text-[10px] font-mono font-bold text-sky-400 uppercase tracking-wider pt-2 border-t border-slate-800/80 flex items-center gap-1">
+                Estrada, MTB & Urbano
+              </span>
+            </div>
+
+            {/* Benefício 4: Acompanhamento da evolução */}
+            <div className="p-6 rounded-3xl bg-slate-900/80 border border-slate-800/90 hover:border-amber-500/40 hover:bg-slate-900 transition-all text-left flex flex-col justify-between space-y-4 group shadow-md">
+              <div className="space-y-3.5">
+                <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-amber-400 flex items-center justify-center group-hover:scale-105 transition-transform">
+                  <TrendingUp className="w-6 h-6" />
+                </div>
+                <h4 className="text-lg font-heading font-black text-white tracking-tight leading-snug">
+                  Acompanhamento da evolução
+                </h4>
+                <p className="text-xs text-slate-300 leading-relaxed font-sans">
+                  Visualize seu progresso a cada pedalada com métricas claras, zonas de esforço e aumento progressivo de rendimento.
+                </p>
+              </div>
+              <span className="text-[10px] font-mono font-bold text-amber-400 uppercase tracking-wider pt-2 border-t border-slate-800/80 flex items-center gap-1">
+                Evolução Contínua
+              </span>
+            </div>
+
+          </div>
+
         </div>
       </section>
 
@@ -571,6 +763,437 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
 
           </div>
 
+          {/* CTA Box de Alta Conversão */}
+          <div className="pt-4 text-center flex flex-col sm:flex-row items-center justify-center gap-3.5">
+            <button 
+              type="button" 
+              onClick={() => scrollToSection("auth-section", true)}
+              className="inline-flex items-center justify-center gap-2 px-7 py-3.5 bg-gradient-to-r from-lime-400 to-emerald-400 hover:from-lime-300 hover:to-emerald-300 active:scale-[0.98] text-slate-950 text-xs font-black uppercase tracking-wider rounded-xl shadow-lg shadow-lime-500/20 transition-all cursor-pointer border-none"
+            >
+              <span>Criar meu treino grátis</span>
+              <ChevronRight className="w-4 h-4" />
+            </button>
+            <button 
+              type="button" 
+              onClick={() => scrollToSection("planos")}
+              className="inline-flex items-center justify-center gap-1 px-4 py-3 text-xs font-semibold text-slate-400 hover:text-slate-200 transition-colors cursor-pointer bg-transparent border-none"
+            >
+              <span>Ver planos</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+        </div>
+      </section>
+
+      {/* SEÇÃO: VEJA COMO SEU TREINO PODE FICAR (DEMONSTRAÇÃO REAL DO PRODUTO) */}
+      <section id="exemplo-treino" className="py-20 sm:py-24 px-4 sm:px-6 md:px-12 bg-slate-950 border-t border-slate-800/80 scroll-mt-24 relative overflow-hidden">
+        <div className="max-w-7xl mx-auto w-full space-y-12 relative z-10">
+          
+          {/* Cabeçalho da Seção */}
+          <div className="text-center space-y-3 max-w-3xl mx-auto">
+            <span className="text-[10px] bg-lime-500/10 border border-lime-500/20 text-lime-400 font-black px-3.5 py-1 rounded-full uppercase tracking-widest font-mono">
+              Demonstração Real do App
+            </span>
+            <h3 className="text-3xl sm:text-4xl font-heading font-black tracking-tight text-white">
+              Veja como seu treino pode ficar
+            </h3>
+            <p className="text-xs sm:text-sm text-slate-300 font-sans leading-relaxed">
+              Uma prévia real de como sua semana é estruturada dentro do Biker AI: intensidade balanceada, zonas fisiológicas claras e descansos estratégicos.
+            </p>
+          </div>
+
+          {/* O Card Central de Demonstração (Estilo Autêntico do Biker AI) */}
+          <div className="max-w-5xl mx-auto bg-slate-900/90 border border-slate-800 rounded-3xl p-5 sm:p-8 shadow-2xl space-y-6 relative overflow-hidden backdrop-blur-xs">
+            
+            {/* Topo simulando o app Biker AI */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-5 border-b border-slate-800">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-lime-500/10 border border-lime-500/25 text-lime-400 flex items-center justify-center font-bold">
+                  <Bike className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-heading font-black text-white uppercase tracking-wider">Biker AI</span>
+                    <span className="text-[9px] font-mono font-bold uppercase tracking-wide bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                      Planilha Ativa
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-slate-400 font-sans">Microciclo Personalizado de Treinamento</p>
+                </div>
+              </div>
+
+              {/* Indicadores do Atleta */}
+              <div className="flex flex-wrap items-center gap-2 text-[11px] font-mono">
+                <span className="bg-slate-950 px-3 py-1 rounded-lg border border-slate-800 text-slate-300">
+                  3 treinos + 2 descansos
+                </span>
+                <span className="bg-slate-950 px-3 py-1 rounded-lg border border-slate-800 text-slate-300">
+                  Volume: ≈ 3h50
+                </span>
+                <span className="bg-slate-950 px-3 py-1 rounded-lg border border-slate-800 text-lime-400 font-bold">
+                  Distância: ≈ 75 km
+                </span>
+              </div>
+            </div>
+
+            {/* Banner da Semana: SEMANA 1 & Objetivo: Aumentar resistência */}
+            <div className="bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 border border-slate-800 rounded-2xl p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-mono font-black uppercase tracking-widest text-lime-400 bg-lime-500/20 border border-lime-500/30 px-3 py-0.5 rounded-full">
+                    SEMANA 1
+                  </span>
+                  <span className="text-xs text-slate-500 font-mono">•</span>
+                  <span className="text-xs text-emerald-400 font-mono font-semibold">Foco: Construção de Base</span>
+                </div>
+                <h4 className="text-xl sm:text-2xl font-heading font-black text-white flex items-center gap-2">
+                  <Target className="w-5 h-5 text-lime-400 shrink-0" />
+                  <span>Objetivo: Aumentar resistência</span>
+                </h4>
+                <p className="text-xs text-slate-300 font-sans leading-relaxed max-w-2xl">
+                  Sessões calculadas para elevar o fôlego e capacidade muscular de forma progressiva, alternando rodagens aeróbicas, intervalados de limiar e regeneração biológica.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3 shrink-0">
+                <div className="bg-slate-950/80 border border-slate-800 px-3.5 py-2 rounded-xl text-left sm:text-right">
+                  <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 font-mono block">Distribuição 80/20</span>
+                  <span className="text-xs font-bold text-lime-400">80% Base • 20% Limiar</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Seletor rápido de dias no mobile para navegação instantânea */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:hidden">
+              {[
+                { id: "segunda", label: "Seg", title: "Descanso" },
+                { id: "terca", label: "Ter", title: "Endurance 1h" },
+                { id: "quarta", label: "Qua", title: "Descanso" },
+                { id: "quinta", label: "Qui", title: "Intervalado 50m" },
+                { id: "sabado", label: "Sáb", title: "Pedal longo 2h" },
+              ].map(d => (
+                <button
+                  key={d.id}
+                  type="button"
+                  onClick={() => setDemoActiveDay(d.id as any)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold whitespace-nowrap transition-all border ${
+                    demoActiveDay === d.id
+                      ? "bg-lime-400 text-slate-950 border-lime-400"
+                      : "bg-slate-950 text-slate-400 border-slate-800 hover:text-white"
+                  }`}
+                >
+                  <span className="font-black">{d.label}:</span> {d.title}
+                </button>
+              ))}
+            </div>
+
+            {/* Grid dos Dias da Semana (Cards com a Identidade Real do Biker AI) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3.5">
+              
+              {/* DIA 1: SEGUNDA - DESCANSO */}
+              <div 
+                onClick={() => setDemoActiveDay("segunda")}
+                className={`p-4 rounded-2xl bg-slate-950/80 border flex flex-col justify-between space-y-4 transition-all cursor-pointer text-left ${
+                  demoActiveDay === "segunda" 
+                    ? "border-amber-400/80 shadow-lg shadow-amber-500/10 ring-1 ring-amber-400/40" 
+                    : "border-slate-800 hover:border-slate-700"
+                }`}
+              >
+                <div className="space-y-3">
+                  <div className="flex justify-between items-start">
+                    <span className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider">
+                      Segunda
+                    </span>
+                    <span className="text-[9px] font-mono font-extrabold uppercase px-2 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                      Folga
+                    </span>
+                  </div>
+
+                  <div>
+                    <h5 className="text-base font-heading font-black text-white">
+                      Descanso
+                    </h5>
+                    <span className="text-[10px] font-mono text-slate-400 block mt-0.5">
+                      Recuperação Biológica
+                    </span>
+                  </div>
+
+                  <div className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800/80 text-[11px] text-slate-300 space-y-1 font-sans leading-relaxed">
+                    <div className="flex items-center gap-1.5 text-amber-300 font-bold text-[10px]">
+                      <Smile className="w-3.5 h-3.5" />
+                      <span>Reconstrução muscular</span>
+                    </div>
+                    <p className="text-[10.5px] text-slate-400">
+                      Descanso passivo para iniciar a semana com baterias 100% carregadas.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t border-slate-800/80 space-y-2">
+                  <div className="bg-amber-500/10 border border-amber-500/20 text-amber-300 rounded-xl py-2 px-2.5 flex items-center justify-center gap-1.5 text-[10px] font-heading font-black uppercase tracking-wider">
+                    <Smile className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                    <span>Dia de Folga</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* DIA 2: TERÇA - ENDURANCE */}
+              <div 
+                onClick={() => setDemoActiveDay("terca")}
+                className={`p-4 rounded-2xl bg-slate-950/80 border flex flex-col justify-between space-y-4 transition-all cursor-pointer text-left ${
+                  demoActiveDay === "terca" 
+                    ? "border-emerald-400/80 shadow-lg shadow-emerald-500/10 ring-1 ring-emerald-400/40" 
+                    : "border-slate-800 hover:border-slate-700"
+                }`}
+              >
+                <div className="space-y-3">
+                  <div className="flex justify-between items-start">
+                    <span className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider">
+                      Terça
+                    </span>
+                    <span className="text-[9px] font-mono font-extrabold uppercase px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                      Zona 2
+                    </span>
+                  </div>
+
+                  <div>
+                    <h5 className="text-base font-heading font-black text-white">
+                      Endurance
+                    </h5>
+                    <span className="text-[10px] font-mono text-emerald-400 block mt-0.5">
+                      Base Aeróbica
+                    </span>
+                  </div>
+
+                  {/* Métricas Principais: 1h | Zona 2 | ≈ 25 km */}
+                  <div className="grid grid-cols-2 gap-2 text-left">
+                    <div className="p-2 rounded-xl bg-slate-900 border border-slate-800">
+                      <span className="text-[9px] text-slate-400 font-mono uppercase block">DURAÇÃO</span>
+                      <span className="text-xs font-mono font-black text-white mt-0.5 block">1h</span>
+                    </div>
+                    <div className="p-2 rounded-xl bg-slate-900 border border-slate-800">
+                      <span className="text-[9px] text-slate-400 font-mono uppercase block">ZONA</span>
+                      <span className="text-xs font-mono font-black text-emerald-400 mt-0.5 block">Zona 2</span>
+                    </div>
+                    <div className="p-2 rounded-xl bg-slate-900 border border-slate-800 col-span-2">
+                      <span className="text-[9px] text-slate-400 font-mono uppercase block">DISTÂNCIA ESTIMADA</span>
+                      <span className="text-xs font-mono font-black text-lime-400 mt-0.5 block">≈ 25 km</span>
+                    </div>
+                  </div>
+
+                  {/* Estrutura visual Biker AI */}
+                  <div className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 text-[10.5px] text-slate-300 font-mono space-y-1">
+                    <p className="text-slate-400 text-[9px] uppercase font-bold">Estrutura:</p>
+                    <p>• 10m aquecimento Z1</p>
+                    <p className="text-emerald-300">• 40m constante em Z2</p>
+                    <p>• 10m giro solto</p>
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t border-slate-800/80 space-y-2">
+                  <div className="bg-slate-900 hover:bg-slate-850 text-lime-400 border border-slate-700/80 rounded-xl py-2 px-2.5 flex items-center justify-center gap-1.5 text-[10px] font-heading font-black uppercase tracking-wider">
+                    <Check className="w-3.5 h-3.5 stroke-[3]" />
+                    <span>Concluir Treino</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* DIA 3: QUARTA - DESCANSO */}
+              <div 
+                onClick={() => setDemoActiveDay("quarta")}
+                className={`p-4 rounded-2xl bg-slate-950/80 border flex flex-col justify-between space-y-4 transition-all cursor-pointer text-left ${
+                  demoActiveDay === "quarta" 
+                    ? "border-amber-400/80 shadow-lg shadow-amber-500/10 ring-1 ring-amber-400/40" 
+                    : "border-slate-800 hover:border-slate-700"
+                }`}
+              >
+                <div className="space-y-3">
+                  <div className="flex justify-between items-start">
+                    <span className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider">
+                      Quarta
+                    </span>
+                    <span className="text-[9px] font-mono font-extrabold uppercase px-2 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                      Folga
+                    </span>
+                  </div>
+
+                  <div>
+                    <h5 className="text-base font-heading font-black text-white">
+                      Descanso
+                    </h5>
+                    <span className="text-[10px] font-mono text-slate-400 block mt-0.5">
+                      Pausa Estratégica
+                    </span>
+                  </div>
+
+                  <div className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800/80 text-[11px] text-slate-300 space-y-1 font-sans leading-relaxed">
+                    <div className="flex items-center gap-1.5 text-amber-300 font-bold text-[10px]">
+                      <Heart className="w-3.5 h-3.5" />
+                      <span>Assimilação de treino</span>
+                    </div>
+                    <p className="text-[10.5px] text-slate-400">
+                      Dia livre para o corpo assimilar o endurance e chegar forte no intervalado.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t border-slate-800/80 space-y-2">
+                  <div className="bg-amber-500/10 border border-amber-500/20 text-amber-300 rounded-xl py-2 px-2.5 flex items-center justify-center gap-1.5 text-[10px] font-heading font-black uppercase tracking-wider">
+                    <Smile className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                    <span>Dia de Folga</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* DIA 4: QUINTA - INTERVALADO */}
+              <div 
+                onClick={() => setDemoActiveDay("quinta")}
+                className={`p-4 rounded-2xl bg-slate-950/80 border flex flex-col justify-between space-y-4 transition-all cursor-pointer text-left ${
+                  demoActiveDay === "quinta" 
+                    ? "border-orange-400/80 shadow-lg shadow-orange-500/10 ring-1 ring-orange-400/40" 
+                    : "border-slate-800 hover:border-slate-700"
+                }`}
+              >
+                <div className="space-y-3">
+                  <div className="flex justify-between items-start">
+                    <span className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider">
+                      Quinta
+                    </span>
+                    <span className="text-[9px] font-mono font-extrabold uppercase px-2 py-0.5 rounded bg-orange-500/15 text-orange-400 border border-orange-500/30">
+                      Zona 4
+                    </span>
+                  </div>
+
+                  <div>
+                    <h5 className="text-base font-heading font-black text-white">
+                      Intervalado
+                    </h5>
+                    <span className="text-[10px] font-mono text-orange-400 block mt-0.5">
+                      Limiar de Potência
+                    </span>
+                  </div>
+
+                  {/* Métricas Principais: 50 min | 6 × 3 min forte */}
+                  <div className="grid grid-cols-2 gap-2 text-left">
+                    <div className="p-2 rounded-xl bg-slate-900 border border-slate-800">
+                      <span className="text-[9px] text-slate-400 font-mono uppercase block">DURAÇÃO</span>
+                      <span className="text-xs font-mono font-black text-white mt-0.5 block">50 min</span>
+                    </div>
+                    <div className="p-2 rounded-xl bg-slate-900 border border-slate-800">
+                      <span className="text-[9px] text-slate-400 font-mono uppercase block">INTENSIDADE</span>
+                      <span className="text-xs font-mono font-black text-orange-400 mt-0.5 block">Zona 4</span>
+                    </div>
+                    <div className="p-2 rounded-xl bg-slate-900 border border-slate-800 col-span-2">
+                      <span className="text-[9px] text-slate-400 font-mono uppercase block">SÉRIES CHAVE</span>
+                      <span className="text-xs font-mono font-black text-amber-300 mt-0.5 block">6 × 3 min forte</span>
+                    </div>
+                  </div>
+
+                  {/* Estrutura visual Biker AI */}
+                  <div className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 text-[10.5px] text-slate-300 font-mono space-y-1">
+                    <p className="text-slate-400 text-[9px] uppercase font-bold">Estrutura:</p>
+                    <p>• 10m aquecimento</p>
+                    <p className="text-orange-300">• 6x (3m Z4 + 2m Z1)</p>
+                    <p>• 10m desaquecimento</p>
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t border-slate-800/80 space-y-2">
+                  <div className="bg-slate-900 hover:bg-slate-850 text-lime-400 border border-slate-700/80 rounded-xl py-2 px-2.5 flex items-center justify-center gap-1.5 text-[10px] font-heading font-black uppercase tracking-wider">
+                    <Check className="w-3.5 h-3.5 stroke-[3]" />
+                    <span>Concluir Treino</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* DIA 5: SÁBADO - PEDAL LONGO */}
+              <div 
+                onClick={() => setDemoActiveDay("sabado")}
+                className={`p-4 rounded-2xl bg-slate-950/80 border flex flex-col justify-between space-y-4 transition-all cursor-pointer text-left ${
+                  demoActiveDay === "sabado" 
+                    ? "border-sky-400/80 shadow-lg shadow-sky-500/10 ring-1 ring-sky-400/40" 
+                    : "border-slate-800 hover:border-slate-700"
+                }`}
+              >
+                <div className="space-y-3">
+                  <div className="flex justify-between items-start">
+                    <span className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider">
+                      Sábado
+                    </span>
+                    <span className="text-[9px] font-mono font-extrabold uppercase px-2 py-0.5 rounded bg-sky-500/15 text-sky-400 border border-sky-500/30">
+                      Zona 2
+                    </span>
+                  </div>
+
+                  <div>
+                    <h5 className="text-base font-heading font-black text-white">
+                      Pedal longo
+                    </h5>
+                    <span className="text-[10px] font-mono text-sky-400 block mt-0.5">
+                      Resistência Chave
+                    </span>
+                  </div>
+
+                  {/* Métricas Principais: 2h | ≈ 50 km */}
+                  <div className="grid grid-cols-2 gap-2 text-left">
+                    <div className="p-2 rounded-xl bg-slate-900 border border-slate-800">
+                      <span className="text-[9px] text-slate-400 font-mono uppercase block">DURAÇÃO</span>
+                      <span className="text-xs font-mono font-black text-white mt-0.5 block">2h</span>
+                    </div>
+                    <div className="p-2 rounded-xl bg-slate-900 border border-slate-800">
+                      <span className="text-[9px] text-slate-400 font-mono uppercase block">ZONA</span>
+                      <span className="text-xs font-mono font-black text-sky-400 mt-0.5 block">Zona 2</span>
+                    </div>
+                    <div className="p-2 rounded-xl bg-slate-900 border border-slate-800 col-span-2">
+                      <span className="text-[9px] text-slate-400 font-mono uppercase block">DISTÂNCIA ESTIMADA</span>
+                      <span className="text-xs font-mono font-black text-lime-400 mt-0.5 block">≈ 50 km</span>
+                    </div>
+                  </div>
+
+                  {/* Estrutura visual Biker AI */}
+                  <div className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 text-[10.5px] text-slate-300 font-mono space-y-1">
+                    <p className="text-slate-400 text-[9px] uppercase font-bold">Estrutura:</p>
+                    <p>• Rodagem contínua</p>
+                    <p className="text-sky-300">• Ritmo sustentável</p>
+                    <p>• Hidratação 500ml/h</p>
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t border-slate-800/80 space-y-2">
+                  <div className="bg-slate-900 hover:bg-slate-850 text-lime-400 border border-slate-700/80 rounded-xl py-2 px-2.5 flex items-center justify-center gap-1.5 text-[10px] font-heading font-black uppercase tracking-wider">
+                    <Check className="w-3.5 h-3.5 stroke-[3]" />
+                    <span>Concluir Treino</span>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+
+          {/* Texto e CTA Solicitados Abaixo do Card */}
+          <div className="text-center space-y-5 max-w-xl mx-auto pt-2">
+            <p className="text-sm sm:text-base text-slate-200 font-sans font-medium leading-relaxed">
+              "Seu plano será criado de acordo com seu nível, objetivo e disponibilidade."
+            </p>
+
+            <div className="flex flex-col items-center gap-2.5">
+              <button 
+                type="button" 
+                onClick={() => scrollToSection("auth-section", true)}
+                className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-gradient-to-r from-lime-400 to-emerald-400 hover:from-lime-300 hover:to-emerald-300 active:scale-[0.98] text-slate-950 text-sm font-black uppercase tracking-wider rounded-xl shadow-xl shadow-lime-500/20 transition-all cursor-pointer border-none"
+              >
+                <span>Criar meu treino grátis</span>
+                <ChevronRight className="w-4 h-4" />
+              </button>
+              <p className="text-[11px] text-slate-400 font-sans">
+                Leva menos de 1 minuto • Sem necessidade de cartão de crédito
+              </p>
+            </div>
+          </div>
+
         </div>
       </section>
 
@@ -686,63 +1309,248 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
 
           </div>
 
+          {/* CTA Box de Alta Conversão no Fim de Benefícios */}
+          <div className="pt-6 text-center flex flex-col sm:flex-row items-center justify-center gap-3.5">
+            <button 
+              type="button" 
+              onClick={() => scrollToSection("auth-section", true)}
+              className="inline-flex items-center justify-center gap-2 px-8 py-3.5 bg-gradient-to-r from-lime-400 to-emerald-400 hover:from-lime-300 hover:to-emerald-300 active:scale-[0.98] text-slate-950 text-xs font-black uppercase tracking-wider rounded-xl shadow-lg shadow-lime-500/20 transition-all cursor-pointer border-none"
+            >
+              <span>Criar meu treino grátis</span>
+              <ChevronRight className="w-4 h-4" />
+            </button>
+            <button 
+              type="button" 
+              onClick={() => scrollToSection("planos")}
+              className="inline-flex items-center justify-center gap-1 px-4 py-3 text-xs font-semibold text-slate-400 hover:text-slate-200 transition-colors cursor-pointer bg-transparent border-none"
+            >
+              <span>Ver planos</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
         </div>
       </section>
 
-      {/* Transparência e Garantias Section */}
-      <section id="garantia" className="py-20 px-4 sm:px-6 md:px-12 bg-slate-950 border-t border-slate-800/80 text-left">
-        <div className="max-w-4xl mx-auto w-full space-y-8">
-          <div className="text-center space-y-2">
-            <span className="text-[10px] bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-black px-3.5 py-1 rounded-full uppercase tracking-wider">
-              Segurança e Transparência
+      {/* Seção de Planos e Valores (Secundária no Funil) */}
+      <section id="planos" className="py-20 px-4 sm:px-6 md:px-12 bg-slate-950 border-t border-slate-800/80 text-left scroll-mt-24 relative">
+        <div id="garantia" className="max-w-5xl mx-auto w-full space-y-10">
+          
+          <div className="text-center space-y-2.5 max-w-2xl mx-auto">
+            <span className="text-[10px] bg-lime-500/10 border border-lime-500/20 text-lime-400 font-black px-3.5 py-1 rounded-full uppercase tracking-wider font-mono">
+              Planos & Valores
             </span>
-            <h3 className="text-2xl sm:text-3xl font-heading font-black text-white">
-              Sua Satisfação em Primeiro Lugar
+            <h3 className="text-2xl sm:text-4xl font-heading font-black text-white tracking-tight">
+              Experimente grátis antes de pagar
             </h3>
-            <p className="text-xs sm:text-sm text-slate-300 font-sans max-w-xl mx-auto">
-              Acreditamos tanto na qualidade do nosso acompanhamento de ciclismo que eliminamos todo o risco para você.
+            <p className="text-xs sm:text-sm text-slate-300 font-sans leading-relaxed">
+              Crie seu primeiro treino personalizado sem custo e sem cadastrar cartão. Quando quiser acompanhamento contínuo e evolução todas as semanas, assine o plano Pro.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {/* Card 1: Garantia */}
-            <div className="p-5 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-2.5 shadow-sm">
-              <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center">
-                <ShieldCheck className="w-5 h-5" />
+          {/* Cards de Comparação de Planos: Degustação vs Pro */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
+            
+            {/* Card 1: Treino Grátis (Ação Principal Incentivada) */}
+            <div className="p-6 sm:p-8 rounded-3xl bg-slate-900/90 border-2 border-lime-400/50 hover:border-lime-400 transition-all flex flex-col justify-between space-y-6 shadow-xl relative">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-mono font-bold uppercase tracking-wider bg-lime-500/20 text-lime-300 border border-lime-500/30 px-3 py-1 rounded-full">
+                    Ação Recomendada
+                  </span>
+                  <span className="text-xs text-slate-400 font-mono">Fricção Zero</span>
+                </div>
+
+                <div>
+                  <h4 className="text-xl font-heading font-black text-white">Primeiro Treino Grátis</h4>
+                  <p className="text-xs text-slate-300 mt-1">Experimente a inteligência artificial sem nenhum compromisso financeiro.</p>
+                </div>
+
+                <div className="pt-2 flex items-baseline gap-1.5">
+                  <span className="text-3xl sm:text-4xl font-heading font-black text-lime-400">R$ 0</span>
+                  <span className="text-xs text-slate-400 font-sans">/ para começar</span>
+                </div>
+
+                <ul className="space-y-2.5 pt-4 border-t border-slate-800 text-xs text-slate-300 font-sans">
+                  <li className="flex items-center gap-2.5">
+                    <Check className="w-4 h-4 text-lime-400 shrink-0 stroke-[3]" />
+                    <span>Crie seu 1º treino sob medida em 1 minuto</span>
+                  </li>
+                  <li className="flex items-center gap-2.5">
+                    <Check className="w-4 h-4 text-lime-400 shrink-0 stroke-[3]" />
+                    <span>Cálculo individual de Zonas de Ritmo e Potência</span>
+                  </li>
+                  <li className="flex items-center gap-2.5">
+                    <Check className="w-4 h-4 text-lime-400 shrink-0 stroke-[3]" />
+                    <span>Acesso ao Coach AI para dúvidas técnicas</span>
+                  </li>
+                  <li className="flex items-center gap-2.5">
+                    <Check className="w-4 h-4 text-lime-400 shrink-0 stroke-[3]" />
+                    <span>Sem necessidade de cartão de crédito</span>
+                  </li>
+                </ul>
               </div>
-              <h4 className="font-heading font-bold text-sm text-white">Garantia de 7 Dias</h4>
-              <p className="text-xs text-slate-400 font-sans leading-relaxed">
-                Acesse a plataforma, gere sua planilha e converse com o treinador. Se não gostar, devolvemos 100% do seu dinheiro.
+
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={() => scrollToSection("auth-section", true)}
+                  className="w-full inline-flex items-center justify-center gap-2 py-4 px-6 bg-gradient-to-r from-lime-400 to-emerald-400 hover:from-lime-300 hover:to-emerald-300 active:scale-[0.98] text-slate-950 text-xs font-black uppercase tracking-wider rounded-2xl shadow-lg shadow-lime-500/25 transition-all cursor-pointer border-none"
+                >
+                  <span>Criar meu treino grátis</span>
+                  <ChevronRight className="w-4 h-4 stroke-[3]" />
+                </button>
+                <p className="text-[10px] text-slate-400 text-center mt-2">Acesso imediato após cadastro simples</p>
+              </div>
+            </div>
+
+            {/* Card 2: Assinatura Biker AI Pro (Transparência Completa) */}
+            <div className="p-6 sm:p-8 rounded-3xl bg-slate-900/50 border border-slate-800 hover:border-slate-700 transition-all flex flex-col justify-between space-y-6 shadow-md relative">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-mono font-bold uppercase tracking-wider bg-lime-500/10 text-lime-400 border border-lime-500/20 px-3 py-1 rounded-full">
+                    Plano Pro • Sem Fidelidade
+                  </span>
+                  <span className="text-[10px] text-amber-400 font-mono font-bold bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded">
+                    R$ 0,56 / dia
+                  </span>
+                </div>
+
+                <div>
+                  <h4 className="text-xl font-heading font-black text-white">Biker AI Pro</h4>
+                  <p className="text-xs text-slate-400 mt-1">Evolução contínua semanal com apoio permanente do treinador.</p>
+                </div>
+
+                {/* Preço e Periodicidade Claros */}
+                <div className="pt-2">
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-3xl sm:text-4xl font-heading font-black text-white">R$ 16,90</span>
+                    <span className="text-xs text-slate-400 font-sans">/ mês</span>
+                  </div>
+                  <span className="text-[11px] font-mono text-slate-400 block mt-1">
+                    Cobrança mensal recorrente a cada 30 dias
+                  </span>
+                </div>
+
+                {/* O que está incluído */}
+                <div className="space-y-2 pt-3 border-t border-slate-800">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block font-heading">
+                    O que está incluído:
+                  </span>
+                  <ul className="space-y-2 text-xs text-slate-300 font-sans">
+                    <li className="flex items-center gap-2.5">
+                      <Check className="w-4 h-4 text-emerald-400 shrink-0 stroke-[3]" />
+                      <span>Treinos minuto a minuto estruturados para seu fôlego</span>
+                    </li>
+                    <li className="flex items-center gap-2.5">
+                      <Check className="w-4 h-4 text-emerald-400 shrink-0 stroke-[3]" />
+                      <span>Recalibração automática quando sua rotina mudar</span>
+                    </li>
+                    <li className="flex items-center gap-2.5">
+                      <Check className="w-4 h-4 text-emerald-400 shrink-0 stroke-[3]" />
+                      <span>Calculadora de zonas (potência FTP, FC e PSE)</span>
+                    </li>
+                    <li className="flex items-center gap-2.5">
+                      <Check className="w-4 h-4 text-emerald-400 shrink-0 stroke-[3]" />
+                      <span>Histórico de evolução e questionário pós-treino</span>
+                    </li>
+                    <li className="flex items-center gap-2.5">
+                      <Check className="w-4 h-4 text-emerald-400 shrink-0 stroke-[3]" />
+                      <span>Treinador AI no chat com orientações ilimitadas</span>
+                    </li>
+                    <li className="flex items-center gap-2.5">
+                      <Check className="w-4 h-4 text-emerald-400 shrink-0 stroke-[3]" />
+                      <span>Exportação e impressão das planilhas em PDF</span>
+                    </li>
+                  </ul>
+                </div>
+
+                {/* Como funciona o cancelamento */}
+                <div className="p-3 bg-slate-950/80 rounded-2xl border border-slate-800/80 space-y-1 text-left">
+                  <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-lime-400 block">
+                    Como funciona o cancelamento?
+                  </span>
+                  <p className="text-[11px] text-slate-300 leading-relaxed font-sans">
+                    Cancele a qualquer momento em 1 clique na sua conta do Mercado Pago ou enviando um e-mail para <span className="text-white">bikeraisupport@gmail.com</span>. Sem multas, sem taxas rescisórias e você continua com acesso até o fim dos 30 dias já pagos.
+                  </p>
+                </div>
+              </div>
+
+              <div className="pt-2 space-y-2">
+                <a
+                  href={MERCADO_PAGO_CHECKOUT_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full inline-flex items-center justify-center gap-2 py-3.5 px-6 bg-lime-400 hover:bg-lime-300 text-slate-950 text-xs font-heading font-black uppercase tracking-wider rounded-2xl transition-all shadow-md cursor-pointer"
+                >
+                  <span>Assinar Pro por R$ 16,90/mês</span>
+                  <ExternalLink className="w-3.5 h-3.5 stroke-[2.5]" />
+                </a>
+
+                {/* Informações Discretas Próximo da Assinatura */}
+                <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[11px] text-slate-400 text-center font-medium pt-1">
+                  <span className="flex items-center gap-1 text-slate-300">
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                    Pagamento seguro
+                  </span>
+                  <span>•</span>
+                  <span className="flex items-center gap-1 text-slate-300">
+                    <CheckCircle className="w-3.5 h-3.5 text-lime-400 shrink-0" />
+                    Cancele quando quiser
+                  </span>
+                  <span>•</span>
+                  <span className="flex items-center gap-1 text-slate-300">
+                    <Lock className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+                    Seus dados protegidos
+                  </span>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          {/* Selos de Confiança e Garantias */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4">
+            {/* Card 1: Garantia */}
+            <div className="p-4 rounded-2xl bg-slate-900/60 border border-slate-800/80 space-y-2 shadow-xs">
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                  <ShieldCheck className="w-4 h-4" />
+                </div>
+                <h5 className="font-heading font-bold text-xs text-white">Garantia de 7 Dias</h5>
+              </div>
+              <p className="text-[11px] text-slate-400 font-sans leading-relaxed">
+                Se não gostar da sua experiência, devolvemos 100% do seu valor dentro de 7 dias. Basta solicitar ao suporte.
               </p>
             </div>
 
             {/* Card 2: Sem Fidelidade */}
-            <div className="p-5 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-2.5 shadow-sm">
-              <div className="w-9 h-9 rounded-xl bg-lime-500/10 border border-lime-500/20 text-lime-400 flex items-center justify-center">
-                <CheckCircle className="w-5 h-5" />
+            <div className="p-4 rounded-2xl bg-slate-900/60 border border-slate-800/80 space-y-2 shadow-xs">
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-lg bg-lime-500/10 border border-lime-500/20 text-lime-400 flex items-center justify-center">
+                  <CheckCircle className="w-4 h-4" />
+                </div>
+                <h5 className="font-heading font-bold text-xs text-white">Cancele Quando Quiser</h5>
               </div>
-              <h4 className="font-heading font-bold text-sm text-white">Cancele Quando Quiser</h4>
-              <p className="text-xs text-slate-400 font-sans leading-relaxed">
-                Sem contrato de fidelidade, sem carência e sem taxas de cancelamento. Você tem controle total da sua assinatura.
+              <p className="text-[11px] text-slate-400 font-sans leading-relaxed">
+                Sem contrato de fidelidade ou taxas de rescisão. Você tem autonomia total sobre a sua assinatura.
               </p>
             </div>
 
-            {/* Card 3: Preço Transparente */}
-            <div className="p-5 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-2.5 shadow-sm">
-              <div className="w-9 h-9 rounded-xl bg-sky-500/10 border border-sky-500/20 text-sky-400 flex items-center justify-center">
-                <Lock className="w-5 h-5" />
+            {/* Card 3: Pagamento Seguro */}
+            <div className="p-4 rounded-2xl bg-slate-900/60 border border-slate-800/80 space-y-2 shadow-xs">
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-lg bg-sky-500/10 border border-sky-500/20 text-sky-400 flex items-center justify-center">
+                  <Lock className="w-4 h-4" />
+                </div>
+                <h5 className="font-heading font-bold text-xs text-white">Pagamento Seguro</h5>
               </div>
-              <div className="flex items-center justify-between gap-1">
-                <h4 className="font-heading font-bold text-sm text-white">R$ 16,90 / mês</h4>
-                <span className="text-[9px] font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-md">
-                  Mais barato que uma pizza
-                </span>
-              </div>
-              <p className="text-xs text-slate-400 font-sans leading-relaxed">
-                Mais barato que uma pizza: tenha assessoria e treinos inteligentes por menos de R$ 0,56 ao dia. Cancele quando quiser.
+              <p className="text-[11px] text-slate-400 font-sans leading-relaxed">
+                Processado com segurança pelo Mercado Pago via Pix ou Cartão. Seus dados financeiros não ficam nos nossos servidores.
               </p>
             </div>
           </div>
+
         </div>
       </section>
 
@@ -758,12 +1566,12 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
                 <Bike className="w-6 h-6" />
               </div>
               <h3 className="font-heading font-black text-lg tracking-tight uppercase text-white">
-                {isLogin ? "Entrar na sua conta" : "Criar sua conta nova"}
+                {isLogin ? "Entrar no Portal do Atleta" : "Criar Meu Treino Grátis"}
               </h3>
               <p className="text-[11px] text-slate-300 leading-relaxed font-sans">
                 {isLogin 
-                  ? "Coloque seu e-mail e senha abaixo para ver seus treinos de hoje." 
-                  : "Crie seu cadastro rápido para receber treinos fáceis e personalizados de verdade."
+                  ? "Coloque seu e-mail e senha abaixo para ver seus treinos de hoje e falar com seu treinador." 
+                  : "Cadastre-se em menos de 1 minuto para estruturar seu primeiro treino personalizado. Sem cartão de crédito."
                 }
               </p>
             </div>
@@ -805,17 +1613,17 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
             <div className="flex p-0.5 bg-slate-950 rounded-xl border border-slate-800">
               <button 
                 type="button"
-                onClick={() => { setIsLogin(true); setError(""); setSuccessMsg(""); }}
-                className={`flex-1 py-2 text-[11px] font-bold font-heading rounded-lg uppercase transition-all cursor-pointer ${isLogin ? 'bg-slate-800 text-lime-400 shadow-sm border border-slate-700' : 'text-slate-400 hover:text-white'}`}
-              >
-                Entrar
-              </button>
-              <button 
-                type="button"
                 onClick={() => { setIsLogin(false); setError(""); setSuccessMsg(""); }}
                 className={`flex-1 py-2 text-[11px] font-bold font-heading rounded-lg uppercase transition-all cursor-pointer ${!isLogin ? 'bg-slate-800 text-lime-400 shadow-sm border border-slate-700' : 'text-slate-400 hover:text-white'}`}
               >
-                Criar Conta
+                Criar Treino Grátis
+              </button>
+              <button 
+                type="button"
+                onClick={() => { setIsLogin(true); setError(""); setSuccessMsg(""); }}
+                className={`flex-1 py-2 text-[11px] font-bold font-heading rounded-lg uppercase transition-all cursor-pointer ${isLogin ? 'bg-slate-800 text-lime-400 shadow-sm border border-slate-700' : 'text-slate-400 hover:text-white'}`}
+              >
+                Já Tenho Conta (Entrar)
               </button>
             </div>
 
@@ -917,11 +1725,11 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
                 {isSubmitting ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin shrink-0" />
-                    <span>{isLogin ? "Acessando Portal..." : "Criando Conta..."}</span>
+                    <span>{isLogin ? "Acessando Portal..." : "Criando seu treino grátis..."}</span>
                   </>
                 ) : (
                   <>
-                    <span>{isLogin ? "Acessar Portal do Atleta" : "Confirmar e Gerar Planilha"}</span>
+                    <span>{isLogin ? "Acessar Portal do Atleta" : "Criar meu treino grátis"}</span>
                     <ChevronRight className="w-4 h-4" />
                   </>
                 )}
@@ -978,41 +1786,181 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
           </div>
         </div>
       </section>
-      <footer className="border-t border-slate-800/80 bg-slate-950 py-8 sm:py-12 px-4 sm:px-6 md:px-12 text-slate-400 font-sans text-xs pb-24 sm:pb-12">
+      <footer className="border-t border-slate-800/80 bg-slate-950 py-10 px-4 sm:px-6 md:px-12 text-slate-400 font-sans text-xs pb-24 sm:pb-12 space-y-6">
         <div className="max-w-7xl mx-auto flex flex-col lg:flex-row items-center justify-between gap-6 text-center sm:text-left">
           
           <div className="flex items-center gap-2.5">
             <div className="p-2 bg-slate-900 rounded-xl text-lime-400 border border-slate-800">
               <Bike className="w-5 h-5" />
             </div>
-            <p className="text-xs sm:text-sm font-extrabold text-white">BIKER AI — Smart Assessment</p>
+            <div>
+              <p className="text-xs sm:text-sm font-extrabold text-white">BIKER AI</p>
+              <p className="text-[10px] text-slate-500 font-mono">Planilhas Inteligentes de Ciclismo</p>
+            </div>
           </div>
 
-          <div className="flex flex-wrap justify-center items-center gap-x-4 gap-y-2.5 text-xs">
+          {/* Navegação Principal */}
+          <div className="flex flex-wrap justify-center items-center gap-x-4 gap-y-2 text-xs">
             <button type="button" onClick={() => scrollToSection("como-funciona")} className="hover:text-white transition-colors cursor-pointer bg-transparent border-none p-0 text-slate-400">Como funciona</button>
+            <span className="text-slate-700 hidden xs:inline">•</span>
+            <button type="button" onClick={() => scrollToSection("exemplo-treino")} className="hover:text-white transition-colors cursor-pointer bg-transparent border-none p-0 text-slate-400">Exemplo de treino</button>
             <span className="text-slate-700 hidden xs:inline">•</span>
             <button type="button" onClick={() => scrollToSection("beneficios")} className="hover:text-white transition-colors cursor-pointer bg-transparent border-none p-0 text-slate-400">Benefícios</button>
             <span className="text-slate-700 hidden xs:inline">•</span>
-            <button type="button" onClick={() => scrollToSection("auth-section")} className="text-lime-400 hover:text-lime-300 font-bold transition-colors cursor-pointer bg-transparent border-none p-0">Entrar no Portal</button>
+            <button type="button" onClick={() => scrollToSection("planos")} className="hover:text-white transition-colors cursor-pointer bg-transparent border-none p-0 text-slate-400">Ver planos</button>
+            <span className="text-slate-700 hidden xs:inline">•</span>
+            <button type="button" onClick={() => scrollToSection("auth-section", false)} className="hover:text-white transition-colors cursor-pointer bg-transparent border-none p-0 text-slate-400">Entrar</button>
+            <span className="text-slate-700 hidden xs:inline">•</span>
+            <button type="button" onClick={() => scrollToSection("auth-section", true)} className="text-lime-400 hover:text-lime-300 font-bold transition-colors cursor-pointer bg-transparent border-none p-0">Criar treino grátis</button>
           </div>
 
+          {/* Botão de Contato Rápido */}
           <div className="flex items-center justify-center">
-            <a 
-              href="mailto:bikeraisupport@gmail.com"
-              className="inline-flex items-center gap-2 px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 rounded-xl text-xs font-bold transition-all shadow-sm max-w-full"
+            <button
+              type="button"
+              onClick={() => setShowContact(true)}
+              className="inline-flex items-center gap-2 px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-800 rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer"
             >
               <Mail className="w-4 h-4 text-lime-400 shrink-0" />
-              <span>Suporte: bikeraisupport@gmail.com</span>
-            </a>
+              <span>Fale Conosco / Suporte</span>
+            </button>
           </div>
 
         </div>
 
-        <div className="max-w-7xl mx-auto pt-6 mt-6 border-t border-slate-800/60 flex flex-col sm:flex-row items-center justify-between gap-2 text-center text-[10px] text-slate-500 font-mono">
+        {/* Guias e Artigos Técnicos de Ciclismo para SEO e Conhecimento */}
+        <div className="max-w-7xl mx-auto pt-6 border-t border-slate-900">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mb-3">
+            <span className="text-[11px] font-mono uppercase tracking-wider text-slate-400 flex items-center gap-2">
+              <BookOpen className="w-3.5 h-3.5 text-lime-400" />
+              Guias e Treinos de Ciclismo
+            </span>
+            <span className="text-[11px] text-slate-500">Conteúdos técnicos elaborados para sua evolução</span>
+          </div>
+          <div className="flex flex-wrap items-center justify-center sm:justify-start gap-x-4 gap-y-2 text-xs">
+            <a
+              href="/treino-ciclismo-iniciante"
+              onClick={(e) => {
+                if (onNavigateSlug) {
+                  e.preventDefault();
+                  onNavigateSlug("treino-ciclismo-iniciante");
+                }
+              }}
+              className="text-slate-400 hover:text-lime-400 transition-colors py-1"
+            >
+              Treino para Iniciantes
+            </a>
+            <span className="text-slate-800 hidden sm:inline">•</span>
+            <a
+              href="/planilha-treino-ciclismo"
+              onClick={(e) => {
+                if (onNavigateSlug) {
+                  e.preventDefault();
+                  onNavigateSlug("planilha-treino-ciclismo");
+                }
+              }}
+              className="text-slate-400 hover:text-lime-400 transition-colors py-1"
+            >
+              Planilha de Treino
+            </a>
+            <span className="text-slate-800 hidden sm:inline">•</span>
+            <a
+              href="/treino-ciclismo-emagrecer"
+              onClick={(e) => {
+                if (onNavigateSlug) {
+                  e.preventDefault();
+                  onNavigateSlug("treino-ciclismo-emagrecer");
+                }
+              }}
+              className="text-slate-400 hover:text-lime-400 transition-colors py-1"
+            >
+              Treino para Emagrecer
+            </a>
+            <span className="text-slate-800 hidden sm:inline">•</span>
+            <a
+              href="/treino-100km"
+              onClick={(e) => {
+                if (onNavigateSlug) {
+                  e.preventDefault();
+                  onNavigateSlug("treino-100km");
+                }
+              }}
+              className="text-slate-400 hover:text-lime-400 transition-colors py-1"
+            >
+              Como Treinar para 100 km
+            </a>
+            <span className="text-slate-800 hidden sm:inline">•</span>
+            <a
+              href="/zona-2-ciclismo"
+              onClick={(e) => {
+                if (onNavigateSlug) {
+                  e.preventDefault();
+                  onNavigateSlug("zona-2-ciclismo");
+                }
+              }}
+              className="text-slate-400 hover:text-lime-400 transition-colors py-1"
+            >
+              Zona 2 no Ciclismo
+            </a>
+          </div>
+        </div>
+
+        {/* Links Institucionais e Legais: Termos de Uso, Política de Privacidade e Contato */}
+        <div className="max-w-7xl mx-auto pt-6 border-t border-slate-900 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
+          <div className="flex flex-wrap items-center justify-center sm:justify-start gap-x-5 gap-y-2 text-xs font-medium">
+            <button
+              type="button"
+              onClick={() => setShowTerms(true)}
+              className="text-slate-300 hover:text-lime-400 transition-colors cursor-pointer underline-offset-4 hover:underline"
+            >
+              Termos de Uso
+            </button>
+            <span className="text-slate-700">•</span>
+            <button
+              type="button"
+              onClick={() => setShowPrivacy(true)}
+              className="text-slate-300 hover:text-lime-400 transition-colors cursor-pointer underline-offset-4 hover:underline"
+            >
+              Política de Privacidade
+            </button>
+            <span className="text-slate-700">•</span>
+            <button
+              type="button"
+              onClick={() => setShowContact(true)}
+              className="text-slate-300 hover:text-lime-400 transition-colors cursor-pointer underline-offset-4 hover:underline"
+            >
+              Contato
+            </button>
+          </div>
+
+          <div className="flex items-center gap-3 text-[11px] text-slate-400">
+            <span className="flex items-center gap-1.5">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+              Pagamento seguro
+            </span>
+            <span>•</span>
+            <span className="flex items-center gap-1.5">
+              <CheckCircle className="w-3.5 h-3.5 text-lime-400" />
+              Cancele quando quiser
+            </span>
+            <span>•</span>
+            <span className="flex items-center gap-1.5">
+              <Lock className="w-3.5 h-3.5 text-sky-400" />
+              Seus dados protegidos
+            </span>
+          </div>
+        </div>
+
+        <div className="max-w-7xl mx-auto pt-4 border-t border-slate-900/60 flex flex-col sm:flex-row items-center justify-between gap-2 text-center text-[10px] text-slate-500 font-mono">
           <span>© 2026 Biker AI. Versão 2.1 • Todos os direitos reservados.</span>
-          <span>Treino Personalizado • Inteligência Artificial</span>
+          <span>bikeraisupport@gmail.com</span>
         </div>
       </footer>
+
+      {/* Modais Legais e de Contato */}
+      <TermsOfUseModal isOpen={showTerms} onClose={() => setShowTerms(false)} />
+      <PrivacyPolicyModal isOpen={showPrivacy} onClose={() => setShowPrivacy(false)} />
+      <ContactModal isOpen={showContact} onClose={() => setShowContact(false)} />
 
       {/* Guide overlay installation guide */}
       <AnimatePresence>

@@ -2,9 +2,13 @@ import React, { useState } from "react";
 import { UserProfile } from "../types";
 import { apiFetch } from "../firebase";
 import { MetaPixelEvents } from "../lib/metaPixel";
+import TermsOfUseModal from "./TermsOfUseModal";
+import PrivacyPolicyModal from "./PrivacyPolicyModal";
+import ContactModal from "./ContactModal";
 import { 
   ShieldAlert, 
   ShieldCheck,
+  Shield,
   RefreshCw,
   CheckCircle, 
   Lock, 
@@ -14,7 +18,9 @@ import {
   Mail,
   ExternalLink,
   CheckCircle2,
-  Clock
+  Clock,
+  HelpCircle,
+  FileText
 } from "lucide-react";
 
 interface SubscriptionWallProps {
@@ -28,6 +34,11 @@ export default function SubscriptionWall({ userEmail, userName, currentStatus, o
   // Status check states
   const [checkingStatus, setCheckingStatus] = useState(false);
   const [checkMessage, setCheckMessage] = useState("");
+
+  // Modals for Terms, Privacy, and Contact
+  const [showTerms, setShowTerms] = useState(false);
+  const [showPrivacy, setShowPrivacy] = useState(false);
+  const [showContact, setShowContact] = useState(false);
 
   // Official Mercado Pago subscription link
   const MERCADO_PAGO_CHECKOUT_URL = "https://mpago.la/24PgikU";
@@ -115,6 +126,24 @@ export default function SubscriptionWall({ userEmail, userName, currentStatus, o
         </div>
       </div>
 
+      {/* Discrete Trust Banner Above CTA */}
+      <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 py-2 px-3 bg-slate-50 border border-slate-200/70 rounded-xl text-[11px] text-slate-600 font-medium">
+        <span className="flex items-center gap-1.5 font-bold text-slate-700">
+          <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+          Pagamento seguro
+        </span>
+        <span className="text-slate-300 hidden sm:inline">•</span>
+        <span className="flex items-center gap-1.5 font-bold text-slate-700">
+          <RefreshCw className="w-3.5 h-3.5 text-lime-600 shrink-0" />
+          Cancele quando quiser
+        </span>
+        <span className="text-slate-300 hidden sm:inline">•</span>
+        <span className="flex items-center gap-1.5 font-bold text-slate-700">
+          <Shield className="w-3.5 h-3.5 text-sky-600 shrink-0" />
+          Seus dados protegidos
+        </span>
+      </div>
+
       {/* Top Quick Subscribe Button */}
       <div className="w-full">
         <button
@@ -128,93 +157,138 @@ export default function SubscriptionWall({ userEmail, userName, currentStatus, o
         </button>
       </div>
 
-      {/* Plan Details & Value Proposition */}
-      <div className="text-center space-y-1 pt-1">
-        <span className="bg-lime-500/15 text-lime-700 text-[10px] font-black uppercase px-2.5 py-1 rounded-full border border-lime-500/20 tracking-wider">
-          Acesso Ilimitado Garantido
-        </span>
-        <h4 className="font-heading font-black text-slate-800 text-lg sm:text-xl pt-1">Assinatura Plano Pro Biker AI</h4>
-        <p className="text-xs text-slate-500 font-sans max-w-md mx-auto">
-          Acesse planilhas inteligentes recalibradas pela IA, gráficos de evolução e suporte completo.
-        </p>
-      </div>
-
-      {/* Pricing Card */}
+      {/* Pricing Card with Full Transparency */}
       <div className="flex justify-center">
-        <div className="w-full max-w-md p-6 rounded-2xl sm:rounded-3xl bg-slate-900 border border-slate-850 text-white shadow-xl ring-2 ring-lime-400/80 flex flex-col justify-between">
+        <div className="w-full max-w-lg p-6 rounded-2xl sm:rounded-3xl bg-slate-900 border border-slate-850 text-white shadow-xl ring-2 ring-lime-400/80 flex flex-col justify-between space-y-4">
           <div>
             <div className="flex justify-between items-start">
-              <span className="text-[10px] uppercase font-bold tracking-wider text-lime-400">Plano Único e Completo</span>
-              <Zap className="w-4 h-4 text-lime-400" />
+              <span className="text-[10px] uppercase font-bold tracking-wider text-lime-400 bg-lime-400/10 px-2.5 py-1 rounded-full border border-lime-400/20">
+                Transparência Total
+              </span>
+              <span className="text-[10px] font-mono font-bold text-slate-400">
+                Cobrança Mensal Recorrente
+              </span>
             </div>
-            <h5 className="font-heading font-black text-xl mt-2 text-white">Plano Pro Biker AI</h5>
+            
+            <h5 className="font-heading font-black text-xl mt-3 text-white">Plano Pro Biker AI</h5>
+            
+            {/* Price & Periodicity */}
             <div className="flex flex-wrap items-baseline gap-1 mt-2">
               <span className="text-xs font-bold text-slate-400">R$</span>
               <span className="text-3xl sm:text-4xl font-mono font-black text-lime-400">16,90</span>
-              <span className="text-xs text-slate-400 font-sans">/ mês</span>
+              <span className="text-xs text-slate-300 font-sans font-medium">/ mês</span>
               <span className="ml-auto text-[10px] font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2.5 py-0.5 rounded-full">
-                Mais barato que uma pizza
+                R$ 0,56 por dia
               </span>
             </div>
+
             <p className="text-xs mt-2.5 text-slate-300 leading-relaxed font-sans">
-              Menos que o valor de um lanche no pedal de sábado para ter acompanhamento com IA o mês inteiro (apenas R$ 0,56 ao dia). Acesso total a treinos adaptativos, gráficos e treinador AI.
+              Acesso total e contínuo ao seu treinador com inteligência artificial para recalibrar suas planilhas semanais e acompanhar sua evolução no pedal.
             </p>
           </div>
 
-          <div className="pt-4 border-t border-slate-800 mt-5 flex items-center justify-between text-[11px] font-bold text-lime-400 font-sans">
-            <span>Cancele quando quiser em 1 clique</span>
-            <CheckCircle className="w-4 h-4 text-lime-400 shrink-0" />
+          {/* Discrete Trust Signals Inside Card */}
+          <div className="pt-3 border-t border-slate-800 grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px] text-slate-300">
+            <div className="flex items-center gap-1.5">
+              <CheckCircle className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+              <span>Pagamento seguro</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <CheckCircle className="w-3.5 h-3.5 text-lime-400 shrink-0" />
+              <span>Cancele quando quiser</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <CheckCircle className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+              <span>Seus dados protegidos</span>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Guarantees & Trust Badges */}
-      <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-4 text-slate-700 text-xs font-sans space-y-3">
+      {/* What is Included Section */}
+      <div className="space-y-2.5">
+        <h4 className="text-xs font-heading font-black text-slate-800 uppercase tracking-wider text-left flex items-center gap-2">
+          <Sparkles className="w-4 h-4 text-lime-600" />
+          <span>O que está incluído na sua assinatura:</span>
+        </h4>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 bg-slate-50 p-4 rounded-2xl text-xs text-slate-700 font-sans border border-slate-100">
+          <div className="flex items-start gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+            <span><strong>Treinos minuto a minuto:</strong> Estruturas de aquecimento, estímulos e desaquecimento.</span>
+          </div>
+          <div className="flex items-start gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+            <span><strong>Recalibração semanal:</strong> A IA adapta as próximas semanas com base no seu feedback real.</span>
+          </div>
+          <div className="flex items-start gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+            <span><strong>Métricas de evolução:</strong> Registro de treinos em 5 perguntas, consistência e volume.</span>
+          </div>
+          <div className="flex items-start gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+            <span><strong>Calculadora de zonas:</strong> Potência (FTP), frequência cardíaca e escala de esforço (PSE).</span>
+          </div>
+          <div className="flex items-start gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+            <span><strong>Treinador AI no chat:</strong> Dúvidas ilimitadas sobre cadência, nutrição e recuperação.</span>
+          </div>
+          <div className="flex items-start gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+            <span><strong>Exportação em PDF:</strong> Baixe e imprima seu plano completo a qualquer momento.</span>
+          </div>
+        </div>
+      </div>
+
+      {/* How Cancellation Works (Clear & Honest) */}
+      <div className="bg-slate-900 text-white rounded-2xl p-4 sm:p-5 space-y-3 border border-slate-800 text-left">
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-lg bg-lime-400/15 text-lime-400 flex items-center justify-center">
+            <RefreshCw className="w-4 h-4" />
+          </div>
+          <div>
+            <h5 className="font-heading font-black text-xs sm:text-sm uppercase tracking-wide text-white">
+              Como funciona o cancelamento?
+            </h5>
+            <span className="text-[11px] text-lime-400 font-mono">Simples, rápido e sem burocracia</span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1 text-xs text-slate-300">
+          <div className="p-3 bg-slate-950/80 rounded-xl border border-slate-800 space-y-1">
+            <span className="font-bold text-white block">1. Sem fidelidade</span>
+            <p className="text-[11px] text-slate-400 leading-relaxed">
+              Você não fica preso a nenhum contrato anual ou taxa de rescisão. Cancele quando quiser.
+            </p>
+          </div>
+          <div className="p-3 bg-slate-950/80 rounded-xl border border-slate-800 space-y-1">
+            <span className="font-bold text-white block">2. Como solicitar</span>
+            <p className="text-[11px] text-slate-400 leading-relaxed">
+              Cancele diretamente na sua conta do Mercado Pago em 1 clique ou enviando um e-mail para bikeraisupport@gmail.com.
+            </p>
+          </div>
+          <div className="p-3 bg-slate-950/80 rounded-xl border border-slate-800 space-y-1">
+            <span className="font-bold text-white block">3. Acesso mantido</span>
+            <p className="text-[11px] text-slate-400 leading-relaxed">
+              Ao cancelar, você mantém acesso integral a todas as planilhas até o último dia do período mensal já pago.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Guarantee Badge */}
+      <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-4 text-slate-700 text-xs font-sans space-y-2">
         <div className="flex items-start gap-3">
           <div className="p-2 bg-emerald-500 text-slate-950 rounded-xl shrink-0 mt-0.5 shadow-xs">
             <ShieldCheck className="w-5 h-5" />
           </div>
           <div className="space-y-1 text-left">
-            <h6 className="font-heading font-black text-emerald-900 text-xs uppercase tracking-wide">Garantia Incondicional de 7 Dias</h6>
+            <h6 className="font-heading font-black text-emerald-900 text-xs uppercase tracking-wide">
+              Garantia de 7 Dias
+            </h6>
             <p className="text-[11px] text-slate-600 leading-relaxed">
-              Teste a plataforma por 7 dias inteiros. Se por qualquer motivo você não se adaptar ao seu plano de treinos, devolvemos 100% do seu dinheiro sem burocracia nem perguntas.
+              Experimente seu plano por até 7 dias corridos. Se por qualquer motivo desejar o cancelamento nesse período, devolvemos 100% do valor pago. Basta solicitar pelo e-mail do suporte.
             </p>
           </div>
-        </div>
-
-        <div className="pt-2.5 border-t border-emerald-500/15 grid grid-cols-2 sm:grid-cols-3 gap-2 text-[10px] font-extrabold text-slate-700 uppercase tracking-wider">
-          <div className="flex items-center gap-1.5">
-            <Lock className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-            <span>Ambiente Criptografado</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <RefreshCw className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-            <span>Sem Fidelidade</span>
-          </div>
-          <div className="flex items-center gap-1.5 col-span-2 sm:col-span-1">
-            <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-            <span>Mercado Pago Seguro</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Pricing Inclusions List */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 bg-slate-50 p-4 rounded-2xl text-xs text-slate-650 font-sans">
-        <div className="flex items-center gap-2.5">
-          <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
-          <span>Planejamento dinâmico de planilhas adaptado ao seu fôlego</span>
-        </div>
-        <div className="flex items-center gap-2.5">
-          <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
-          <span>Interações ilimitadas com o Treinador AI</span>
-        </div>
-        <div className="flex items-center gap-2.5">
-          <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
-          <span>Gráficos de evolução de calorias e volume de giros</span>
-        </div>
-        <div className="flex items-center gap-2.5">
-          <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
-          <span>Suporte completo para exportar treinos e ler do Strava</span>
         </div>
       </div>
 
@@ -269,19 +343,53 @@ export default function SubscriptionWall({ userEmail, userName, currentStatus, o
         )}
       </div>
 
-      {/* Support Footer */}
-      <div className="pt-4 border-t border-slate-100 text-center space-y-2">
+      {/* Transparent Links Footer with Terms, Privacy & Contact */}
+      <div className="pt-4 border-t border-slate-100 text-center space-y-3">
+        <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs text-slate-500 font-medium">
+          <button
+            type="button"
+            onClick={() => setShowTerms(true)}
+            className="hover:text-slate-800 underline transition-colors cursor-pointer"
+          >
+            Termos de Uso
+          </button>
+          <span>•</span>
+          <button
+            type="button"
+            onClick={() => setShowPrivacy(true)}
+            className="hover:text-slate-800 underline transition-colors cursor-pointer"
+          >
+            Política de Privacidade
+          </button>
+          <span>•</span>
+          <button
+            type="button"
+            onClick={() => setShowContact(true)}
+            className="hover:text-slate-800 underline transition-colors cursor-pointer"
+          >
+            Contato & Suporte
+          </button>
+        </div>
+
         <span className="text-[10px] text-slate-400 font-sans block">
-          Precisa de ajuda ou tem dúvidas sobre a sua assinatura? Fale diretamente com nossa equipe.
+          Dúvidas sobre o pagamento ou liberação de acesso?
         </span>
-        <a
-          href="mailto:bikeraisupport@gmail.com"
-          className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 hover:bg-slate-800 border border-slate-700 hover:border-slate-600 rounded-xl text-xs font-bold text-lime-400 transition-all shadow-sm"
+        
+        <button
+          type="button"
+          onClick={() => setShowContact(true)}
+          className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 hover:bg-slate-800 border border-slate-700 hover:border-slate-600 rounded-xl text-xs font-bold text-lime-400 transition-all shadow-sm cursor-pointer"
         >
           <Mail className="w-4 h-4 text-lime-400" />
-          <span>Envie um email para bikeraisupport@gmail.com — suporte oficial Biker AI</span>
-        </a>
+          <span>Falar com o suporte oficial: bikeraisupport@gmail.com</span>
+        </button>
       </div>
+
+      {/* Modals for legal pages and contact */}
+      <TermsOfUseModal isOpen={showTerms} onClose={() => setShowTerms(false)} />
+      <PrivacyPolicyModal isOpen={showPrivacy} onClose={() => setShowPrivacy(false)} />
+      <ContactModal isOpen={showContact} onClose={() => setShowContact(false)} userEmail={userEmail} />
     </div>
   );
 }
+

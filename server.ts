@@ -474,11 +474,21 @@ app.get("/googleef65b720b90cbd44.html", (req, res) => {
 app.get("/robots.txt", (req, res) => {
   res.type("text/plain").send(`User-agent: *
 Allow: /
+Allow: /treino-ciclismo-iniciante
+Allow: /planilha-treino-ciclismo
+Allow: /treino-ciclismo-emagrecer
+Allow: /treino-100km
+Allow: /zona-2-ciclismo
 Disallow: /api/
 Disallow: /admin/
 
 User-agent: Googlebot
 Allow: /
+Allow: /treino-ciclismo-iniciante
+Allow: /planilha-treino-ciclismo
+Allow: /treino-ciclismo-emagrecer
+Allow: /treino-100km
+Allow: /zona-2-ciclismo
 
 User-agent: Googlebot-Image
 Allow: /
@@ -493,17 +503,85 @@ app.get("/sitemap.xml", (req, res) => {
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
         xmlns:image="http://www.google.com/schemas/sitemap-image/1.1"
         xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  
+  <!-- Página Principal -->
   <url>
     <loc>https://ais-pre-ig3xpt2tylya4dpumxckiy-403337948550.us-west2.run.app/</loc>
-    <lastmod>2026-07-26</lastmod>
+    <lastmod>2026-09-13</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
     <image:image>
       <image:loc>https://ais-pre-ig3xpt2tylya4dpumxckiy-403337948550.us-west2.run.app/biker_ai_icon.jpg</image:loc>
-      <image:title>Biker AI - Treinador de Ciclismo Inteligente</image:title>
-      <image:caption>Planilhas de treino de ciclismo adaptativas geradas por Inteligência Artificial</image:caption>
+      <image:title>Biker AI | Treinos de Ciclismo Personalizados com IA</image:title>
+      <image:caption>Crie treinos de ciclismo personalizados de acordo com seu objetivo, nível e rotina.</image:caption>
     </image:image>
   </url>
+
+  <!-- Guia: Treino de Ciclismo para Iniciantes -->
+  <url>
+    <loc>https://ais-pre-ig3xpt2tylya4dpumxckiy-403337948550.us-west2.run.app/treino-ciclismo-iniciante</loc>
+    <lastmod>2026-09-12</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ais-pre-ig3xpt2tylya4dpumxckiy-403337948550.us-west2.run.app/biker_ai_icon.jpg</image:loc>
+      <image:title>Treino de Ciclismo para Iniciantes - Biker AI</image:title>
+      <image:caption>Guia completo do zero ao pedal seguro com dicas de cadência, frequência e esforço.</image:caption>
+    </image:image>
+  </url>
+
+  <!-- Guia: Planilha de Treino de Ciclismo -->
+  <url>
+    <loc>https://ais-pre-ig3xpt2tylya4dpumxckiy-403337948550.us-west2.run.app/planilha-treino-ciclismo</loc>
+    <lastmod>2026-09-12</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ais-pre-ig3xpt2tylya4dpumxckiy-403337948550.us-west2.run.app/biker_ai_icon.jpg</image:loc>
+      <image:title>Planilha de Treino de Ciclismo - Biker AI</image:title>
+      <image:caption>Como estruturar sua periodização no ciclismo e montar microciclos eficientes.</image:caption>
+    </image:image>
+  </url>
+
+  <!-- Guia: Treino de Ciclismo para Emagrecer -->
+  <url>
+    <loc>https://ais-pre-ig3xpt2tylya4dpumxckiy-403337948550.us-west2.run.app/treino-ciclismo-emagrecer</loc>
+    <lastmod>2026-09-12</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ais-pre-ig3xpt2tylya4dpumxckiy-403337948550.us-west2.run.app/biker_ai_icon.jpg</image:loc>
+      <image:title>Treino de Ciclismo para Emagrecer - Biker AI</image:title>
+      <image:caption>Zonas de oxidação lipídica, frequência de treino e alimentação para perder gordura pedalando.</image:caption>
+    </image:image>
+  </url>
+
+  <!-- Guia: Como Treinar para Fazer 100 km de Bike -->
+  <url>
+    <loc>https://ais-pre-ig3xpt2tylya4dpumxckiy-403337948550.us-west2.run.app/treino-100km</loc>
+    <lastmod>2026-09-12</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ais-pre-ig3xpt2tylya4dpumxckiy-403337948550.us-west2.run.app/biker_ai_icon.jpg</image:loc>
+      <image:title>Como Treinar para Fazer 100 km de Bike - Biker AI</image:title>
+      <image:caption>Preparação progressiva, pacing, hidratação e estratégia de nutrição para Gran Fondo.</image:caption>
+    </image:image>
+  </url>
+
+  <!-- Guia: Zona 2 no Ciclismo -->
+  <url>
+    <loc>https://ais-pre-ig3xpt2tylya4dpumxckiy-403337948550.us-west2.run.app/zona-2-ciclismo</loc>
+    <lastmod>2026-09-12</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ais-pre-ig3xpt2tylya4dpumxckiy-403337948550.us-west2.run.app/biker_ai_icon.jpg</image:loc>
+      <image:title>Zona 2 no Ciclismo - Biker AI</image:title>
+      <image:caption>O guia definitivo de biogênese mitocondrial, cálculo de potência e zonas de esforço.</image:caption>
+    </image:image>
+  </url>
+
 </urlset>`);
 });
 
@@ -1268,6 +1346,64 @@ app.post("/api/auth/session", requireAuth, verifyUserMatch, async (req, res) => 
     res.json({ success: true, user: responseUser });
   } catch (error: any) {
     console.error("Error in server session retrieval:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Endpoint to log a workout completion with 5-question evolution survey and persist to database
+app.post("/api/workout/log-completion", requireAuth, verifyUserMatch, async (req, res) => {
+  try {
+    const { email, log, workoutIndex, workout } = req.body;
+    if (!email || !log) {
+      return res.status(400).json({ error: "E-mail e dados do treino são obrigatórios." });
+    }
+
+    const db = await getDatabase();
+    const userFound = findUserInDb(db, email);
+    if (!userFound) {
+      return res.status(404).json({ error: "Usuário não encontrado." });
+    }
+
+    const targetKey = userFound.key;
+    const user = userFound.user;
+
+    // Ensure workoutLogs array exists without altering historical records
+    if (!Array.isArray(user.workoutLogs)) {
+      user.workoutLogs = [];
+    }
+
+    // Insert or update the specific log by id (ensures no duplicate entries)
+    const existingLogIdx = user.workoutLogs.findIndex((l: any) => l.id === log.id);
+    if (existingLogIdx >= 0) {
+      user.workoutLogs[existingLogIdx] = log;
+    } else {
+      user.workoutLogs.push(log);
+    }
+
+    // Update the workout inside user.plan.workouts if present
+    if (user.plan && Array.isArray(user.plan.workouts) && typeof workoutIndex === "number" && user.plan.workouts[workoutIndex]) {
+      user.plan.workouts[workoutIndex] = {
+        ...user.plan.workouts[workoutIndex],
+        ...workout,
+        completed: log.completed !== "nao",
+        completedDate: log.completedAt ? log.completedAt.slice(0, 10) : new Date().toISOString().slice(0, 10),
+        actualDistance: log.actualDistanceKm,
+        actualDuration: log.actualDurationMin,
+        completionStatus: log.completed,
+        difficulty: log.difficulty,
+        athleteNotes: log.notes || user.plan.workouts[workoutIndex].athleteNotes
+      };
+    }
+
+    await saveDatabase(db, targetKey, getAuthToken(req));
+
+    res.json({
+      success: true,
+      workoutLogs: user.workoutLogs,
+      plan: user.plan
+    });
+  } catch (error: any) {
+    console.error("Error logging workout completion:", error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -2316,8 +2452,9 @@ Objetivo: ${profile?.goal || "melhorar condicionamento"}
 Dias por semana disponíveis: ${profile?.daysPerWeek || 3}
 Minutos por treino disponíveis: ${profile?.durationPerSession || 60} min
 Evento alvo: ${profile?.eventDate || "Nenhum evento marcado"}
-Equipamentos: ${profile?.hasPowerMeter ? `Medidor de Potência (FTP: ${profile?.ftp}W)` : "Sem medidor de potência"} | ${profile?.hasHeartRate ? `Monitor Cardíaco (FCmax: ${profile?.maxHeartRate} bpm)` : "Sem monitor cardíaco"}
+Equipamentos: ${profile?.bikeType ? `Bicicleta: ${profile.bikeType}` : "Bicicleta de ciclismo"} | ${profile?.hasPowerMeter ? `Medidor de Potência (FTP: ${profile?.ftp}W)` : "Sem medidor de potência"} | ${profile?.hasHeartRate ? `Monitor Cardíaco (FCmax: ${profile?.maxHeartRate} bpm)` : "Sem monitor cardíaco"}
 Limitações físicas: ${profile?.limitations || "Nenhuma"}
+Distância média habitual: ${profile?.avgDistance ? `${profile.avgDistance} km por treino` : "Não informada"}
 Atividade recente cadastrada: ${profile?.recentActivity || "Nenhuma registrada"}`;
 
     const response = await withTimeout(
@@ -2410,7 +2547,7 @@ Atividade recente cadastrada: ${profile?.recentActivity || "Nenhuma registrada"}
  * of the current week (workouts "completed" status) and subjective feedback.
  */
 app.post("/api/generate-next-week", requireAuth, verifyUserMatch, async (req, res) => {
-  const { profile, currentPlan, athleteFeedback, nextWeekNumber } = req.body;
+  const { profile, currentPlan, athleteFeedback, nextWeekNumber, workoutLogs } = req.body;
   try {
     const userEmailKey = (profile?.email || (req as any).user?.email || "").trim().toLowerCase();
     if (!hasActiveAccess(profile, userEmailKey)) {
@@ -2427,21 +2564,30 @@ app.post("/api/generate-next-week", requireAuth, verifyUserMatch, async (req, re
     const completedWorkouts = currentPlan?.workouts?.filter((w: any) => w.completed)?.length || 0;
     const completedPercent = totalWorkouts > 0 ? Math.round((completedWorkouts / totalWorkouts) * 100) : 0;
 
+    // Format workout completion logs for AI adaptation
+    let logsContext = "";
+    if (Array.isArray(workoutLogs) && workoutLogs.length > 0) {
+      logsContext = workoutLogs.slice(-10).map((l: any, i: number) => {
+        return `${i + 1}. [${l.workoutDay || "Treino"} - ${l.workoutType || "Pedal"}] Completou: ${l.completed} | Dificuldade sentida: ${l.difficulty} | Distância real: ${l.actualDistanceKm || "N/A"}km | Tempo real: ${l.actualDurationMin || "N/A"}min | Notas do atleta: "${l.notes || "Nenhuma"}"`;
+      }).join("\n");
+    }
+
     const systemInstruction = `Você é um treinador de ciclismo de elite especialista em fisiologia do esporte. O atleta acabou de terminar a semana anterior com as seguintes estatísticas de conclusão:
 - Treinos planejados: ${totalWorkouts} treinos
 - Treinos efetivamente concluídos: ${completedWorkouts} treinos (${completedPercent}% de conclusão)
 - Feedback subjetivo do atleta sobre a semana passada: "${athleteFeedback || "Sem comentários específicos"}"
+${logsContext ? `\nHistórico real de conclusão de treinos recentes (Evolução do Atleta):\n${logsContext}\n` : ""}
 
 Seu papel é criar o plano de treinos estruturado para a PRÓXIMA SEMANA (Semana ${nextWeekNumber}) do atleta de forma inteligente e personalizada:
 
 Regras de Fisiologia para Progressão e Ajuste de Carga:
 1. PROGRESSÃO (Supercompensação):
-- Se o percentual de conclusão for alto (>= 75%) e o feedback não indicar dores articulares ou exaustão extrema:
+- Se o percentual de conclusão for alto (>= 75%) e os treinos foram avaliados como "fácil" ou "adequada" sem queixas de dores articulares ou exaustão:
   * Progrida a carga de exercícios levemente (aumento de 5% a 10% no volume diário ou adicione um pouco mais de tempo nas zonas de intensidade como Z3/Z4/Z5).
   * Na "coachMessage", parabenize-o pela constância exemplar de campeão e explique didaticamente como o corpo dele está estocando mais glicogênio nas mitocôndrias e como esse aumento gradual consolida o rendimento a longo prazo.
 
 2. MANUTENÇÃO OU DELOAD (Recuperação):
-- Se o percentual de conclusão for baixo (< 75%) OU se o atleta sinalizar dores no joelho, costas ou cansaço absurdo no feedback:
+- Se o percentual de conclusão for baixo (< 75%), se houver treinos marcados como "parcialmente", "não", ou dificuldade "muito_dificil", OU se o atleta sinalizar dores no joelho, costas ou cansaço no feedback:
   * Faça uma semana de adaptação estável (mesma carga da semana passada) ou uma semana regenerativa/deload (reduza o volume em 20% e foque em zonas de soltura Z1/Z2 para restabelecimento metabólico).
   * Na "coachMessage", acolha o atleta amigavelmente. Explique que o descanso planejado é o que realmente constrói ciclistas fortes, pois as fibras musculares se recuperam na cama e não em cima do selim. Dê conselhos práticos e profissionais baseados na saúde dele.
 

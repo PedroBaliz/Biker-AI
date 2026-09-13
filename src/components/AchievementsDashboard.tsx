@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import { motion } from "motion/react";
-import { UserProfile, TrainingPlan, Workout, isRestDay } from "../types";
+import { UserProfile, TrainingPlan, Workout, isRestDay, WorkoutCompletionLog } from "../types";
 import {
   ResponsiveContainer,
   BarChart,
@@ -11,8 +11,7 @@ import {
   Tooltip,
   Cell,
   PieChart,
-  Pie,
-  Legend
+  Pie
 } from "recharts";
 import { 
   Trophy, 
@@ -27,15 +26,19 @@ import {
   Crown, 
   Calendar,
   Lock,
-  ChevronRight,
-  Sparkles,
-  Heart
+  Heart,
+  Bike,
+  FileText,
+  AlertCircle,
+  BarChart3,
+  Sparkles
 } from "lucide-react";
 import { calculateWorkoutCalories } from "./WeeklyCalorieChart";
 
-interface AchievementsDashboardProps {
+export interface AchievementsDashboardProps {
   profile: UserProfile;
   plan: TrainingPlan | null;
+  workoutLogs?: WorkoutCompletionLog[];
 }
 
 interface Achievement {
@@ -47,9 +50,9 @@ interface Achievement {
   icon: React.ReactNode;
 }
 
-function AchievementsDashboardInner({ profile, plan }: AchievementsDashboardProps) {
+function AchievementsDashboardInner({ profile, plan, workoutLogs = [] }: AchievementsDashboardProps) {
   
-  // 1. Gather all plan history from localStorage
+  // 1. Gather all plan history from localStorage & current state
   const historyList = useMemo<TrainingPlan[]>(() => {
     const savedStr = localStorage.getItem("athlete_plan_history");
     let list: TrainingPlan[] = [];
@@ -60,25 +63,25 @@ function AchievementsDashboardInner({ profile, plan }: AchievementsDashboardProp
         console.error("Error reading athlete_plan_history", e);
       }
     }
-    // Include current plan if it's not already in the history list (to avoid duplicates, check weekNumber)
+    // Include current plan if it's not already in the history list (check weekNumber)
     if (plan && !list.some(p => p.weekNumber === plan.weekNumber)) {
       return [...list, plan];
     }
-    // If current plan is in the list, make sure we use the latest updated live version in state
+    // If current plan is in the list, use the latest updated version
     if (plan) {
       return list.map(item => item.weekNumber === plan.weekNumber ? plan : item);
     }
     return list;
   }, [plan]);
 
-  // 2. Extract and compile all workouts that were marked completed
+  // 2. Extract all workouts that were completed
   const allCompletedWorkouts = useMemo<({ workout: Workout; weekNumber: number })[]>(() => {
     const list: ({ workout: Workout; weekNumber: number })[] = [];
     historyList.forEach(p => {
       const weekNum = p.weekNumber || 1;
       if (p.workouts) {
         p.workouts.forEach(w => {
-          if (w.completed) {
+          if (w.completed || w.completionStatus === "sim" || w.completionStatus === "parcialmente") {
             list.push({ workout: w, weekNumber: weekNum });
           }
         });
@@ -87,36 +90,304 @@ function AchievementsDashboardInner({ profile, plan }: AchievementsDashboardProp
     return list;
   }, [historyList]);
 
-  // 3. Compute Metrics
-  const totalCompletedCount = allCompletedWorkouts.length;
-  
-  const totalDurationMinutes = useMemo(() => {
-    return allCompletedWorkouts.reduce((sum, item) => sum + (item.workout.actualDuration || item.workout.duration), 0);
-  }, [allCompletedWorkouts]);
+  // 3. Consolidated Completed Count (combining plan workouts & discrete workoutLogs)
+  const totalCompletedCount = useMemo(() => {
+    // If we have discrete workoutLogs, count those completed 'sim' or 'parcialmente'
+    if (workoutLogs && workoutLogs.length > 0) {
+      const validLogs = workoutLogs.filter(l => l.completed !== "nao");
+      return Math.max(validLogs.length, allCompletedWorkouts.length);
+    }
+    return allCompletedWorkouts.length;
+  }, [workoutLogs, allCompletedWorkouts]);
 
-  const totalDurationHoursStr = useMemo(() => {
-    const hrs = totalDurationMinutes / 60;
-    return hrs >= 10 ? hrs.toFixed(1) : hrs.toFixed(2);
+  // Detailed breakdown: Sim, Parcialmente, Não
+  const completionBreakdown = useMemo(() => {
+    let sim = 0;
+    let parcialmente = 0;
+    let nao = 0;
+
+    if (workoutLogs && workoutLogs.length > 0) {
+      workoutLogs.forEach(l => {
+        if (l.completed === "sim") sim++;
+        else if (l.completed === "parcialmente") parcialmente++;
+        else if (l.completed === "nao") nao++;
+      });
+    } else {
+      allCompletedWorkouts.forEach(item => {
+        if (item.workout.completionStatus === "parcialmente") parcialmente++;
+        else if (item.workout.completionStatus === "nao") nao++;
+        else sim++;
+      });
+    }
+
+    return { sim, parcialmente, nao };
+  }, [workoutLogs, allCompletedWorkouts]);
+
+  // 4. Weekly Completion Percentage (% de conclusão da semana atual)
+  const weeklyCompletionStats = useMemo(() => {
+    if (!plan || !plan.workouts) {
+      return { totalScheduled: 0, completedCount: 0, percentage: 0 };
+    }
+    const scheduled = plan.workouts.filter(w => !isRestDay(w));
+    const completed = scheduled.filter(w => w.completed || w.completionStatus === "sim" || w.completionStatus === "parcialmente");
+    const percentage = scheduled.length > 0 ? Math.round((completed.length / scheduled.length) * 100) : 0;
+    return {
+      totalScheduled: scheduled.length,
+      completedCount: completed.length,
+      percentage
+    };
+  }, [plan]);
+
+  // 5. Total Distance (Distância Total acumulada em km - apenas dados reais informados)
+  const totalDistanceKm = useMemo(() => {
+    let sum = 0;
+    const seenWorkouts = new Set<string>();
+
+    // Sum from workoutLogs first
+    if (workoutLogs && workoutLogs.length > 0) {
+      workoutLogs.forEach(l => {
+        if (l.actualDistanceKm && l.actualDistanceKm > 0 && l.completed !== "nao") {
+          sum += l.actualDistanceKm;
+          seenWorkouts.add(`${l.weekNumber}-${l.workoutIndex}`);
+        }
+      });
+    }
+
+    // Then add any workout from history that wasn't already in workoutLogs
+    historyList.forEach(p => {
+      const weekNum = p.weekNumber || 1;
+      if (p.workouts) {
+        p.workouts.forEach((w, idx) => {
+          const key = `${weekNum}-${idx}`;
+          if (!seenWorkouts.has(key) && (w.completed || w.completionStatus === "sim" || w.completionStatus === "parcialmente")) {
+            if (w.actualDistance && w.actualDistance > 0) {
+              sum += w.actualDistance;
+            }
+          }
+        });
+      }
+    });
+
+    return sum;
+  }, [workoutLogs, historyList]);
+
+  // 6. Total Training Duration (Tempo Total Treinado em minutos e horas)
+  const totalDurationMinutes = useMemo(() => {
+    let sum = 0;
+    const seenWorkouts = new Set<string>();
+
+    if (workoutLogs && workoutLogs.length > 0) {
+      workoutLogs.forEach(l => {
+        if (l.actualDurationMin && l.actualDurationMin > 0 && l.completed !== "nao") {
+          sum += l.actualDurationMin;
+          seenWorkouts.add(`${l.weekNumber}-${l.workoutIndex}`);
+        }
+      });
+    }
+
+    historyList.forEach(p => {
+      const weekNum = p.weekNumber || 1;
+      if (p.workouts) {
+        p.workouts.forEach((w, idx) => {
+          const key = `${weekNum}-${idx}`;
+          if (!seenWorkouts.has(key) && (w.completed || w.completionStatus === "sim" || w.completionStatus === "parcialmente")) {
+            const dur = w.actualDuration || w.duration || 0;
+            sum += dur;
+          }
+        });
+      }
+    });
+
+    return sum;
+  }, [workoutLogs, historyList]);
+
+  const formattedTotalDuration = useMemo(() => {
+    const hours = Math.floor(totalDurationMinutes / 60);
+    const mins = totalDurationMinutes % 60;
+    if (hours === 0) return `${mins} min`;
+    return `${hours}h ${mins > 0 ? `${mins}m` : ""}`.trim();
   }, [totalDurationMinutes]);
 
-  const totalCaloriesBurned = useMemo(() => {
-    return allCompletedWorkouts.reduce((sum, item) => {
-      const kcal = calculateWorkoutCalories(
-        item.workout.actualDuration || item.workout.duration,
-        item.workout.actualRpe || item.workout.rpe || 5,
-        profile.hasPowerMeter,
-        profile.ftp
-      );
-      return sum + kcal;
-    }, 0);
-  }, [allCompletedWorkouts, profile]);
+  // 7. Consistency Metric (% de aderência geral dos treinos programados)
+  const consistencyStats = useMemo(() => {
+    let totalScheduled = 0;
+    let totalCompleted = 0;
 
-  const maxRpeCompleted = useMemo(() => {
-    if (allCompletedWorkouts.length === 0) return 0;
-    return Math.max(...allCompletedWorkouts.map(item => item.workout.actualRpe || item.workout.rpe || 0));
-  }, [allCompletedWorkouts]);
+    historyList.forEach(p => {
+      if (p.workouts) {
+        p.workouts.forEach(w => {
+          if (!isRestDay(w)) {
+            totalScheduled += 1;
+            if (w.completed || w.completionStatus === "sim" || w.completionStatus === "parcialmente") {
+              totalCompleted += 1;
+            }
+          }
+        });
+      }
+    });
 
-  // 4. Calculate Zones breakdown
+    const percentage = totalScheduled > 0 ? Math.round((totalCompleted / totalScheduled) * 100) : (totalCompletedCount > 0 ? 100 : 0);
+    
+    let label = "Em Construção";
+    let colorClass = "text-amber-600 bg-amber-50 border-amber-200";
+    if (percentage >= 80) {
+      label = "Alta Consistência";
+      colorClass = "text-emerald-700 bg-emerald-50 border-emerald-200";
+    } else if (percentage >= 50) {
+      label = "Boa Consistência";
+      colorClass = "text-sky-700 bg-sky-50 border-sky-200";
+    }
+
+    return {
+      percentage,
+      totalScheduled,
+      totalCompleted,
+      label,
+      colorClass
+    };
+  }, [historyList, totalCompletedCount]);
+
+  // 8. Week-by-Week Evolution Trend (Evolução das últimas semanas)
+  const weeklyEvolutionData = useMemo(() => {
+    const weeksMap: Record<number, { 
+      week: string; 
+      weekNumber: number;
+      plannedMinutes: number; 
+      completedMinutes: number; 
+      plannedCount: number;
+      completedCount: number;
+      totalDistanceKm: number;
+      completionRate: number;
+    }> = {};
+    
+    historyList.forEach(p => {
+      const weekNum = p.weekNumber || 1;
+      if (!weeksMap[weekNum]) {
+        weeksMap[weekNum] = {
+          week: `Semana ${weekNum}`,
+          weekNumber: weekNum,
+          plannedMinutes: 0,
+          completedMinutes: 0,
+          plannedCount: 0,
+          completedCount: 0,
+          totalDistanceKm: 0,
+          completionRate: 0
+        };
+      }
+
+      if (p.workouts) {
+        p.workouts.forEach(w => {
+          if (!isRestDay(w)) {
+            weeksMap[weekNum].plannedCount += 1;
+            weeksMap[weekNum].plannedMinutes += (w.duration || 60);
+          }
+
+          if (w.completed || w.completionStatus === "sim" || w.completionStatus === "parcialmente") {
+            weeksMap[weekNum].completedCount += 1;
+            weeksMap[weekNum].completedMinutes += (w.actualDuration || w.duration || 60);
+            if (w.actualDistance) {
+              weeksMap[weekNum].totalDistanceKm += w.actualDistance;
+            }
+          }
+        });
+      }
+    });
+
+    // Also factor in workoutLogs for distance if present
+    if (workoutLogs && workoutLogs.length > 0) {
+      workoutLogs.forEach(l => {
+        const weekNum = l.weekNumber || 1;
+        if (weeksMap[weekNum] && l.actualDistanceKm && l.actualDistanceKm > 0) {
+          // If distance wasn't already summed from workout, ensure it's recorded
+          if (weeksMap[weekNum].totalDistanceKm === 0) {
+            weeksMap[weekNum].totalDistanceKm += l.actualDistanceKm;
+          }
+        }
+      });
+    }
+
+    // Calculate rates
+    Object.values(weeksMap).forEach(w => {
+      w.completionRate = w.plannedCount > 0 ? Math.round((w.completedCount / w.plannedCount) * 100) : 0;
+    });
+
+    return Object.values(weeksMap).sort((a, b) => a.weekNumber - b.weekNumber);
+  }, [historyList, workoutLogs]);
+
+  // 9. Detailed Workout Logs Feed (Histórico com respostas às 5 perguntas)
+  const consolidatedHistoryFeed = useMemo(() => {
+    // Build combined list of logs from workoutLogs and completed workouts
+    const items: Array<{
+      id: string;
+      day: string;
+      type: string;
+      weekNumber: number;
+      completedStatus: "sim" | "parcialmente" | "nao";
+      difficulty: "facil" | "adequada" | "dificil" | "muito_dificil";
+      distanceKm?: number;
+      durationMin: number;
+      notes?: string;
+      targetDuration: number;
+      targetZone?: string;
+      completedDate?: string;
+      aiFeedback?: string;
+    }> = [];
+
+    // Prioritize discrete workoutLogs
+    const seenWorkoutKeys = new Set<string>();
+
+    if (workoutLogs && workoutLogs.length > 0) {
+      workoutLogs.forEach(log => {
+        seenWorkoutKeys.add(`${log.weekNumber}-${log.workoutIndex}`);
+        items.push({
+          id: log.id,
+          day: log.workoutDay || "Treino",
+          type: log.workoutType || "Ciclismo",
+          weekNumber: log.weekNumber || 1,
+          completedStatus: log.completed,
+          difficulty: log.difficulty,
+          distanceKm: log.actualDistanceKm,
+          durationMin: log.actualDurationMin,
+          notes: log.notes,
+          targetDuration: log.targetDurationMin,
+          targetZone: log.targetZone,
+          completedDate: log.completedAt ? log.completedAt.slice(0, 10) : undefined
+        });
+      });
+    }
+
+    // Also include any completed workouts from history not yet in workoutLogs
+    historyList.forEach(p => {
+      const weekNum = p.weekNumber || 1;
+      if (p.workouts) {
+        p.workouts.forEach((w, idx) => {
+          const key = `${weekNum}-${idx}`;
+          if (!seenWorkoutKeys.has(key) && (w.completed || w.completionStatus)) {
+            items.push({
+              id: `wk-${weekNum}-${idx}`,
+              day: w.day || "Treino",
+              type: w.type || "Pedal",
+              weekNumber: weekNum,
+              completedStatus: w.completionStatus || (w.completed ? "sim" : "nao"),
+              difficulty: w.difficulty || "adequada",
+              distanceKm: w.actualDistance,
+              durationMin: w.actualDuration || w.duration || 60,
+              notes: w.athleteNotes,
+              targetDuration: w.duration || 60,
+              targetZone: w.targetZone,
+              completedDate: w.completedDate,
+              aiFeedback: w.aiFeedback
+            });
+          }
+        });
+      }
+    });
+
+    // Reverse to show most recent first
+    return items.reverse();
+  }, [workoutLogs, historyList]);
+
+  // 10. Intensity & Zones Breakdown
   const zoneDistributionData = useMemo(() => {
     const counts: Record<string, number> = {
       "Z1 (Recupe)": 0,
@@ -135,7 +406,6 @@ function AchievementsDashboardInner({ profile, plan }: AchievementsDashboardProp
       else if (zoneStr.includes("Z5") || zoneStr.includes("Z6") || zoneStr.includes("Z7") || zoneStr.includes("VO2")) {
         counts["Z5+ (VO2/Tiro)"] += 1;
       } else {
-        // Fallback by RPE
         const rpe = item.workout.actualRpe || item.workout.rpe || 5;
         if (rpe <= 2) counts["Z1 (Recupe)"] += 1;
         else if (rpe <= 4) counts["Z2 (Endur)"] += 1;
@@ -150,337 +420,521 @@ function AchievementsDashboardInner({ profile, plan }: AchievementsDashboardProp
       .filter(item => item.value > 0);
   }, [allCompletedWorkouts]);
 
-  // Pie chart colors
   const ZONE_COLORS = ["#10b981", "#14b8a6", "#f59e0b", "#ea580c", "#ef4444"];
 
-  // 5. Volume evolution week-by-week (completed vs planned)
-  const weeklyTrendData = useMemo(() => {
-    const weeksMap: Record<number, { week: string; plannedMinutes: number; completedMinutes: number; count: number }> = {};
-    
-    // Process all historical structures
-    historyList.forEach(p => {
-      const weekNum = p.weekNumber || 1;
-      if (!weeksMap[weekNum]) {
-        weeksMap[weekNum] = {
-          week: `Semana ${weekNum}`,
-          plannedMinutes: 0,
-          completedMinutes: 0,
-          count: 0
-        };
-      }
-      if (p.workouts) {
-        p.workouts.forEach(w => {
-          weeksMap[weekNum].plannedMinutes += w.duration;
-          if (w.completed) {
-            weeksMap[weekNum].completedMinutes += (w.actualDuration || w.duration);
-            weeksMap[weekNum].count += 1;
-          }
-        });
-      }
-    });
-
-    return Object.values(weeksMap).sort((a, b) => a.week.localeCompare(b.week));
-  }, [historyList]);
-
-  // 6. Define Achievements
+  // 11. Achievements list
   const achievementsList = useMemo<Achievement[]>(() => {
-    // Check various unlock states
     const hasAtLeastOne = totalCompletedCount >= 1;
-    const hasFiveCompleted = totalCompletedCount >= 5;
-    
-    // Check if high intensity completed (RPE >= 7)
-    const hasHighIntensity = allCompletedWorkouts.some(item => (item.workout.actualRpe || item.workout.rpe || 0) >= 7);
-    
-    // Check if long endurance ride (duration >= 90 mins)
-    const hasLongRide = allCompletedWorkouts.some(item => (item.workout.actualDuration || item.workout.duration) >= 90);
-    
-    // Check for "Perfect Week" (completed all workouts in a week, min 3 workouts schedule)
-    let hasPerfectWeek = false;
-    historyList.forEach(p => {
-      const totalW = p.workouts ? p.workouts.filter(w => !isRestDay(w)).length : 0;
-      const completedW = p.workouts ? p.workouts.filter(w => w.completed && !isRestDay(w)).length : 0;
-      if (totalW >= 3 && completedW === totalW) {
-        hasPerfectWeek = true;
-      }
-    });
-
-    // Consistency check: completed at least 3 workouts in a single week
-    let hasConsistency = false;
-    historyList.forEach(p => {
-      const completedCount = p.workouts ? p.workouts.filter(w => w.completed && !isRestDay(w)).length : 0;
-      if (completedCount >= 3) {
-        hasConsistency = true;
-      }
-    });
-
-    // Check for distinct zones completed (at least 3 target zones)
-    const distinctZones = new Set<string>();
-    allCompletedWorkouts.forEach(item => {
-      const zonePart = (item.workout.targetZone || "").toUpperCase().slice(0, 2);
-      if (zonePart) distinctZones.add(zonePart);
-    });
-    const hasZoneExplorer = distinctZones.size >= 3;
-
-    // Check general profile-based achievements
-    const hasFtpFilled = !!(profile.hasPowerMeter && profile.ftp && profile.ftp > 0);
-    const hasHighWeek = (plan?.weekNumber || 1) >= 2;
-    const hasBurnedKCalValue = totalCaloriesBurned >= 1000;
+    const hasConsistencyBadge = consistencyStats.percentage >= 75 && totalCompletedCount >= 3;
+    const hasLongRide = consolidatedHistoryFeed.some(item => item.durationMin >= 90);
+    const hasHighDistance = totalDistanceKm >= 100;
+    const hasPerfectWeek = weeklyEvolutionData.some(w => w.plannedCount >= 3 && w.completionRate === 100);
 
     return [
       {
         id: "first_ride",
         title: "Primeiro Giro",
-        description: "Marque seu primeiro treino completado na planilha.",
+        description: "Completou e registrou seu primeiro treino oficial no Biker AI.",
         unlocked: hasAtLeastOne,
         category: "volume",
         icon: <Zap className="w-5 h-5 text-lime-500 fill-lime-500/10" />
       },
       {
         id: "consistency_badge",
-        title: "Consistência é Rei",
-        description: "Complete pelo menos 3 treinos de bicicleta em uma única semana.",
-        unlocked: hasConsistency,
+        title: "Consistência de Aço",
+        description: "Mantenha consistência superior a 75% com ao menos 3 treinos realizados.",
+        unlocked: hasConsistencyBadge,
         category: "consistency",
         icon: <CheckCircle2 className="w-5 h-5 text-teal-500 fill-teal-500/10" />
       },
       {
-        id: "mountain_king",
-        title: "Rei da Montanha",
-        description: "Siga o plano e complete um treino intervalado forte ou máximo (Esforço >= 7).",
-        unlocked: hasHighIntensity,
-        category: "intensity",
-        icon: <Crown className="w-5 h-5 text-amber-500 fill-amber-500/10" />
+        id: "century_km",
+        title: "Centenário dos Pedais",
+        description: "Supere a marca dos 100 km reais pedalados e registrados.",
+        unlocked: hasHighDistance,
+        category: "volume",
+        icon: <Bike className="w-5 h-5 text-amber-500" />
       },
       {
         id: "brutal_endurance",
-        title: "Resistência de Aço",
-        description: "Complete um treino longo e contínuo com duração de 90 minutos ou mais.",
+        title: "Resistência de Longa Duração",
+        description: "Finalize uma sessão contínua com duração igual ou superior a 90 minutos.",
         unlocked: hasLongRide,
         category: "volume",
         icon: <Activity className="w-5 h-5 text-orange-500" />
       },
       {
         id: "perfect_week",
-        title: "Semana Lendária",
-        description: "Esforce-se e complete 100% dos treinos propostos na mesma semana.",
+        title: "Semana Lendária (100%)",
+        description: "Concluiu todos os treinos propostos na mesma semana de treinamento.",
         unlocked: hasPerfectWeek,
         category: "consistency",
         icon: <Award className="w-5 h-5 text-rose-500 fill-rose-500/10" />
-      },
-      {
-        id: "zone_master",
-        title: "Explorador de Zonas",
-        description: "Treine em 3 ou mais zonas fisiológicas para adaptações musculares completas.",
-        unlocked: hasZoneExplorer,
-        category: "intensity",
-        icon: <Star className="w-5 h-5 text-purple-500 fill-purple-500/10" />
-      },
-      {
-        id: "watts_power",
-        title: "Foco nos Watts",
-        description: "Configure seus dados de potência real (FTP) no cadastro do seu perfil.",
-        unlocked: hasFtpFilled,
-        category: "profile",
-        icon: <Flame className="w-5 h-5 text-sky-500 fill-sky-500/10" />
-      },
-      {
-        id: "evolution_weekly",
-        title: "Ciclista em Evolução",
-        description: "Evolua sua planilha semanal pelo menos uma vez junto ao Treinador AI.",
-        unlocked: hasHighWeek,
-        category: "profile",
-        icon: <TrendingUp className="w-5 h-5 text-indigo-500" />
-      },
-      {
-        id: "kcal_burning_1000",
-        title: "Usina de Watts",
-        description: "Queime mais de 1.000 kcal estimadas acumulando giradas completadas.",
-        unlocked: hasBurnedKCalValue,
-        category: "volume",
-        icon: <Heart className="w-5 h-5 text-pink-500 fill-pink-500/10" />
       }
     ];
-  }, [totalCompletedCount, allCompletedWorkouts, historyList, profile, totalCaloriesBurned, plan?.weekNumber]);
+  }, [totalCompletedCount, consistencyStats, consolidatedHistoryFeed, totalDistanceKm, weeklyEvolutionData]);
 
-  const unlockedCount = useMemo(() => {
-    return achievementsList.filter(a => a.unlocked).length;
-  }, [achievementsList]);
+  const unlockedCount = useMemo(() => achievementsList.filter(a => a.unlocked).length, [achievementsList]);
 
-  const progressPercentage = useMemo(() => {
-    if (achievementsList.length === 0) return 0;
-    return Math.round((unlockedCount / achievementsList.length) * 100);
-  }, [unlockedCount, achievementsList]);
+  // Helper labels
+  const formatDifficultyBadge = (diff: string) => {
+    switch (diff) {
+      case "facil":
+        return <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">Fácil</span>;
+      case "adequada":
+        return <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-sky-50 text-sky-700 border border-sky-200">Adequada</span>;
+      case "dificil":
+        return <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">Difícil</span>;
+      case "muito_dificil":
+        return <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">Muito difícil</span>;
+      default:
+        return <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 text-slate-600">Adequada</span>;
+    }
+  };
+
+  const formatCompletionBadge = (status: string) => {
+    switch (status) {
+      case "sim":
+        return <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300">Concluído (Sim)</span>;
+      case "parcialmente":
+        return <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-amber-100 text-amber-800 border border-amber-300">Parcial</span>;
+      case "nao":
+        return <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-rose-100 text-rose-800 border border-rose-300">Não concluído</span>;
+      default:
+        return <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300">Concluído</span>;
+    }
+  };
 
   return (
-    <div className="space-y-8 animate-fadeIn">
+    <div className="space-y-8 animate-fadeIn" id="athlete-evolution-section">
       
-      {/* 1. Quick Stats Header Panels (Grid representation of complete metrics) */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Header Section */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gradient-to-br from-slate-900 via-slate-850 to-slate-900 p-6 sm:p-7 rounded-3xl text-white shadow-xl border border-slate-800 relative overflow-hidden">
+        <div className="relative z-10 space-y-1.5 max-w-xl">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-lime-400/10 border border-lime-400/20 text-lime-400 text-xs font-bold font-mono">
+            <TrendingUp className="w-3.5 h-3.5" />
+            <span>Acompanhamento de Evolução</span>
+          </div>
+          <h2 className="text-2xl sm:text-3xl font-black tracking-tight font-heading">
+            Evolução do Atleta
+          </h2>
+          <p className="text-xs sm:text-sm text-slate-300 font-sans leading-relaxed">
+            Acompanhe o volume real pedalado, percentual de conclusão dos treinos e consistência semana a semana. Dados utilizados pela IA para calibrar suas próximas planilhas.
+          </p>
+        </div>
+
+        <div className="relative z-10 flex sm:flex-col items-center sm:items-end justify-between gap-3 border-t sm:border-t-0 border-slate-800 pt-3 sm:pt-0">
+          <div className="text-left sm:text-right font-mono">
+            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Semana Atual</span>
+            <span className="text-xl font-black text-lime-400">Semana {plan?.weekNumber || 1}</span>
+          </div>
+          <span className={`text-[11px] font-bold px-3 py-1 rounded-full border ${consistencyStats.colorClass}`}>
+            {consistencyStats.label} ({consistencyStats.percentage}%)
+          </span>
+        </div>
+
+        {/* Ambient Glow */}
+        <div className="absolute right-0 top-0 w-64 h-64 bg-lime-400/5 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20"></div>
+      </div>
+
+      {/* 1. Core KPIs Grid (Requested: Treinos concluídos, % semanal, Distância total, Tempo total, Consistência) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4" id="evolution-kpi-cards">
         
+        {/* KPI 1: Treinos Concluídos */}
         <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.4, delay: 0.05 }}
-          id="stat-completed-total" 
-          className="bg-white border border-slate-100 rounded-3xl p-5 shadow-xs flex items-center gap-4 hover:shadow-sm transition-shadow"
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, delay: 0.05 }}
+          id="kpi-treinos-concluidos"
+          className="bg-white border border-slate-150 rounded-2xl p-4 shadow-xs flex flex-col justify-between hover:shadow-md transition-shadow"
         >
-          <div className="p-3 bg-lime-50 rounded-2xl text-lime-650 shrink-0">
-            <CheckCircle2 className="w-6 h-6" />
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider font-heading">Treinos Concluídos</span>
+            <div className="p-2 bg-emerald-50 text-emerald-600 rounded-xl">
+              <CheckCircle2 className="w-4 h-4" />
+            </div>
           </div>
-          <div>
-            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Treinos Feitos</span>
-            <span className="text-xl sm:text-2xl font-mono font-black text-slate-800">{totalCompletedCount}</span>
-            <span className="text-[10px] text-slate-400 block font-sans">sabor de evolução</span>
+          <div className="my-2">
+            <div className="text-2xl font-black font-mono text-slate-900">{totalCompletedCount}</div>
+            <div className="text-[10px] text-slate-500 font-sans mt-0.5">
+              {completionBreakdown.sim > 0 && <span>{completionBreakdown.sim} 100%</span>}
+              {completionBreakdown.parcialmente > 0 && <span> • {completionBreakdown.parcialmente} parciais</span>}
+              {totalCompletedCount === 0 && <span>Nenhum concluído ainda</span>}
+            </div>
+          </div>
+          <div className="text-[9px] font-mono text-emerald-700 bg-emerald-50/70 px-2 py-0.5 rounded-md w-fit">
+            Histórico ativo
           </div>
         </motion.div>
 
+        {/* KPI 2: % Conclusão Semanal */}
         <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.4, delay: 0.1 }}
-          id="stat-total-hours" 
-          className="bg-white border border-slate-100 rounded-3xl p-5 shadow-xs flex items-center gap-4 hover:shadow-sm transition-shadow"
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, delay: 0.1 }}
+          id="kpi-conclusao-semanal"
+          className="bg-white border border-slate-150 rounded-2xl p-4 shadow-xs flex flex-col justify-between hover:shadow-md transition-shadow"
         >
-          <div className="p-3 bg-sky-50 rounded-2xl text-sky-600 shrink-0">
-            <Clock className="w-6 h-6" />
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider font-heading">Conclusão Semanal</span>
+            <div className="p-2 bg-sky-50 text-sky-600 rounded-xl">
+              <Calendar className="w-4 h-4" />
+            </div>
           </div>
-          <div>
-            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Tempo sobre a Bike</span>
-            <span className="text-xl sm:text-2xl font-mono font-black text-slate-800">{totalDurationHoursStr}h</span>
-            <span className="text-[10px] text-slate-400 block font-sans">acumulado de fôlego</span>
+          <div className="my-2">
+            <div className="text-2xl font-black font-mono text-slate-900">{weeklyCompletionStats.percentage}%</div>
+            <div className="text-[10px] text-slate-500 font-sans mt-0.5">
+              {weeklyCompletionStats.completedCount} de {weeklyCompletionStats.totalScheduled} treinos da semana
+            </div>
+          </div>
+          {/* Progress bar */}
+          <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+            <div 
+              className="bg-sky-500 h-full rounded-full transition-all duration-500"
+              style={{ width: `${weeklyCompletionStats.percentage}%` }}
+            ></div>
           </div>
         </motion.div>
 
+        {/* KPI 3: Distância Total */}
         <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.4, delay: 0.15 }}
-          id="stat-total-calories" 
-          className="bg-white border border-slate-100 rounded-3xl p-5 shadow-xs flex items-center gap-4 hover:shadow-sm transition-shadow"
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, delay: 0.15 }}
+          id="kpi-distancia-total"
+          className="bg-white border border-slate-150 rounded-2xl p-4 shadow-xs flex flex-col justify-between hover:shadow-md transition-shadow"
         >
-          <div className="p-3 bg-amber-50 rounded-2xl text-amber-600 shrink-0">
-            <Flame className="w-6 h-6" />
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider font-heading">Distância Total</span>
+            <div className="p-2 bg-amber-50 text-amber-600 rounded-xl">
+              <Bike className="w-4 h-4" />
+            </div>
           </div>
-          <div>
-            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Energia Queimada</span>
-            <span className="text-xl sm:text-2xl font-mono font-black text-slate-800">{totalCaloriesBurned.toLocaleString()} kcal</span>
-            <span className="text-[10px] text-slate-400 block font-sans">estimativa fisiológica</span>
+          <div className="my-2">
+            <div className="text-2xl font-black font-mono text-slate-900">
+              {totalDistanceKm > 0 ? `${totalDistanceKm.toFixed(1)} km` : "0.0 km"}
+            </div>
+            <div className="text-[10px] text-slate-500 font-sans mt-0.5">
+              Quilômetros reais realizados
+            </div>
+          </div>
+          <div className="text-[9px] font-mono text-amber-700 bg-amber-50/70 px-2 py-0.5 rounded-md w-fit">
+            Soma acumulada
           </div>
         </motion.div>
 
+        {/* KPI 4: Tempo Total Treinado */}
         <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.4, delay: 0.2 }}
-          id="stat-achievements-unlocked" 
-          className="bg-white border border-slate-100 rounded-3xl p-5 shadow-xs flex items-center gap-4 hover:shadow-sm transition-shadow"
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, delay: 0.2 }}
+          id="kpi-tempo-total"
+          className="bg-white border border-slate-150 rounded-2xl p-4 shadow-xs flex flex-col justify-between hover:shadow-md transition-shadow"
         >
-          <div className="p-3 bg-amber-500/10 rounded-2xl text-amber-500 shrink-0">
-            <Trophy className="w-6 h-6 fill-amber-500/10" />
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider font-heading">Tempo Treinado</span>
+            <div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl">
+              <Clock className="w-4 h-4" />
+            </div>
           </div>
-          <div>
-            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Conquistas</span>
-            <span className="text-xl sm:text-2xl font-mono font-black text-slate-800">{unlockedCount} / {achievementsList.length}</span>
-            <span className="text-[10px] text-slate-400 block font-sans">{progressPercentage}% desbloqueado</span>
+          <div className="my-2">
+            <div className="text-2xl font-black font-mono text-slate-900">{formattedTotalDuration}</div>
+            <div className="text-[10px] text-slate-500 font-sans mt-0.5">
+              {totalDurationMinutes} min acumulados no selim
+            </div>
+          </div>
+          <div className="text-[9px] font-mono text-indigo-700 bg-indigo-50/70 px-2 py-0.5 rounded-md w-fit">
+            Tempo em atividade
+          </div>
+        </motion.div>
+
+        {/* KPI 5: Consistência */}
+        <motion.div 
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, delay: 0.25 }}
+          id="kpi-consistencia"
+          className="bg-white border border-slate-150 rounded-2xl p-4 shadow-xs flex flex-col justify-between hover:shadow-md transition-shadow"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider font-heading">Consistência</span>
+            <div className="p-2 bg-rose-50 text-rose-600 rounded-xl">
+              <Flame className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="my-2">
+            <div className="text-2xl font-black font-mono text-slate-900">{consistencyStats.percentage}%</div>
+            <div className="text-[10px] text-slate-500 font-sans mt-0.5">
+              Taxa de adesão ao plano
+            </div>
+          </div>
+          <div className={`text-[9px] font-mono px-2 py-0.5 rounded-md w-fit border ${consistencyStats.colorClass}`}>
+            {consistencyStats.label}
           </div>
         </motion.div>
 
       </div>
 
-      {/* 2. Evolution Charts / Progress Visualizers Section */}
+      {/* 2. Evolução das Últimas Semanas (Charts & Comparative Cards) */}
+      <div className="space-y-4" id="evolucao-ultimas-semanas">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-150 pb-3">
+          <div className="space-y-0.5">
+            <h3 className="font-heading font-black text-slate-800 text-sm sm:text-base flex items-center gap-2">
+              <TrendingUp className="w-5 h-5 text-lime-600" />
+              <span>Evolução das Últimas Semanas</span>
+            </h3>
+            <p className="text-xs text-slate-400 font-sans">
+              Comparativo semana a semana entre treinos planejados vs realizados, quilômetros e horas treinadas.
+            </p>
+          </div>
+          <span className="bg-slate-100 text-slate-700 font-mono text-[10px] font-black px-2.5 py-1 rounded-xl w-fit">
+            {weeklyEvolutionData.length} {weeklyEvolutionData.length === 1 ? "SEMANA REGISTRADA" : "SEMANAS REGISTRADAS"}
+          </span>
+        </div>
+
+        {/* Chart + Summary Split */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          
+          {/* Bar Chart: Planned vs Completed minutes */}
+          <div className="bg-white border border-slate-150 rounded-3xl p-5 shadow-xs lg:col-span-2 space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-black uppercase tracking-wider text-slate-700 font-heading">
+                Volume Semanal (Minutos de Treino)
+              </span>
+              <div className="flex items-center gap-3 text-[10px] font-sans">
+                <span className="flex items-center gap-1 text-slate-500">
+                  <span className="w-2.5 h-2.5 bg-slate-300 rounded-xs"></span> Planejado
+                </span>
+                <span className="flex items-center gap-1 text-lime-700 font-bold">
+                  <span className="w-2.5 h-2.5 bg-lime-500 rounded-xs"></span> Realizado
+                </span>
+              </div>
+            </div>
+
+            <div className="w-full h-64">
+              {weeklyEvolutionData.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={weeklyEvolutionData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }} barGap={6}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                    <XAxis dataKey="week" stroke="#94a3b8" fontSize={10} fontWeight={600} tickLine={false} axisLine={false} />
+                    <YAxis stroke="#94a3b8" fontSize={10} fontWeight={600} tickLine={false} axisLine={false} suffix=" min" />
+                    <Tooltip 
+                      content={({ active, payload }) => {
+                        if (active && payload && payload.length) {
+                          const data = payload[0].payload;
+                          return (
+                            <div className="bg-slate-950 p-3 rounded-xl shadow-xl text-white font-sans text-xs space-y-1 border border-slate-800">
+                              <p className="font-heading font-black text-lime-400 text-[11px] uppercase">{data.week}</p>
+                              <p className="text-slate-300">Tempo Planejado: <strong className="font-mono text-white">{data.plannedMinutes} min</strong></p>
+                              <p className="text-slate-300">Tempo Realizado: <strong className="font-mono text-lime-400">{data.completedMinutes} min</strong></p>
+                              <p className="text-slate-300">Distância Real: <strong className="font-mono text-amber-300">{data.totalDistanceKm > 0 ? `${data.totalDistanceKm.toFixed(1)} km` : "N/A"}</strong></p>
+                              <p className="text-[10px] pt-1 border-t border-slate-800 text-slate-400">
+                                Treinos: {data.completedCount} de {data.plannedCount} ({data.completionRate}%)
+                              </p>
+                            </div>
+                          );
+                        }
+                        return null;
+                      }}
+                    />
+                    <Bar dataKey="plannedMinutes" name="Planejado" fill="#cbd5e1" radius={[4, 4, 0, 0]} maxBarSize={36} />
+                    <Bar dataKey="completedMinutes" name="Realizado" fill="#84cc16" radius={[4, 4, 0, 0]} maxBarSize={36} />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex flex-col items-center justify-center h-full text-xs text-slate-400 gap-2 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                  <BarChart3 className="w-8 h-8 text-slate-300" />
+                  <span>Conclua treinos para gerar o comparativo semanal.</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Week cards summary list */}
+          <div className="bg-white border border-slate-150 rounded-3xl p-5 shadow-xs flex flex-col justify-between space-y-3">
+            <div>
+              <h4 className="text-xs font-black uppercase tracking-wider text-slate-700 font-heading mb-1">
+                Resumo por Bloco Semanal
+              </h4>
+              <p className="text-[11px] text-slate-400 font-sans">
+                Taxa de aderência e volume acumulado em cada semana do plano.
+              </p>
+            </div>
+
+            <div className="space-y-2.5 overflow-y-auto max-h-56 pr-1">
+              {weeklyEvolutionData.map((w) => (
+                <div key={w.week} className="p-3 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between gap-3">
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-heading font-black text-xs text-slate-850">{w.week}</span>
+                      <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded-md ${w.completionRate >= 80 ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}`}>
+                        {w.completionRate}%
+                      </span>
+                    </div>
+                    <div className="text-[10px] text-slate-500 mt-0.5">
+                      {w.completedCount} de {w.plannedCount} treinos feitos
+                    </div>
+                  </div>
+
+                  <div className="text-right font-mono text-xs">
+                    <span className="font-black text-slate-800 block">
+                      {Math.floor(w.completedMinutes / 60)}h {w.completedMinutes % 60}m
+                    </span>
+                    <span className="text-[10px] text-slate-400">
+                      {w.totalDistanceKm > 0 ? `${w.totalDistanceKm.toFixed(1)} km` : "km n/d"}
+                    </span>
+                  </div>
+                </div>
+              ))}
+              {weeklyEvolutionData.length === 0 && (
+                <div className="text-center py-6 text-xs text-slate-400 font-sans">
+                  Nenhuma semana registrada ainda.
+                </div>
+              )}
+            </div>
+
+            <div className="pt-2 border-t border-slate-100 text-[10px] text-slate-400 italic">
+              A IA adapta o próximo macrociclo com base nestas estatísticas.
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      {/* 3. Detailed Workout Completion History (Respostas às 5 perguntas do formulário) */}
+      <div className="bg-white border border-slate-150 rounded-3xl p-5 sm:p-6 shadow-xs space-y-4" id="historico-treinos-registrados">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+          <div className="space-y-0.5">
+            <h3 className="font-heading font-black text-slate-800 text-sm sm:text-base flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-lime-600" />
+              <span>Histórico de Treinos Registrados</span>
+            </h3>
+            <p className="text-xs text-slate-400 font-sans">
+              Dados detalhados informados na conclusão de cada sessão (status, dificuldade sentida, distância, tempo e observações).
+            </p>
+          </div>
+          <span className="bg-slate-900 text-lime-400 font-mono text-[10px] font-black px-2.5 py-1 rounded-xl w-fit">
+            {consolidatedHistoryFeed.length} {consolidatedHistoryFeed.length === 1 ? "SESSÃO" : "SESSÕES"}
+          </span>
+        </div>
+
+        {consolidatedHistoryFeed.length > 0 ? (
+          <div className="divide-y divide-slate-100 max-h-[480px] overflow-y-auto pr-1">
+            {consolidatedHistoryFeed.map((item, idx) => (
+              <div 
+                key={`${item.id}-${idx}`}
+                className="py-4 first:pt-1 last:pb-1 space-y-2 hover:bg-slate-50/60 rounded-xl px-2 transition-colors"
+              >
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-start gap-3">
+                    <div className="p-2.5 bg-lime-50 rounded-xl text-lime-700 shrink-0 self-center">
+                      <Bike className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h4 className="font-heading font-black text-xs text-slate-900">{item.type}</h4>
+                        <span className="bg-slate-100 border border-slate-200 text-slate-600 px-1.5 py-0.5 rounded-md font-mono text-[9px] font-bold">
+                          Semana {item.weekNumber}
+                        </span>
+                        <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md font-sans text-[9px] font-bold">
+                          {item.day}
+                        </span>
+                        {item.completedDate && (
+                          <span className="text-[10px] text-slate-400 font-mono">
+                            {item.completedDate}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 mt-1">
+                        {formatCompletionBadge(item.completedStatus)}
+                        {formatDifficultyBadge(item.difficulty)}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Real Metrics pills */}
+                  <div className="flex items-center gap-4 shrink-0 font-mono text-right justify-between sm:justify-end border-t sm:border-t-0 border-slate-100 pt-2 sm:pt-0">
+                    <div>
+                      <span className="text-[9px] text-slate-400 block uppercase font-sans">Distância</span>
+                      <strong className="text-xs text-slate-800">
+                        {item.distanceKm !== undefined && item.distanceKm > 0 ? `${item.distanceKm} km` : "n/d"}
+                      </strong>
+                    </div>
+                    <div>
+                      <span className="text-[9px] text-slate-400 block uppercase font-sans">Tempo Real</span>
+                      <strong className="text-xs text-slate-800">{item.durationMin} min</strong>
+                    </div>
+                    {item.targetZone && (
+                      <div>
+                        <span className="text-[9px] text-slate-400 block uppercase font-sans">Zona Alvo</span>
+                        <strong className="text-xs text-lime-700">{item.targetZone}</strong>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Athlete's Notes */}
+                {item.notes && (
+                  <div className="ml-10 text-xs text-slate-600 bg-slate-50 border border-slate-200/60 p-2.5 rounded-xl leading-relaxed italic flex items-start gap-2">
+                    <FileText className="w-3.5 h-3.5 text-slate-400 mt-0.5 shrink-0 not-italic" />
+                    <div>
+                      <span className="text-[9px] font-bold text-slate-400 block uppercase not-italic tracking-wider">
+                        Observações do Atleta:
+                      </span>
+                      "{item.notes}"
+                    </div>
+                  </div>
+                )}
+
+                {/* AI Coach Feedback if available */}
+                {item.aiFeedback && (
+                  <div className="ml-10 text-xs text-sky-800 bg-sky-50 border border-sky-100 p-2.5 rounded-xl leading-relaxed">
+                    <span className="text-[9px] font-heading font-black text-sky-900 block uppercase tracking-wider mb-0.5 flex items-center gap-1.5">
+                      <Sparkles className="w-3 h-3 text-sky-500" />
+                      Feedback do Treinador AI:
+                    </span>
+                    <p className="whitespace-pre-wrap">{item.aiFeedback}</p>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-10 bg-slate-50/50 rounded-2xl border border-dashed border-slate-200 flex flex-col items-center justify-center gap-2">
+            <Bike className="w-9 h-9 text-slate-300" />
+            <p className="text-xs font-sans text-slate-600 font-bold">Nenhum treino concluído ainda.</p>
+            <p className="text-[11px] font-sans text-slate-400 max-w-sm text-center">
+              Acesse a aba <strong>"Planilha"</strong> e clique em <strong>"Concluir treino"</strong> para registrar suas sensações, distância e tempo!
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* 4. Secondary: Zones Distribution & Achievements Gamification */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
-        {/* Weekly Trend (Bar & line representing minutes planned vs loaded) */}
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.98, y: 30 }}
-          whileInView={{ opacity: 1, scale: 1, y: 0 }}
-          viewport={{ once: true, margin: "-50px" }}
-          transition={{ duration: 0.5, delay: 0.1 }}
-          id="trend-metric-card" 
-          className="bg-white border border-slate-100 rounded-3xl p-5 sm:p-6 shadow-xs lg:col-span-2 space-y-4"
-        >
-          <div className="space-y-1">
-            <h3 className="font-heading font-black text-slate-800 text-sm sm:text-base flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-lime-650" />
-              <span>Consistência de Carga Semana a Semana</span>
-            </h3>
+        {/* Intensity Zones */}
+        <div className="bg-white border border-slate-150 rounded-3xl p-5 shadow-xs space-y-4">
+          <div className="space-y-0.5">
+            <h4 className="font-heading font-black text-xs uppercase tracking-wider text-slate-700 flex items-center gap-2">
+              <Activity className="w-4 h-4 text-indigo-500" />
+              <span>Distribuição de Esforço</span>
+            </h4>
             <p className="text-[11px] text-slate-400 font-sans">
-              Comparação acumulativa de minutos planejados pelo Treinador AI contra minutos efetivamente pedalados por semana.
+              Zonas fisiológicas estimuladas nos treinos concluídos.
             </p>
           </div>
 
-          <div className="w-full h-60" id="weekly-completion-trend-chart">
-            {weeklyTrendData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={240}>
-                <BarChart 
-                  data={weeklyTrendData} 
-                  margin={{ top: 10, right: 10, left: -25, bottom: 0 }}
-                  barGap={4}
-                >
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                  <XAxis dataKey="week" stroke="#94a3b8" fontSize={10} fontWeight={600} tickLine={false} axisLine={false} />
-                  <YAxis stroke="#94a3b8" fontSize={10} fontWeight={600} tickLine={false} axisLine={false} suffix=" min" />
-                  <Tooltip 
-                    content={({ active, payload }) => {
-                      if (active && payload && payload.length) {
-                        return (
-                          <div className="bg-slate-950 p-3 rounded-xl shadow-xl text-white font-sans text-xs space-y-1 border border-slate-800">
-                            <p className="font-heading font-black text-lime-400 text-[10px] uppercase">{payload[0].payload.week}</p>
-                            <p className="text-slate-300">Tempo Planejado: <strong className="font-mono text-white">{payload[0].value} min</strong></p>
-                            <p className="text-slate-300">Pedal Concluído: <strong className="font-mono text-lime-400">{payload[1].value} min</strong></p>
-                            <p className="text-[10px] pt-1 border-t border-slate-850 text-slate-450 italic">Frequência: {payload[0].payload.count} treinos feitos</p>
-                          </div>
-                        );
-                      }
-                      return null;
-                    }}
-                  />
-                  <Bar dataKey="plannedMinutes" name="Planejado" fill="#cbd5e1" radius={[4, 4, 0, 0]} maxBarSize={32} />
-                  <Bar dataKey="completedMinutes" name="Pedal Realizado" fill="#84cc16" radius={[4, 4, 0, 0]} maxBarSize={32} />
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="flex flex-col items-center justify-center h-full text-xs text-slate-400 gap-2 bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">
-                <TrendingUp className="w-8 h-8 text-slate-300" />
-                <span>Nenhum dado cumulativo registrado. Complete treinos para iniciar o gráfico de evolução!</span>
-              </div>
-            )}
-          </div>
-        </motion.div>
-
-        {/* Zones Distribution Breakdown (Pie Chart) */}
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.98, y: 30 }}
-          whileInView={{ opacity: 1, scale: 1, y: 0 }}
-          viewport={{ once: true, margin: "-50px" }}
-          transition={{ duration: 0.5, delay: 0.2 }}
-          id="zones-distribution-card" 
-          className="bg-white border border-slate-100 rounded-3xl p-5 sm:p-6 shadow-xs flex flex-col justify-between space-y-4"
-        >
-          <div className="space-y-1">
-            <h3 className="font-heading font-black text-slate-800 text-sm sm:text-base flex items-center gap-2">
-              <Activity className="w-5 h-5 text-indigo-500" />
-              <span>Zonas de Intensidade</span>
-            </h3>
-            <p className="text-[11px] text-slate-400 font-sans">
-              Variabilidade do esforço estimulando fôlego, queima celular e força.
-            </p>
-          </div>
-
-          <div className="w-full h-44 flex items-center justify-center relative" id="intensity-pie-chart">
+          <div className="w-full h-40 flex items-center justify-center relative">
             {zoneDistributionData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={170}>
+              <ResponsiveContainer width="100%" height={150}>
                 <PieChart>
                   <Pie
                     data={zoneDistributionData}
                     cx="50%"
                     cy="50%"
-                    innerRadius={50}
-                    outerRadius={65}
+                    innerRadius={45}
+                    outerRadius={60}
                     paddingAngle={3}
                     dataKey="value"
                   >
@@ -492,7 +946,7 @@ function AchievementsDashboardInner({ profile, plan }: AchievementsDashboardProp
                     content={({ active, payload }) => {
                       if (active && payload && payload.length) {
                         return (
-                          <div className="bg-slate-900 border border-slate-850 text-white rounded-xl py-1.5 px-3 text-[11px] font-mono shadow-md">
+                          <div className="bg-slate-900 border border-slate-800 text-white rounded-xl py-1.5 px-3 text-[11px] font-mono">
                             <strong>{payload[0].name}</strong>: {payload[0].value} treino(s)
                           </div>
                         );
@@ -503,260 +957,80 @@ function AchievementsDashboardInner({ profile, plan }: AchievementsDashboardProp
                 </PieChart>
               </ResponsiveContainer>
             ) : (
-              <div className="text-xs text-slate-400 italic text-center text-balance px-4 py-8 bg-slate-50/50 rounded-2xl w-full h-full flex items-center justify-center border border-dashed border-slate-200">
-                Gire e marque treinos concluídos para entender sua intensidade.
+              <div className="text-[11px] text-slate-400 text-center px-4 py-8 bg-slate-50 rounded-2xl w-full h-full flex items-center justify-center border border-dashed border-slate-200">
+                Complete treinos para mapear suas zonas.
               </div>
             )}
             
             {zoneDistributionData.length > 0 && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none mt-2">
-                <span className="text-lg font-mono font-black text-slate-800">{totalCompletedCount}</span>
-                <span className="text-[9px] text-slate-450 uppercase font-sans font-bold tracking-wider leading-none">Pedais</span>
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none mt-1">
+                <span className="text-base font-mono font-black text-slate-800">{totalCompletedCount}</span>
+                <span className="text-[9px] text-slate-400 uppercase font-sans font-bold">Treinos</span>
               </div>
             )}
           </div>
 
-          {/* Color-coded Legend */}
           {zoneDistributionData.length > 0 && (
-            <div className="grid grid-cols-2 gap-2 text-[10px] font-sans font-medium text-slate-500 pt-2 border-t border-slate-50">
+            <div className="grid grid-cols-2 gap-1.5 text-[10px] font-sans font-medium text-slate-500 pt-2 border-t border-slate-100">
               {zoneDistributionData.map((item, idx) => (
                 <div key={item.name} className="flex items-center gap-1.5 truncate">
-                  <span className="w-2.5 h-2.5 rounded-xs shrink-0" style={{ backgroundColor: ZONE_COLORS[idx % ZONE_COLORS.length] }}></span>
+                  <span className="w-2 h-2 rounded-xs shrink-0" style={{ backgroundColor: ZONE_COLORS[idx % ZONE_COLORS.length] }}></span>
                   <span className="truncate">{item.name} ({item.value})</span>
                 </div>
               ))}
             </div>
           )}
-        </motion.div>
-
-      </div>
-
-      {/* 3. Grid of Achievements - Gamified badges with unlock systems */}
-      <div id="achievements-card-system" className="space-y-4">
-        
-        <div className="flex items-center justify-between border-b border-slate-150 pb-3">
-          <div className="space-y-0.5">
-            <h3 className="font-heading font-black text-slate-800 text-sm sm:text-base flex items-center gap-2">
-              <Trophy className="w-5 h-5 text-amber-500 fill-amber-500/10" />
-              <span>Troféus & Medalhas da Jornada</span>
-            </h3>
-            <p className="text-xs text-slate-400 font-sans">
-              Pilhas de treinos e consistência desbloqueiam bônus de motivação. Desafie-se!
-            </p>
-          </div>
-          <span className="bg-slate-100/80 border border-slate-200/50 text-slate-650 font-mono text-[10px] font-extrabold px-2.5 py-1 rounded-xl">
-            {unlockedCount} / {achievementsList.length} ATIVOS
-          </span>
         </div>
 
-        {/* Visual progress bar across achievements */}
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between text-[11px] font-bold text-slate-500 font-sans px-1">
-            <span>Progressão Geral do Ciclista</span>
-            <span className="text-lime-650 font-mono">{progressPercentage}%</span>
+        {/* Motivational Achievements */}
+        <div className="bg-white border border-slate-150 rounded-3xl p-5 shadow-xs lg:col-span-2 space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+            <div className="space-y-0.5">
+              <h4 className="font-heading font-black text-xs uppercase tracking-wider text-slate-700 flex items-center gap-2">
+                <Trophy className="w-4 h-4 text-amber-500" />
+                <span>Troféus & Medalhas de Consistência</span>
+              </h4>
+              <p className="text-[11px] text-slate-400 font-sans">
+                Conquistas desbloqueadas à medida que você mantém o plano.
+              </p>
+            </div>
+            <span className="bg-slate-100 text-slate-650 font-mono text-[10px] font-bold px-2 py-0.5 rounded-lg">
+              {unlockedCount} / {achievementsList.length}
+            </span>
           </div>
-          <div className="bg-slate-100 h-2.5 w-full rounded-full overflow-hidden border border-slate-200/20 shadow-inner">
-            <div 
-              className="bg-gradient-to-r from-lime-500 to-emerald-500 h-full rounded-full transition-all duration-700"
-              style={{ width: `${progressPercentage}%` }}
-            ></div>
-          </div>
-        </div>
 
-        {/* Grid layout */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pt-2">
-          {achievementsList.map((ach, index) => (
-            <motion.div 
-              key={ach.id} 
-              initial={{ opacity: 0, scale: 0.95 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              viewport={{ once: true, margin: "-30px" }}
-              transition={{ duration: 0.35, delay: (index % 3) * 0.05 }}
-              id={`achievement-${ach.id}`}
-              className={`rounded-2xl p-4 border transition-all duration-300 relative overflow-hidden flex items-start gap-4 ${
-                ach.unlocked 
-                  ? "bg-gradient-to-br from-white to-slate-50/50 border-emerald-100 hover:border-emerald-200 shadow-xs hover:shadow-sm" 
-                  : "bg-slate-100/50 text-slate-400/80 border-slate-200/60 shadow-inner"
-              }`}
-            >
-              
-              {/* Highlight corner glow for unlocked achievement */}
-              {ach.unlocked && (
-                <div className="absolute top-0 right-0 w-16 h-16 bg-lime-400/5 rounded-full blur-xl -mr-4 -mt-4"></div>
-              )}
-
-              {/* Icon badge container */}
-              <div className={`p-3 rounded-2xl shrink-0 transition-transform duration-300 ${
-                ach.unlocked 
-                  ? "bg-white border border-slate-100 shadow-2xs group-hover:scale-105" 
-                  : "bg-slate-200/40 border border-slate-200 text-slate-400"
-              }`}>
-                {ach.unlocked ? (
-                  ach.icon
-                ) : (
-                  <Lock className="w-5 h-5 text-slate-400" />
-                )}
-              </div>
-
-              {/* Texts */}
-              <div className="space-y-1 my-0.5">
-                <span className="font-heading font-black text-xs block leading-tight flex items-center gap-1.5">
-                  <span className={ach.unlocked ? "text-slate-800" : "text-slate-500 font-medium font-sans"}>{ach.title}</span>
-                  {ach.unlocked && (
-                    <span className="flex w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse shrink-0"></span>
-                  )}
-                </span>
-                <p className="text-[10px] text-slate-450 leading-relaxed font-sans font-medium">
-                  {ach.description}
-                </p>
-                {ach.unlocked && (
-                  <span className="text-[9px] text-emerald-600 bg-emerald-50 border border-emerald-100/50 rounded-md font-mono font-bold px-1.5 py-0.5 mt-1.5 inline-block uppercase tracking-wider">
-                    Conquistado
-                  </span>
-                )}
-              </div>
-
-            </motion.div>
-          ))}
-        </div>
-
-      </div>
-
-      {/* 4. Complete workout ledger (Treinos Feitos com status e detalhes) */}
-      <motion.div 
-        id="workout-historical-ledger" 
-        initial={{ opacity: 0, y: 30 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, margin: "-50px" }}
-        transition={{ duration: 0.5 }}
-        className="bg-white border border-slate-100 rounded-3xl p-5 sm:p-6 shadow-xs space-y-4"
-      >
-        
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
-          <div className="space-y-0.5">
-            <h3 className="font-heading font-black text-slate-800 text-sm sm:text-base flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-lime-650 animate-pulse" />
-              <span>Histórico de Treinos Completados</span>
-            </h3>
-            <p className="text-xs text-slate-400 font-sans">
-              Livro de registros das suas sessões na estrada, rolo ou pista concluídas.
-            </p>
-          </div>
-          <span className="bg-slate-900 text-lime-400 font-mono text-[10px] font-black px-2.5 py-1 rounded-xl">
-            {totalCompletedCount} PEDALADAS SELECIONADAS
-          </span>
-        </div>
-
-        {allCompletedWorkouts.length > 0 ? (
-          <div className="divide-y divide-slate-100 max-h-96 overflow-y-auto pr-1">
-            {allCompletedWorkouts.map((item, index) => {
-              const workout = item.workout;
-              const duration = workout.actualDuration || workout.duration;
-              const rpe = workout.actualRpe !== undefined ? workout.actualRpe : (workout.rpe || 5);
-              const completedCalories = calculateWorkoutCalories(
-                duration,
-                rpe,
-                profile.hasPowerMeter,
-                profile.ftp
-              );
-
-              return (
-                <div 
-                  key={`completed-workout-${workout.day}-${index}`} 
-                  className="py-4 flex flex-col justify-between gap-3.5 first:pt-1 last:pb-1 hover:bg-slate-50/50 rounded-xl px-2 transition-colors border-b border-slate-100 last:border-b-0"
-                >
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div className="flex items-start gap-3.5">
-                      <div className="p-2.5 bg-emerald-50 rounded-xl text-emerald-600 shrink-0 self-center">
-                        <Zap className="w-4.5 h-4.5" />
-                      </div>
-                      <div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <h4 className="font-heading font-black text-xs text-slate-800">{workout.type}</h4>
-                          <span className="bg-slate-100 border border-slate-200/50 text-slate-600 px-1.5 py-0.5 rounded-md font-mono text-[9px] font-bold">
-                            Semana {item.weekNumber}
-                          </span>
-                          <span className="bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-md font-sans text-[9px] font-bold">
-                            {workout.day}
-                          </span>
-                        </div>
-                        <p className="text-[10px] text-slate-405 mt-1 font-sans">
-                          Prescrito: {workout.duration}min @ Zona {workout.targetZone}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-4 shrink-0 justify-between sm:justify-end border-t sm:border-t-0 border-slate-100 pt-2 sm:pt-0">
-                      <div className="text-left sm:text-right font-mono">
-                        <span className="text-[10px] text-slate-400 block font-sans">DURAÇÃO REAL</span>
-                        <strong className="text-xs text-slate-700">{duration} min</strong>
-                      </div>
-                      
-                      <div className="text-left sm:text-right font-mono">
-                        <span className="text-[10px] text-slate-400 block font-sans">ESFORÇO SENTIDO</span>
-                        <strong className="text-xs text-slate-700">{rpe}/10</strong>
-                      </div>
-
-                      {workout.actualHr && (
-                        <div className="text-left sm:text-right font-mono">
-                          <span className="text-[10px] text-rose-400 block font-sans">FC MÉDIA</span>
-                          <strong className="text-xs text-rose-600">{workout.actualHr} bpm</strong>
-                        </div>
-                      )}
-
-                      {workout.actualPower && (
-                        <div className="text-left sm:text-right font-mono">
-                          <span className="text-[10px] text-lime-600 block font-sans font-bold">POTÊNCIA</span>
-                          <strong className="text-xs text-lime-600">{workout.actualPower} W</strong>
-                        </div>
-                      )}
-
-                      {completedCalories > 0 && (
-                        <div className="text-right font-mono bg-amber-500/5 rounded-xl px-2.5 py-1 border border-amber-500/10">
-                          <span className="text-[9px] text-slate-400 block font-sans font-bold leading-none uppercase">Gasto</span>
-                          <strong className="text-xs text-amber-600">{completedCalories} kcal</strong>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Render Personal Notes or Athlete observations */}
-                  {workout.athleteNotes && (
-                    <div className="ml-11 text-xs text-slate-600 bg-slate-50 border border-slate-200/50 p-2.5 rounded-xl leading-relaxed italic">
-                      <span className="text-[9px] font-bold text-slate-400 block uppercase not-italic tracking-wider mb-0.5">Minhas Sensações</span>
-                      "{workout.athleteNotes}"
-                    </div>
-                  )}
-
-                  {/* Render Coach AI Evaluation specific to this workout */}
-                  {workout.aiFeedback && (
-                    <div className="ml-11 text-xs text-sky-700 bg-sky-50 border border-sky-100 p-3 rounded-xl leading-relaxed">
-                      <span className="text-[9px] font-heading font-black text-sky-800 block uppercase tracking-wider mb-1 flex items-center gap-1.5">
-                        <span className="w-1.5 h-1.5 bg-sky-500 rounded-full animate-pulse"></span>
-                        Avaliação e Análise do Treinador AI
-                      </span>
-                      <p className="whitespace-pre-wrap">{workout.aiFeedback}</p>
-                    </div>
-                  )}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {achievementsList.map((ach) => (
+              <div
+                key={ach.id}
+                className={`p-3 rounded-2xl border transition-all flex items-start gap-3 ${
+                  ach.unlocked 
+                    ? "bg-slate-50/80 border-emerald-200 shadow-2xs" 
+                    : "bg-slate-50/30 border-slate-200/50 text-slate-400 opacity-60"
+                }`}
+              >
+                <div className={`p-2 rounded-xl shrink-0 ${ach.unlocked ? "bg-white shadow-xs" : "bg-slate-200/50"}`}>
+                  {ach.unlocked ? ach.icon : <Lock className="w-4 h-4 text-slate-400" />}
                 </div>
-              );
-            })}
+                <div>
+                  <div className="text-xs font-black text-slate-800 font-heading flex items-center gap-1.5">
+                    <span>{ach.title}</span>
+                    {ach.unlocked && <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full shrink-0"></span>}
+                  </div>
+                  <p className="text-[10px] text-slate-500 mt-0.5 leading-snug">
+                    {ach.description}
+                  </p>
+                </div>
+              </div>
+            ))}
           </div>
-        ) : (
-          <div className="text-center py-10 bg-slate-50/50 rounded-2xl border border-dashed border-slate-200 flex flex-col items-center justify-center gap-2">
-            <Trophy className="w-9 h-9 text-slate-300" />
-            <p className="text-xs font-sans text-slate-450 font-medium">Você ainda não marcou nenhum treino como concluído.</p>
-            <p className="text-[10.5px] font-sans text-slate-400 leading-normal max-w-xs text-center">
-              Abra a aba <strong>"Minha Planilha"</strong> e marque a caixinha de conclusão (check) de um treino para registrar no seu histórico!
-            </p>
-          </div>
-        )}
+        </div>
 
-      </motion.div>
+      </div>
 
     </div>
   );
 }
 
-const AchievementsDashboard = React.memo(AchievementsDashboardInner);
+export const AchievementsDashboard = React.memo(AchievementsDashboardInner);
 export default AchievementsDashboard;

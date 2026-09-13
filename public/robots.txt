@@ -1,10 +1,20 @@
 User-agent: *
 Allow: /
+Allow: /treino-ciclismo-iniciante
+Allow: /planilha-treino-ciclismo
+Allow: /treino-ciclismo-emagrecer
+Allow: /treino-100km
+Allow: /zona-2-ciclismo
 Disallow: /api/
 Disallow: /admin/
 
 User-agent: Googlebot
 Allow: /
+Allow: /treino-ciclismo-iniciante
+Allow: /planilha-treino-ciclismo
+Allow: /treino-ciclismo-emagrecer
+Allow: /treino-100km
+Allow: /zona-2-ciclismo
 
 User-agent: Googlebot-Image
 Allow: /

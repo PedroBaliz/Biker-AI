@@ -38,6 +38,7 @@ interface WorkoutCardProps {
   allWorkouts?: Workout[];
   isSimpleMode?: boolean;
   onUnlockClick?: () => void;
+  onOpenCompleteModal?: () => void;
 }
 
 function getZoneExplanation(zone: string, isSimpleMode = false): string {
@@ -176,7 +177,7 @@ function getEffortSubtitle(rpe: number): string {
   return "Extremo, fôlego no limite";
 }
 
-function WorkoutCardInner({ workout, onUpdate, onDelete, profile, allWorkouts, isSimpleMode = true, onUnlockClick }: WorkoutCardProps) {
+function WorkoutCardInner({ workout, onUpdate, onDelete, profile, allWorkouts, isSimpleMode = true, onUnlockClick, onOpenCompleteModal }: WorkoutCardProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [isCompleting, setIsCompleting] = useState(false);
   const [showLimitError, setShowLimitError] = useState(false);
@@ -371,6 +372,12 @@ function WorkoutCardInner({ workout, onUpdate, onDelete, profile, allWorkouts, i
 
       if (hasCompletedToday) {
         setShowLimitError(true);
+        return;
+      }
+
+      // If outer onOpenCompleteModal is provided, prefer the dedicated 5-question wizard
+      if (onOpenCompleteModal) {
+        onOpenCompleteModal();
         return;
       }
 
@@ -1224,7 +1231,7 @@ function WorkoutCardInner({ workout, onUpdate, onDelete, profile, allWorkouts, i
               ) : (
                 <>
                   <Circle className="w-4 h-4 stroke-[2.5]" />
-                  <span>Concluir</span>
+                  <span>Concluir treino</span>
                 </>
               )}
             </button>

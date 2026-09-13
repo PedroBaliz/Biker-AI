@@ -3,7 +3,7 @@ import { jsPDF } from "jspdf";
 import confetti from "canvas-confetti";
 // @ts-ignore
 import cyclingActionImg from "./assets/images/cycling_action_1780860242304.png";
-import { UserProfile, ChatMessage, TrainingPlan, UserAccount, Workout, isRestDay, formatGoal, formatLevel } from "./types";
+import { UserProfile, ChatMessage, TrainingPlan, UserAccount, Workout, isRestDay, formatGoal, formatLevel, WorkoutCompletionLog } from "./types";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { auth, apiFetch } from "./firebase";
 import WorkoutCard from "./components/WorkoutCard";
@@ -17,11 +17,19 @@ import WorkoutPlanPreview from "./components/WorkoutPlanPreview";
 import VolumeEvolutionChart from "./components/VolumeEvolutionChart";
 import WeeklyCalorieChart from "./components/WeeklyCalorieChart";
 import AchievementsDashboard from "./components/AchievementsDashboard";
+import WorkoutCompletionModal from "./components/WorkoutCompletionModal";
 import OnboardingForm from "./components/OnboardingForm";
+import TodayWorkoutCard from "./components/TodayWorkoutCard";
 import { CoachChat } from "./components/CoachChat";
+import TermsOfUseModal from "./components/TermsOfUseModal";
+import PrivacyPolicyModal from "./components/PrivacyPolicyModal";
+import ContactModal from "./components/ContactModal";
 import { MetaPixelEvents } from "./lib/metaPixel";
 import { getUserAccessInfo } from "./utils/subscriptionUtils";
 import { motion, AnimatePresence } from "motion/react";
+import { SEO_ARTICLES } from "./data/seoArticlesData";
+import { SeoContentPage } from "./components/SeoContentPage";
+import { updateSeoMeta, HOME_SEO_CONFIG } from "./utils/seoHead";
 import { 
   Users,
   ShieldCheck,
@@ -122,6 +130,44 @@ export default function App() {
 
   const [currentUser, setCurrentUser] = useState<UserAccount | null>(null);
 
+  // SEO and Public Content Page Routing
+  const [currentPath, setCurrentPath] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      return window.location.pathname.replace(/^\/|\/$/g, "");
+    }
+    return "";
+  });
+
+  useEffect(() => {
+    const handlePopState = () => {
+      const path = window.location.pathname.replace(/^\/|\/$/g, "");
+      setCurrentPath(path);
+      if (!path || !SEO_ARTICLES[path]) {
+        updateSeoMeta(HOME_SEO_CONFIG);
+      }
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
+  const handleNavigateHome = (targetGoal?: string) => {
+    window.history.pushState(null, "", "/");
+    setCurrentPath("");
+    updateSeoMeta(HOME_SEO_CONFIG);
+    window.scrollTo(0, 0);
+    if (targetGoal) {
+      setProfile(prev => ({ ...prev, goal: targetGoal }));
+    }
+  };
+
+  const handleNavigateSlug = (slug: string) => {
+    const cleanSlug = slug.replace(/^\/|\/$/g, "");
+    window.history.pushState(null, "", `/${cleanSlug}`);
+    setCurrentPath(cleanSlug);
+    window.scrollTo(0, 0);
+  };
+
   const [profile, setProfile] = useState<UserProfile>({
     name: "",
     level: "",
@@ -154,7 +200,7 @@ export default function App() {
   // Dashboard Tabs & Onboarding Setup Mode
   const [showAdvancedOnboarding, setShowAdvancedOnboarding] = useState(false);
   const [activeTab, setActiveTab] = useState<"planilha" | "desempenho" | "zonas" | "chat">("planilha");
-  const [showMyWorkouts, setShowMyWorkouts] = useState(false);
+  const [showMyWorkouts, setShowMyWorkouts] = useState(true);
   const [showPseExplanation, setShowPseExplanation] = useState(false);
   const [showSubscriptionCheckout, setShowSubscriptionCheckout] = useState(false);
 
@@ -169,6 +215,10 @@ export default function App() {
   const [feedbackText, setFeedbackText] = useState("");
   const [submittingFeedback, setSubmittingFeedback] = useState(false);
   const [feedbackSuccess, setFeedbackSuccess] = useState(false);
+
+  // Workout completion modal and evolution logs
+  const [completingWorkoutIndex, setCompletingWorkoutIndex] = useState<number | null>(null);
+  const [workoutLogs, setWorkoutLogs] = useState<WorkoutCompletionLog[]>([]);
 
   // PWA installation states
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -286,6 +336,68 @@ export default function App() {
     setPlan(updatedPlan);
     setCurrentUser(prev => prev ? { ...prev, plan: updatedPlan } : prev);
   }, [plan, isPendingUser]);
+
+  const handleSaveWorkoutLog = useCallback(async (log: WorkoutCompletionLog, updatedWorkout: Workout) => {
+    if (!plan || !plan.workouts) return;
+
+    // 1. Update workout in current plan
+    const updatedWorkouts = [...plan.workouts];
+    updatedWorkouts[log.workoutIndex] = updatedWorkout;
+    const updatedPlan = {
+      ...plan,
+      workouts: updatedWorkouts
+    };
+    setPlan(updatedPlan);
+
+    // 2. Update workoutLogs array
+    setWorkoutLogs(prevLogs => {
+      const existingIdx = prevLogs.findIndex(
+        l => l.id === log.id || (l.weekNumber === log.weekNumber && l.workoutIndex === log.workoutIndex)
+      );
+      if (existingIdx >= 0) {
+        const next = [...prevLogs];
+        next[existingIdx] = log;
+        return next;
+      }
+      return [...prevLogs, log];
+    });
+
+    setCurrentUser(prev => prev ? {
+      ...prev,
+      plan: updatedPlan
+    } : prev);
+
+    // 3. Celebrate with confetti if completed "sim"
+    if (log.completed === "sim") {
+      try {
+        confetti({
+          particleCount: 120,
+          spread: 70,
+          origin: { y: 0.6 }
+        });
+      } catch (err) {
+        console.error("Erro ao rodar animação de confetes:", err);
+      }
+    }
+
+    // 4. Send to backend endpoint /api/workout/log-completion
+    if (currentUser?.email) {
+      try {
+        await apiFetch("/api/workout/log-completion", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: currentUser.email,
+            log,
+            workoutIndex: log.workoutIndex,
+            workout: updatedWorkout
+          })
+        });
+      } catch (err) {
+        console.warn("Erro ao registrar log de treino no servidor:", err);
+      }
+    }
+  }, [plan, currentUser?.email]);
 
   const handleExportPDF = useCallback(() => {
     if (!plan) return;
@@ -603,6 +715,9 @@ export default function App() {
   const [showAdminPasswordPrompt, setShowAdminPasswordPrompt] = useState(false);
   const [adminPasswordInput, setAdminPasswordInput] = useState("");
   const [adminPasswordError, setAdminPasswordError] = useState("");
+  const [showTerms, setShowTerms] = useState(false);
+  const [showPrivacy, setShowPrivacy] = useState(false);
+  const [showContact, setShowContact] = useState(false);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -695,6 +810,7 @@ export default function App() {
           setChatHistory(data.user.chatHistory || []);
           setPlan(data.user.plan || null);
           setFeedbacks(data.user.feedbacks || []);
+          setWorkoutLogs(data.user.workoutLogs || []);
         }
       }
     } catch (err) {
@@ -716,6 +832,7 @@ export default function App() {
         }
       } else {
         setCurrentUser(null);
+        setWorkoutLogs([]);
       }
     });
 
@@ -762,6 +879,7 @@ export default function App() {
       chatHistory,
       plan,
       feedbacks,
+      workoutLogs,
       password: preservedPassword
     };
 
@@ -795,7 +913,7 @@ export default function App() {
         clearTimeout(saveTimeoutRef.current);
       }
     };
-  }, [profile, chatHistory, plan, feedbacks, currentUser?.email]);
+  }, [profile, chatHistory, plan, feedbacks, workoutLogs, currentUser?.email]);
 
   useEffect(() => {
     if (chatContainerRef.current) {
@@ -907,10 +1025,12 @@ export default function App() {
       const effectiveProfile: UserProfile = {
         ...profile,
         name: profile.name && profile.name.trim() ? profile.name.trim() : (currentUser?.profile?.name || currentUser?.name || "Atleta"),
-        level: profile.level || "intermediário",
-        goal: profile.goal || "melhorar condicionamento",
+        level: profile.level || "iniciante",
+        goal: profile.goal || "aumentar resistência",
         daysPerWeek: profile.daysPerWeek || 3,
         durationPerSession: profile.durationPerSession || 60,
+        bikeType: profile.bikeType || "MTB",
+        avgDistance: profile.avgDistance !== undefined && profile.avgDistance !== null ? profile.avgDistance : 25,
         onboardingStep: 10
       };
 
@@ -972,6 +1092,7 @@ export default function App() {
     setChatHistory(user.chatHistory);
     setPlan(user.plan);
     setFeedbacks(user.feedbacks || []);
+    setWorkoutLogs(user.workoutLogs || []);
     setShowAccountSettings(false);
   };
 
@@ -1047,6 +1168,7 @@ export default function App() {
   const handleSignOut = () => {
     signOut(auth).catch((err) => console.error("Erro ao fazer logout no Firebase:", err));
     setCurrentUser(null);
+    setWorkoutLogs([]);
     setShowAccountSettings(false);
     setProfile({
       name: "",
@@ -1147,7 +1269,8 @@ export default function App() {
     <div className="min-h-screen bg-transparent flex flex-col font-sans selection:bg-lime-200">
       
       {/* Upper Navigation Bar */}
-      <header id="main-header" className="bg-slate-900/95 backdrop-blur-md text-white shadow-xl border-b border-slate-800/80 sticky top-0 z-40">
+      {currentUser && !currentPath && (
+        <header id="main-header" className="bg-slate-900/95 backdrop-blur-md text-white shadow-xl border-b border-slate-800/80 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-3.5 flex flex-row items-center justify-between gap-2">
           <div className="flex items-center gap-2 sm:gap-3 animate-fadeInUp">
             <div className="p-2 sm:p-2.5 bg-lime-500 text-slate-950 rounded-xl shadow-[0_0_15px_rgba(132,204,22,0.3)] hover:scale-105 transition-transform duration-300 shrink-0">
@@ -1325,6 +1448,7 @@ export default function App() {
           </div>
         </div>
       </header>
+      )}
 
       {/* Global Error Banner */}
       {globalError && (
@@ -1386,8 +1510,17 @@ export default function App() {
       )}
 
       {/* Main Body */}
-      {!currentUser ? (
-        <LoginScreen onLoginSuccess={handleLoginSuccess} />
+      {currentPath && SEO_ARTICLES[currentPath] ? (
+        <SeoContentPage 
+          article={SEO_ARTICLES[currentPath]} 
+          onNavigateHome={handleNavigateHome} 
+          onNavigateSlug={handleNavigateSlug} 
+        />
+      ) : !currentUser ? (
+        <LoginScreen 
+          onLoginSuccess={handleLoginSuccess} 
+          onNavigateSlug={handleNavigateSlug}
+        />
       ) : showAccountSettings ? (
         <main className="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-6 lg:p-8 flex flex-col gap-8">
           <AccountSettings 
@@ -1547,16 +1680,18 @@ export default function App() {
                 <div className="space-y-2 relative z-10">
                   <div className="flex items-center gap-2.5 flex-wrap">
                     <span className="px-3 py-1 bg-lime-400 text-slate-950 font-black text-[10px] rounded-full uppercase tracking-wider shadow-xs">
-                      Configuração Rápida
+                      Criar Primeiro Treino
                     </span>
-                    <span className="text-slate-400 text-xs font-mono font-medium">Passo 1 de 2</span>
+                    <span className="text-lime-400 text-xs font-mono font-bold flex items-center gap-1">
+                      ⚡ Leva menos de 1 minuto
+                    </span>
                   </div>
                   <h2 className="font-heading font-black text-xl sm:text-2xl text-white tracking-tight flex items-center gap-2">
                     <Sparkles className="w-5 h-5 text-lime-400 animate-pulse shrink-0" />
-                    <span>Monte Sua Planilha Personalizada</span>
+                    <span>Seu Primeiro Plano de Ciclismo com IA</span>
                   </h2>
                   <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-xl font-sans">
-                    Responda às perguntas abaixo para nossa IA estruturar seus treinos da semana sob medida.
+                    Responda às 6 etapas rápidas para calibrarmos seus dias, intensidade e metas na medida certa.
                   </p>
                 </div>
               </div>
@@ -1693,6 +1828,23 @@ export default function App() {
                         plan={plan} 
                         profile={profile} 
                         onUnlockClick={() => setShowSubscriptionCheckout(true)} 
+                      />
+                    )}
+
+                    {/* TOP PRIORITY HERO: O que eu preciso treinar hoje? */}
+                    {plan && plan.workouts && (
+                      <TodayWorkoutCard
+                        workouts={plan.workouts}
+                        profile={profile}
+                        isSimpleMode={displayMode === "simples"}
+                        onUpdateWorkout={handleUpdateWorkout}
+                        onOpenCompleteModal={(workoutIndex) => setCompletingWorkoutIndex(workoutIndex)}
+                        onOpenFullWorkout={(workoutIndex) => {
+                          setShowMyWorkouts(true);
+                          setTimeout(() => {
+                            workoutsSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+                          }, 150);
+                        }}
                       />
                     )}
 
@@ -2066,9 +2218,9 @@ export default function App() {
                           {/* Workouts section header with the PSE Explanation button */}
                           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-5 pb-3 border-b border-slate-100 mb-2">
                             <div className="flex items-center gap-2">
-                              <Calendar className="w-4 h-4 text-slate-500 shrink-0" />
+                              <Calendar className="w-4 h-4 text-lime-600 shrink-0" />
                               <h3 className="font-heading font-black text-slate-800 text-sm uppercase tracking-wider">
-                                Sessões de Treino Semanais
+                                Próximos Treinos e Programação Semanal
                               </h3>
                             </div>
                             <button
@@ -2227,6 +2379,7 @@ export default function App() {
                                   onDelete={() => handleDeleteWorkout(index)}
                                   isSimpleMode={displayMode === "simples"}
                                   onUnlockClick={() => setShowSubscriptionCheckout(true)}
+                                  onOpenCompleteModal={() => setCompletingWorkoutIndex(index)}
                                 />
                               </motion.div>
                             ))}
@@ -2377,7 +2530,7 @@ export default function App() {
                     exit={{ opacity: 0, scale: 0.98 }}
                     transition={{ duration: 0.2 }}
                   >
-                    <AchievementsDashboard profile={profile} plan={plan} />
+                    <AchievementsDashboard profile={profile} plan={plan} workoutLogs={workoutLogs} />
                   </motion.div>
                 )}
 
@@ -2454,13 +2607,16 @@ export default function App() {
       )}
 
       {/* Footer */}
-      <footer className="bg-slate-950 text-slate-400 text-xs font-sans border-t border-slate-900 py-8 px-4 sm:px-6 lg:px-8 mt-12 pb-24 sm:pb-12 shrink-0">
+      <footer className="bg-slate-950 text-slate-400 text-xs font-sans border-t border-slate-900 py-8 px-4 sm:px-6 lg:px-8 mt-12 pb-24 sm:pb-12 shrink-0 space-y-6">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4 text-center md:text-left">
           <div className="flex items-center gap-2">
             <div className="p-1.5 bg-slate-900 rounded-lg text-lime-400 border border-slate-800">
               <Bike className="w-4 h-4" />
             </div>
-            <span className="font-extrabold text-white text-xs">&copy; 2026 Biker AI. Todos os direitos reservados.</span>
+            <div>
+              <span className="font-extrabold text-white text-xs">&copy; 2026 Biker AI. Todos os direitos reservados.</span>
+              <p className="text-[10px] text-slate-500 font-mono">Planilhas e Periodização Inteligente</p>
+            </div>
           </div>
 
           <div className="flex flex-wrap justify-center items-center gap-x-3 gap-y-1.5 text-[11px] text-slate-400">
@@ -2471,13 +2627,60 @@ export default function App() {
             <span>Zonas de Intensidade</span>
           </div>
 
-          <a 
-            href="mailto:bikeraisupport@gmail.com"
-            className="inline-flex items-center gap-2 px-3 py-1.5 bg-slate-900 hover:bg-slate-850 text-lime-400 border border-slate-800 rounded-xl text-xs font-bold transition-all shadow-sm"
+          <button 
+            type="button"
+            onClick={() => setShowContact(true)}
+            className="inline-flex items-center gap-2 px-3 py-1.5 bg-slate-900 hover:bg-slate-850 text-lime-400 border border-slate-800 rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer"
           >
             <Mail className="w-3.5 h-3.5 text-lime-400 shrink-0" />
-            <span>Suporte: bikeraisupport@gmail.com</span>
-          </a>
+            <span>Fale Conosco / Suporte</span>
+          </button>
+        </div>
+
+        {/* Links Institucionais: Termos de Uso, Política de Privacidade, Contato & Selos de Confiança */}
+        <div className="max-w-7xl mx-auto pt-4 border-t border-slate-900 flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
+          <div className="flex flex-wrap items-center justify-center sm:justify-start gap-x-4 gap-y-1.5 text-xs font-medium">
+            <button
+              type="button"
+              onClick={() => setShowTerms(true)}
+              className="text-slate-400 hover:text-lime-400 transition-colors cursor-pointer underline-offset-4 hover:underline"
+            >
+              Termos de Uso
+            </button>
+            <span className="text-slate-800">•</span>
+            <button
+              type="button"
+              onClick={() => setShowPrivacy(true)}
+              className="text-slate-400 hover:text-lime-400 transition-colors cursor-pointer underline-offset-4 hover:underline"
+            >
+              Política de Privacidade
+            </button>
+            <span className="text-slate-800">•</span>
+            <button
+              type="button"
+              onClick={() => setShowContact(true)}
+              className="text-slate-400 hover:text-lime-400 transition-colors cursor-pointer underline-offset-4 hover:underline"
+            >
+              Contato
+            </button>
+          </div>
+
+          <div className="flex items-center gap-3 text-[11px] text-slate-500">
+            <span className="flex items-center gap-1 text-slate-400">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+              Pagamento seguro
+            </span>
+            <span>•</span>
+            <span className="flex items-center gap-1 text-slate-400">
+              <CheckCircle2 className="w-3.5 h-3.5 text-lime-400" />
+              Cancele quando quiser
+            </span>
+            <span>•</span>
+            <span className="flex items-center gap-1 text-slate-400">
+              <Lock className="w-3.5 h-3.5 text-sky-400" />
+              Seus dados protegidos
+            </span>
+          </div>
         </div>
       </footer>
 
@@ -2555,7 +2758,7 @@ export default function App() {
                 <div className="bg-lime-500/5 p-3 rounded-xl border border-lime-500/10 text-[11px] text-lime-400 flex items-start gap-2">
                   <Lightbulb className="w-4 h-4 text-lime-400 shrink-0 mt-0.5" />
                   <span className="font-extrabold select-none">VANTAGENS:</span>
-                  <span className="leading-relaxed font-curate">Instalar o aplicativo garante carregamento instantâneo, menos consumo de internet, suporte offline e navegação livre de barras do navegador!</span>
+                  <span className="leading-relaxed">Instalar o aplicativo garante carregamento instantâneo, menos consumo de internet, suporte offline e navegação livre de barras do navegador!</span>
                 </div>
 
               </div>
@@ -2758,6 +2961,23 @@ export default function App() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Workout Completion 5-Question Modal */}
+      {completingWorkoutIndex !== null && plan && plan.workouts && plan.workouts[completingWorkoutIndex] && (
+        <WorkoutCompletionModal
+          isOpen={true}
+          onClose={() => setCompletingWorkoutIndex(null)}
+          workout={plan.workouts[completingWorkoutIndex]}
+          workoutIndex={completingWorkoutIndex}
+          weekNumber={plan.weekNumber || 1}
+          onSaveLog={handleSaveWorkoutLog}
+        />
+      )}
+
+      {/* Modais Legais e de Contato */}
+      <TermsOfUseModal isOpen={showTerms} onClose={() => setShowTerms(false)} />
+      <PrivacyPolicyModal isOpen={showPrivacy} onClose={() => setShowPrivacy(false)} />
+      <ContactModal isOpen={showContact} onClose={() => setShowContact(false)} />
 
       {/* Floating Email Support Button */}
       <a

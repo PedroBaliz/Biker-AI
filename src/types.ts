@@ -20,6 +20,8 @@ export interface UserProfile {
   trialStatus?: 'active' | 'trial' | 'trial_expired' | 'expired' | 'coach';
   trialDaysRemaining?: number;
   trialHoursRemaining?: number;
+  bikeType?: 'MTB' | 'Speed' | 'Gravel' | 'Urbana/Outra' | string;
+  avgDistance?: string | number;
 }
 
 export interface Workout {
@@ -48,6 +50,26 @@ export interface Workout {
   actualElevation?: number;
   actualCalories?: number;
   actualStravaLink?: string;
+  // Evolution tracking metrics
+  completionStatus?: 'sim' | 'parcialmente' | 'nao';
+  difficulty?: 'facil' | 'adequada' | 'dificil' | 'muito_dificil';
+}
+
+export interface WorkoutCompletionLog {
+  id: string;
+  workoutIndex: number;
+  workoutDay: string;
+  workoutType: string;
+  weekNumber: number;
+  completedAt: string; // ISO date string
+  completed: 'sim' | 'parcialmente' | 'nao';
+  difficulty: 'facil' | 'adequada' | 'dificil' | 'muito_dificil';
+  actualDistanceKm: number;
+  actualDurationMin: number;
+  notes?: string;
+  targetDurationMin: number;
+  targetZone?: string;
+  targetRpe?: number;
 }
 
 export interface TrainingPlan {
@@ -77,6 +99,7 @@ export interface UserAccount {
   plan: TrainingPlan | null;
   password?: string;
   feedbacks?: { id: string; text: string; timestamp: string }[];
+  workoutLogs?: WorkoutCompletionLog[];
 }
 
 export interface ZoneInfo {
