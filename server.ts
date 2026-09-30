@@ -1286,7 +1286,7 @@ app.post("/api/auth/login", async (req, res) => {
 });
 
 // Real-time synchronization of athlete profile, history & planning sheets to the cloud
-app.post("/api/auth/save-user", requireAuth, verifyUserMatch, async (req, res) => {
+app.post("/api/auth/save-user", requireAuth, verifyUserMatch, async (req: any, res: any) => {
   try {
     const { email, userAccount, password } = req.body;
     if (!email || !userAccount) {
@@ -1302,15 +1302,52 @@ app.post("/api/auth/save-user", requireAuth, verifyUserMatch, async (req, res) =
     const targetKey = userFound.key;
     const existingUser = userFound.user;
 
+    // Determine if requester has administrator privileges
+    const requesterEmail = (req.user?.email || "").toString().trim().toLowerCase();
+    const adminHeader = req.headers["x-admin-password"];
+    const adminSecretStr = typeof adminHeader === "string" ? adminHeader : undefined;
+    const isAdminCaller = Boolean(
+      (adminSecretStr && verifyAdminSecret(adminSecretStr)) ||
+      requesterEmail === MASTER_ADMIN_EMAIL
+    );
+
     // Preserve createdAt to guarantee trial duration isn't lost during updates
-    const existingCreatedAt = existingUser?.profile?.createdAt || existingUser?.createdAt;
-    if (existingCreatedAt) {
-      if (userAccount.profile && !userAccount.profile.createdAt) {
-        userAccount.profile.createdAt = existingCreatedAt;
-      }
-      if (!userAccount.createdAt) {
-        userAccount.createdAt = existingUser?.createdAt || existingCreatedAt;
-      }
+    const existingCreatedAt = existingUser?.profile?.createdAt || existingUser?.createdAt || new Date().toISOString();
+
+    // Protect privileged fields (role, isCoach, subscriptionStatus, subscriptionPlan, subscriptionExpiresAt)
+    let sanitizedProfile: any;
+    if (isAdminCaller) {
+      sanitizedProfile = {
+        ...(existingUser.profile || {}),
+        ...(userAccount.profile || {}),
+        createdAt: existingCreatedAt
+      };
+    } else {
+      // For standard athletes, only allow editing non-privileged athlete fields
+      const incomingProfile = userAccount.profile || {};
+      sanitizedProfile = {
+        ...(existingUser.profile || {}),
+        name: typeof incomingProfile.name === "string" ? incomingProfile.name.trim() : existingUser.profile?.name,
+        level: incomingProfile.level || existingUser.profile?.level,
+        goal: incomingProfile.goal || existingUser.profile?.goal,
+        daysPerWeek: incomingProfile.daysPerWeek ?? existingUser.profile?.daysPerWeek,
+        durationPerSession: incomingProfile.durationPerSession ?? existingUser.profile?.durationPerSession,
+        eventDate: incomingProfile.eventDate ?? existingUser.profile?.eventDate,
+        hasPowerMeter: incomingProfile.hasPowerMeter ?? existingUser.profile?.hasPowerMeter,
+        ftp: incomingProfile.ftp !== undefined ? incomingProfile.ftp : existingUser.profile?.ftp,
+        hasHeartRate: incomingProfile.hasHeartRate ?? existingUser.profile?.hasHeartRate,
+        maxHeartRate: incomingProfile.maxHeartRate !== undefined ? incomingProfile.maxHeartRate : existingUser.profile?.maxHeartRate,
+        limitations: incomingProfile.limitations !== undefined ? incomingProfile.limitations : existingUser.profile?.limitations,
+        recentActivity: incomingProfile.recentActivity !== undefined ? incomingProfile.recentActivity : existingUser.profile?.recentActivity,
+        onboardingStep: incomingProfile.onboardingStep ?? existingUser.profile?.onboardingStep,
+        // STRICTLY preserve privileged attributes from existing record
+        role: existingUser.profile?.role || "athlete",
+        isCoach: existingUser.profile?.isCoach === true,
+        subscriptionStatus: existingUser.profile?.subscriptionStatus || "pending_payment",
+        subscriptionPlan: existingUser.profile?.subscriptionPlan || "Plano Pro",
+        subscriptionExpiresAt: existingUser.profile?.subscriptionExpiresAt || "2026-12-31",
+        createdAt: existingCreatedAt
+      };
     }
 
     // Maintain password securely (never overwrite with hardcoded secrets)
@@ -1323,8 +1360,15 @@ app.post("/api/auth/save-user", requireAuth, verifyUserMatch, async (req, res) =
     }
 
     db[targetKey] = {
-      ...userAccount,
-      password: preservedPassword
+      ...existingUser,
+      email: existingUser.email,
+      profile: sanitizedProfile,
+      plan: userAccount.plan !== undefined ? userAccount.plan : existingUser.plan,
+      feedbacks: userAccount.feedbacks !== undefined ? userAccount.feedbacks : (existingUser.feedbacks || []),
+      workoutLogs: userAccount.workoutLogs !== undefined ? userAccount.workoutLogs : (existingUser.workoutLogs || []),
+      chatHistory: userAccount.chatHistory !== undefined ? userAccount.chatHistory : (existingUser.chatHistory || []),
+      password: preservedPassword,
+      createdAt: existingCreatedAt
     };
 
     await saveDatabase(db, targetKey, getAuthToken(req));
@@ -3553,8 +3597,21 @@ async function bootstrap() {
   }
 }
 
-bootstrap().catch((err) => {
-  console.error("Failed to start server:", err);
-});
+if (process.env.NODE_ENV !== "test") {
+  bootstrap().catch((err) => {
+    console.error("Failed to start server:", err);
+  });
+}
+
+export {
+  app,
+  requireAuth,
+  requireAdmin,
+  verifyPassword,
+  hashPassword,
+  verifyAdminSecret,
+  findUserInDb,
+  MASTER_ADMIN_EMAIL
+};
 
 export default app;

@@ -1,8 +1,8 @@
 # 🚴‍♂️ Biker AI — Seu Treinador de Ciclismo com Inteligência Artificial
 
-> Plataforma inteligente de periodização, prescrição e acompanhamento de treinos de ciclismo personalizados com IA (Google Gemini), adaptados ao nível, objetivos, rotina e métricas de cada atleta.
+> Plataforma de periodização, prescrição e acompanhamento de treinos de ciclismo personalizados com IA (Google Gemini), adaptados ao nível, objetivos, rotina e métricas de cada atleta.
 
-[![CI](https://github.com/pedro-bramos/biker-ai/actions/workflows/ci.yml/badge.svg)](https://github.com/pedro-bramos/biker-ai/actions/workflows/ci.yml)
+[![CI](https://github.com/PedroBaliz/Biker-AI/actions/workflows/ci.yml/badge.svg)](https://github.com/PedroBaliz/Biker-AI/actions/workflows/ci.yml)
 ![Node.js](https://img.shields.io/badge/node.js-%3E%3D20-brightgreen.svg)
 ![React](https://img.shields.io/badge/React-19-blue.svg)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.8-blue.svg)
@@ -11,34 +11,52 @@
 
 ---
 
+### 🌐 Demonstração Online (Live Demo)
+Acesse a aplicação em produção/demonstração:  
+👉 **[https://ais-pre-ig3xpt2tylya4dpumxckiy-403337948550.us-west2.run.app](https://ais-pre-ig3xpt2tylya4dpumxckiy-403337948550.us-west2.run.app)**
+
+---
+
 ## 🎯 O Problema que o Biker AI Resolve
 
 A maioria dos ciclistas amadores e entusiastas enfrenta um dilema comum:
 1. **Planilhas genéricas da internet:** Não respeitam a rotina semanal real, o nível físico, as limitações articulares ou os equipamentos do atleta (medidor de potência vs. frequencímetro vs. percepção de esforço - RPE).
 2. **Consultorias presenciais e treinadores dedicados:** Possuem custo financeiro elevado, tornando o acompanhamento técnico inacessível para grande parte dos praticantes.
-3. **Falta de feedback pós-treino:** Atletas pedalam sem saber se a intensidade aplicada foi produtiva ou se estão sob risco de *overtraining* ou lesão.
+3. **Falta de feedback pós-treino:** Atletas pedalam sem saber se a intensidade aplicada foi produtiva ou se estão sob risco de sobrecarga.
 
-O **Biker AI** democratiza a metodologia profissional de treinamento esportivo de ciclismo, combinando a precisão da Inteligência Artificial do Google Gemini com a ciência da fisiologia do exercício (periodização clássica e polarizada, zonas de potência Coggan Z1–Z7, zonas cardíacas e RPE Borg 1–10).
+O **Biker AI** auxilia na estruturação de treinos combinando a capacidade analítica da Inteligência Artificial do Google Gemini com metodologias consolidadas de treinamento esportivo (periodização de cargas, zonas de potência Coggan Z1–Z7, zonas cardíacas e RPE Borg 1–10).
+
+---
+
+## 📱 Visão Geral da Interface
+
+| 📊 Planilha Semanal Estruturada | 💬 Treinador Conversacional (Coach AI) |
+| :---: | :---: |
+| Visualização clara dos treinos do microciclo, aquecimento, bloco principal, cadência alvo e dicas. | Chat dinâmico em sessão limpa para tirar dúvidas e solicitar ajustes rápidos na planilha. |
+
+| ⚙️ Painel do Treinador (Admin) | 🔄 Integração com Strava |
+| :---: | :---: |
+| Gestão de assinaturas, auditoria de atletas cadastrados e backups do sistema. | Importação de treinos reais com comparação entre o planejado e o executado. |
 
 ---
 
 ## 🚀 Principais Funcionalidades
 
-### 1. 📋 Onboarding & Diagnóstico Fisiológico Inteligente
-- Questionário dinâmico guiado para mapeamento de:
+### 1. 📋 Onboarding & Perfil de Treino Personalizado
+- Questionário guiado para mapeamento de:
   - Nível do ciclista (*Iniciante*, *Intermediário*, *Avançado/Competitivo*).
   - Objetivo principal (*Melhorar condicionamento*, *Provas/Gran Fondo*, *Subidas/Escaladas*, *Perda de peso*).
   - Disponibilidade semanal (número de dias e minutos por sessão).
-  - Sensores disponíveis: **Potência (FTP)**, **Frequência Cardíaca (BPM Máximo)** ou **Percepção Subjetiva de Esforço (RPE 1-10)** para quem não usa sensores.
-  - Limitações físicas e lesões prévias.
+  - Métricas e sensores: **Potência (FTP)**, **Frequência Cardíaca (BPM Máximo)** ou **Percepção Subjetiva de Esforço (RPE 1-10)** para quem pedala sem sensores.
+  - Limitações físicas e rotina recente.
 
 ### 2. 📅 Prescrição e Periodização de Planilhas Semanais
-- Geração automática de microciclos estruturados por dia da semana.
-- Cada treino detalha:
-  - **Aquecimento progressivo** com cadência alvo.
-  - **Bloco Principal intervalado** (Ex: *Sweet Spot*, *Tiro VO2 Max*, *Endurance Z2*, *Limiar de Lactato*).
-  - **Volta à calma**, hidratação, nutrição intra-treino e dicas fisiológicas práticas do treinador.
-- **Geração da Próxima Semana:** O treinador avalia a adesão aos treinos anteriores e progressão de carga para modular os estímulos do ciclo seguinte.
+- Estruturação de microciclos organizados por dia da semana.
+- Cada sessão detalha:
+  - **Aquecimento progressivo** com cadência sugerida.
+  - **Bloco Principal intervalado** (Ex: *Sweet Spot*, *VO2 Max*, *Endurance Z2*, *Limiar de Lactato*).
+  - **Volta à calma**, hidratação e recomendações práticas de recuperação.
+- **Geração da Próxima Semana:** O treinador avalia os treinos concluídos pelo atleta para modular as cargas do ciclo seguinte.
 
 ### 3. 🤖 Coach AI Conversacional (Sessão Efêmera)
 - Assistente virtual especialista em ciclismo para tirar dúvidas técnicas (nutrição, técnica de pedalada, recuperação, cadência).
@@ -48,13 +66,13 @@ O **Biker AI** democratiza a metodologia profissional de treinamento esportivo d
 ### 4. 🔗 Leitura e Análise de Treinos do Strava
 - Importação direta de dados e links de atividades do Strava.
 - Extração de métricas de desempenho: quilometragem, ganho de elevação, velocidade média, potência e batimentos cardíacos.
-- Avaliação comparativa: confronto entre o treino que foi prescrito e o que foi de fato executado pelo atleta, gerando feedback de conformidade.
+- Avaliação comparativa entre o treino prescrito e a atividade registrada pelo atleta.
 
 ### 5. 📄 Exportação em PDF Formatado
 - Download em 1 clique da planilha semanal completa em layout limpo e profissional para impressão ou consulta offline no celular/ciclocomputador.
 
 ### 6. 🛡️ Painel Administrativo do Treinador (Coach Dashboard)
-- Visualização e auditoria de todos os atletas cadastrados.
+- Visualização e auditoria de atletas cadastrados.
 - Gerenciamento de status de assinatura (*Ativo*, *Pendente*, *Expirado*).
 - Criação e restauração de backups instantâneos do banco de dados.
 - Moderação e controle de acessos com credenciais restritas e verificação criptográfica.
@@ -110,8 +128,8 @@ biker-ai/
 
 ### 1. Clonar o Repositório
 ```bash
-git clone https://github.com/pedro-bramos/biker-ai.git
-cd biker-ai
+git clone https://github.com/PedroBaliz/Biker-AI.git
+cd Biker-AI
 ```
 
 ### 2. Instalar Dependências

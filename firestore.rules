@@ -28,10 +28,33 @@ service cloud.firestore {
     match /users/{email} {
       allow get: if isOwner(email) || isAdmin();
       allow list: if isAdmin();
-      allow create, update: if (isOwner(email) || isAdmin()) && (
+
+      // On create, non-admins cannot self-assign role 'coach'/'admin', isCoach=true, or active subscription
+      allow create: if (isOwner(email) || isAdmin()) && (
         request.resource.data.email is string &&
-        request.resource.data.email.size() <= 128
+        request.resource.data.email.size() <= 128 &&
+        (isAdmin() || (
+          (!('profile' in request.resource.data) || !('role' in request.resource.data.profile) || request.resource.data.profile.role == 'athlete') &&
+          (!('profile' in request.resource.data) || !('isCoach' in request.resource.data.profile) || request.resource.data.profile.isCoach == false) &&
+          (!('profile' in request.resource.data) || !('subscriptionStatus' in request.resource.data.profile) || request.resource.data.profile.subscriptionStatus == 'pending_payment')
+        ))
       );
+
+      // On update, athletes cannot modify privileged fields (role, isCoach, subscriptionStatus, subscriptionExpiresAt)
+      allow update: if (isOwner(email) || isAdmin()) && (
+        request.resource.data.email is string &&
+        request.resource.data.email.size() <= 128 &&
+        (isAdmin() || (
+          (!('profile' in resource.data) || !('profile' in request.resource.data)) ||
+          (
+            (!('role' in resource.data.profile) || request.resource.data.profile.role == resource.data.profile.role) &&
+            (!('subscriptionStatus' in resource.data.profile) || request.resource.data.profile.subscriptionStatus == resource.data.profile.subscriptionStatus) &&
+            (!('isCoach' in resource.data.profile) || request.resource.data.profile.isCoach == resource.data.profile.isCoach) &&
+            (!('subscriptionExpiresAt' in resource.data.profile) || request.resource.data.profile.subscriptionExpiresAt == resource.data.profile.subscriptionExpiresAt)
+          )
+        ))
+      );
+
       allow delete: if isAdmin();
     }
   }
