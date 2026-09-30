@@ -70,9 +70,7 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
   const fetchBackups = async () => {
     setBackupsLoading(true);
     try {
-      const response = await apiFetch(`/api/admin/backups?email=${encodeURIComponent(currentUserEmail)}&adminPassword=Pedro23072007`, {
-        headers: { "X-User-Email": currentUserEmail, "X-Admin-Password": "Pedro23072007" }
-      });
+      const response = await apiFetch(`/api/admin/backups?email=${encodeURIComponent(currentUserEmail)}`);
       if (response.ok) {
         const data = await response.json();
         if (data.success) {
@@ -95,8 +93,8 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
     try {
       const response = await apiFetch("/api/admin/backups/create", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "X-User-Email": currentUserEmail, "X-Admin-Password": "Pedro23072007" },
-        body: JSON.stringify({ email: currentUserEmail, adminPassword: "Pedro23072007" })
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: currentUserEmail })
       });
       if (response.ok) {
         const data = await response.json();
@@ -128,8 +126,8 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
     try {
       const response = await apiFetch("/api/admin/backups/restore", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "X-User-Email": currentUserEmail, "X-Admin-Password": "Pedro23072007" },
-        body: JSON.stringify({ filename, email: currentUserEmail, adminPassword: "Pedro23072007" })
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ filename, email: currentUserEmail })
       });
       if (response.ok) {
         const data = await response.json();
@@ -171,9 +169,7 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
     setLoading(true);
     setError("");
     try {
-      const response = await apiFetch(`/api/admin/users?email=${encodeURIComponent(currentUserEmail)}&adminPassword=Pedro23072007`, {
-        headers: { "X-User-Email": currentUserEmail, "X-Admin-Password": "Pedro23072007" }
-      });
+      const response = await apiFetch(`/api/admin/users?email=${encodeURIComponent(currentUserEmail)}`);
       if (response.ok) {
         const data = await response.json();
         if (data.success && data.users) {
@@ -226,10 +222,9 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
     try {
       const response = await apiFetch("/api/admin/update-user-status", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "X-User-Email": currentUserEmail, "X-Admin-Password": "Pedro23072007" },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           adminEmail: currentUserEmail,
-          adminPassword: "Pedro23072007",
           email: selectedUser.email,
           subscriptionStatus: editStatus,
           subscriptionPlan: editPlan,
@@ -270,10 +265,9 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
     try {
       const response = await apiFetch("/api/admin/update-user-status", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "X-User-Email": currentUserEmail, "X-Admin-Password": "Pedro23072007" },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           adminEmail: currentUserEmail,
-          adminPassword: "Pedro23072007",
           email: user.email,
           subscriptionStatus: newStat
         })
@@ -301,10 +295,9 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
       const newCreatedAt = new Date().toISOString();
       const response = await apiFetch("/api/admin/update-user-status", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "X-User-Email": currentUserEmail, "X-Admin-Password": "Pedro23072007" },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           adminEmail: currentUserEmail,
-          adminPassword: "Pedro23072007",
           email: user.email,
           subscriptionStatus: "pending_payment",
           createdAt: newCreatedAt
@@ -348,8 +341,8 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
     try {
       const response = await apiFetch("/api/admin/delete-user", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "X-User-Email": currentUserEmail, "X-Admin-Password": "Pedro23072007" },
-        body: JSON.stringify({ email: userToDelete.email, adminPassword: "Pedro23072007" })
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: userToDelete.email })
       });
 
       if (response.ok) {

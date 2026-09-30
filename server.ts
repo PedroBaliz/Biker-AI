@@ -140,8 +140,16 @@ function verifyPassword(password: string, storedHash: string): boolean {
   }
   
   const [salt, hash] = storedHash.split(":");
+  if (!salt || !hash) return false;
   const testHash = crypto.pbkdf2Sync(password, salt, 100000, 64, "sha256").toString("hex");
-  return testHash === hash;
+  try {
+    const a = Buffer.from(testHash);
+    const b = Buffer.from(hash);
+    if (a.length !== b.length) return false;
+    return crypto.timingSafeEqual(a, b);
+  } catch {
+    return false;
+  }
 }
 
 // Google public keys cache for Firebase ID token verification
@@ -268,60 +276,64 @@ async function verifyFirebaseIdToken(token: string, projectId: string): Promise<
   return decodedToken;
 }
 
+// Master admin email and secret verification helpers
+const MASTER_ADMIN_EMAIL = (process.env.ADMIN_EMAIL || "pedro.bramos@sempreceub.com").trim().toLowerCase();
+
+function verifyAdminSecret(providedSecret?: string): boolean {
+  const envSecret = process.env.ADMIN_PASSWORD;
+  if (!envSecret || !providedSecret) return false;
+  try {
+    const a = Buffer.from(providedSecret);
+    const b = Buffer.from(envSecret);
+    if (a.length !== b.length) return false;
+    return crypto.timingSafeEqual(a, b);
+  } catch {
+    return false;
+  }
+}
+
 // Pre-fetch Google public keys on server startup for warm cache
 fetchGooglePublicKeys().catch(() => {});
 
-// Middleware to enforce active Firebase Auth session or user session fallback
+// Middleware to strictly enforce active Firebase Auth session or configured admin secret
 async function requireAuth(req: any, res: any, next: any) {
   try {
     const authHeader = req.headers.authorization;
-    const requestedEmail = req.body?.email || req.body?.userAccount?.email || req.body?.profile?.email || req.query?.email || req.headers["x-user-email"];
-    const adminPassword = req.headers["x-admin-password"] || req.body?.adminPassword || req.query?.adminPassword || req.headers["admin-password"] || req.headers["x-coach-password"] || req.query?.pass;
+    const adminPassword = req.headers["x-admin-password"] || req.body?.adminPassword;
 
-    // If valid coach/admin password is provided, pass through immediately
-    if (adminPassword === "Pedro23072007" || req.headers["x-admin-password"] === "Pedro23072007") {
-      req.user = { email: (requestedEmail || "pedro.bramos@sempreceub.com").toString().trim().toLowerCase() };
+    // 1. If valid coach/admin secret configured in environment is provided, grant admin access
+    if (adminPassword && verifyAdminSecret(adminPassword)) {
+      req.user = { email: MASTER_ADMIN_EMAIL, isAdmin: true, role: "coach" };
       return next();
     }
 
+    // 2. Otherwise require valid Bearer token from Firebase Auth
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      if (requestedEmail && typeof requestedEmail === "string") {
-        req.user = { email: requestedEmail.trim().toLowerCase() };
-        return next();
-      }
-      return res.status(401).json({ error: "Sessão inválida ou ausente. Por favor, realize o login." });
+      return res.status(401).json({ error: "Sessão inválida ou ausente. Cabeçalho de autorização não fornecido." });
     }
 
-    const token = authHeader.split("Bearer ")[1];
+    const token = authHeader.split("Bearer ")[1]?.trim();
+    if (!token) {
+      return res.status(401).json({ error: "Token de autorização vazio." });
+    }
+
     const projectId = firebaseAppletConfig.projectId;
-
     if (!projectId) {
-      if (requestedEmail && typeof requestedEmail === "string") {
-        req.user = { email: requestedEmail.trim().toLowerCase() };
-      }
-      return next();
+      return res.status(500).json({ error: "Configuração do Firebase incompleta no servidor." });
     }
 
-    try {
-      const decodedToken = await verifyFirebaseIdToken(token, projectId);
-      req.user = decodedToken || {};
-      const tokenEmail = decodedToken?.email || decodedToken?.firebase?.identities?.email?.[0];
-      if (tokenEmail) {
-        req.user.email = tokenEmail.trim().toLowerCase();
-      } else if (requestedEmail && typeof requestedEmail === "string") {
-        req.user.email = requestedEmail.trim().toLowerCase();
-      }
-      return next();
-    } catch (tokenErr: any) {
-      if (requestedEmail && typeof requestedEmail === "string") {
-        req.user = { email: requestedEmail.trim().toLowerCase() };
-        return next();
-      }
-      throw tokenErr;
+    const decodedToken = await verifyFirebaseIdToken(token, projectId);
+    const tokenEmail = decodedToken?.email || decodedToken?.firebase?.identities?.email?.[0];
+    if (!tokenEmail) {
+      return res.status(401).json({ error: "Token não contém uma identidade ou e-mail válido." });
     }
+
+    req.user = decodedToken || {};
+    req.user.email = tokenEmail.trim().toLowerCase();
+    return next();
   } catch (err: any) {
     console.warn("[RequireAuth] Falha na validação do token:", err.message);
-    res.status(401).json({ error: `Sessão inválida ou expirada: ${err.message}` });
+    return res.status(401).json({ error: `Sessão inválida ou expirada: ${err.message}` });
   }
 }
 
@@ -428,35 +440,39 @@ function sanitizePlanForUser(plan: any, profile: any, userEmail?: string) {
 
 // Middleware to restrict access to coach/admin only
 async function requireAdmin(req: any, res: any, next: any) {
-  const requestedEmail = req.body?.email || req.body?.userAccount?.email || req.body?.profile?.email || req.query?.email || req.headers["x-user-email"];
-  const adminPassword = req.headers["x-admin-password"] || req.body?.adminPassword || req.query?.adminPassword || req.headers["admin-password"] || req.headers["x-coach-password"] || req.query?.pass;
-  const authEmail = (req.user?.email || requestedEmail || "").toString().trim().toLowerCase();
+  const adminPassword = req.headers["x-admin-password"] || req.body?.adminPassword;
 
-  // If coach password "Pedro23072007" is supplied in headers, body, or query, allow admin access
-  if (adminPassword === "Pedro23072007" || req.headers["x-admin-password"] === "Pedro23072007") {
+  // 1. If valid coach/admin secret configured in environment is supplied, allow access
+  if (adminPassword && verifyAdminSecret(adminPassword)) {
     req.user = req.user || {};
-    req.user.email = authEmail || "pedro.bramos@sempreceub.com";
+    if (!req.user.email) req.user.email = MASTER_ADMIN_EMAIL;
     return next();
   }
 
-  if (authEmail === "pedro.bramos@sempreceub.com") {
-    req.user = req.user || {};
-    req.user.email = authEmail;
+  // 2. Validate against verified authenticated user email
+  const authEmail = (req.user?.email || "").toString().trim().toLowerCase();
+  if (!authEmail) {
+    return res.status(401).json({ error: "Sessão inválida. Realize login para continuar." });
+  }
+
+  if (authEmail === MASTER_ADMIN_EMAIL) {
     return next();
   }
 
-  if (authEmail) {
-    try {
-      const db = await getDatabase();
-      const userFound = findUserInDb(db, authEmail);
-      if (userFound && userFound.user?.profile && (userFound.user.profile.role === "coach" || userFound.user.profile.role === "admin" || userFound.user.profile.isCoach === true)) {
-        req.user = req.user || {};
-        req.user.email = authEmail;
-        return next();
-      }
-    } catch (e) {
-      // ignore
+  try {
+    const db = await getDatabase();
+    const userFound = findUserInDb(db, authEmail);
+    if (
+      userFound &&
+      userFound.user?.profile &&
+      (userFound.user.profile.role === "coach" ||
+       userFound.user.profile.role === "admin" ||
+       userFound.user.profile.isCoach === true)
+    ) {
+      return next();
     }
+  } catch (e) {
+    console.error("Erro ao verificar papel do usuário:", e);
   }
 
   return res.status(403).json({ error: "Acesso restrito. Operação exclusiva do treinador/coach." });
@@ -593,9 +609,11 @@ app.use((req, res, next) => {
   next();
 });
 
-// Log all requests to a physical file for request tracing
+// Log requests for tracing without leaking sensitive headers, credentials or tokens
 app.use((req, res, next) => {
-  const logMsg = `[${new Date().toISOString()}] ${req.method} ${req.url} - Headers: ${JSON.stringify(req.headers)}\n`;
+  const clientIp = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || req.ip || "unknown";
+  const userAgent = (req.headers["user-agent"] || "").slice(0, 100);
+  const logMsg = `[${new Date().toISOString()}] ${req.method} ${req.url} - IP: ${clientIp} - UA: ${userAgent}\n`;
   try {
     const requestsLogPath = process.env.VERCEL
       ? path.join(os.tmpdir(), "server_requests.log")
@@ -1295,14 +1313,13 @@ app.post("/api/auth/save-user", requireAuth, verifyUserMatch, async (req, res) =
       }
     }
 
-    // Maintain password securely
-    const fallbackPassword = email.trim().toLowerCase() === "pedro.bramos@sempreceub.com" ? "Pedro23072007" : "123456";
+    // Maintain password securely (never overwrite with hardcoded secrets)
     let preservedPassword = existingUser?.password;
     if (password && password !== existingUser?.password) {
       // If client sent a new password, check if it's already hashed. If not, hash it!
       preservedPassword = password.includes(":") ? password : hashPassword(password);
     } else if (!preservedPassword) {
-      preservedPassword = hashPassword(fallbackPassword);
+      preservedPassword = hashPassword(crypto.randomBytes(16).toString("hex"));
     }
 
     db[targetKey] = {
@@ -3060,6 +3077,41 @@ Responda agora diretamente à mensagem acima:`;
 // -------------------------------------------------------------
 // COACH/ADMIN DASHBOARD ENDPOINTS
 // -------------------------------------------------------------
+
+// Verify administrator password or coach access status
+app.post("/api/admin/verify-access", requireAuth, async (req: any, res: any) => {
+  try {
+    const { password } = req.body;
+    const authEmail = (req.user?.email || "").toString().trim().toLowerCase();
+
+    // 1. Check if provided password matches environment-configured secret
+    if (password && verifyAdminSecret(password)) {
+      return res.json({ success: true, authorized: true });
+    }
+
+    // 2. Check if logged-in user is master admin email
+    if (authEmail === MASTER_ADMIN_EMAIL) {
+      return res.json({ success: true, authorized: true });
+    }
+
+    // 3. Check if user in database has coach/admin role
+    const db = await getDatabase();
+    const userFound = findUserInDb(db, authEmail);
+    if (
+      userFound &&
+      userFound.user?.profile &&
+      (userFound.user.profile.role === "coach" ||
+       userFound.user.profile.role === "admin" ||
+       userFound.user.profile.isCoach === true)
+    ) {
+      return res.json({ success: true, authorized: true });
+    }
+
+    return res.status(403).json({ error: "Credencial ou permissão administrativa inválida." });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
 
 // Fetch all registered users in the database
 app.get("/api/admin/users", requireAuth, requireAdmin, async (req, res) => {

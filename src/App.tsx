@@ -869,9 +869,7 @@ export default function App() {
       return;
     }
 
-    const emailKey = currentUser.email.toLowerCase();
-    const fallbackPassword = emailKey === "pedro.bramos@sempreceub.com" ? "Pedro23072007" : "123456";
-    const preservedPassword = currentUser.password || fallbackPassword;
+    const preservedPassword = currentUser.password || "";
 
     const updatedUser: UserAccount = {
       email: currentUser.email,
@@ -1091,9 +1089,7 @@ export default function App() {
   const handleUpdateAccount = (updatedUser: UserAccount, newPassword?: string): boolean => {
     if (!currentUser) return false;
 
-    const currentEmailKey = currentUser.email.toLowerCase();
-    const fallbackPassword = currentEmailKey === "pedro.bramos@sempreceub.com" ? "Pedro23072007" : "123455";
-    const passwordToStore = newPassword || currentUser.password || fallbackPassword;
+    const passwordToStore = newPassword || currentUser.password || "";
 
     const finalizedSessionUser: UserAccount = {
       email: updatedUser.email,
@@ -2777,15 +2773,24 @@ export default function App() {
               </div>
 
               <form 
-                onSubmit={(e) => {
+                onSubmit={async (e) => {
                   e.preventDefault();
-                  if (adminPasswordInput === "Pedro23072007") {
-                    setShowAdminPanel(true);
-                    setShowAdminPasswordPrompt(false);
-                    setAdminPasswordInput("");
-                    setAdminPasswordError("");
-                  } else {
-                    setAdminPasswordError("Senha incorreta");
+                  try {
+                    const res = await apiFetch("/api/admin/verify-access", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ password: adminPasswordInput })
+                    });
+                    if (res.ok) {
+                      setShowAdminPanel(true);
+                      setShowAdminPasswordPrompt(false);
+                      setAdminPasswordInput("");
+                      setAdminPasswordError("");
+                    } else {
+                      setAdminPasswordError("Chave de acesso ou permissão inválida");
+                    }
+                  } catch (err) {
+                    setAdminPasswordError("Erro ao validar acesso administrativo");
                   }
                 }}
                 className="space-y-3"

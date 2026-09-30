@@ -6,9 +6,34 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
-    // Allow read and write for the users collection so the server client SDK and any client can access documents securely
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(email) {
+      return isSignedIn() && (
+        request.auth.token.email.lower() == email.lower() ||
+        request.auth.uid == email
+      );
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email.lower() == 'pedro.bramos@sempreceub.com' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    // Secured users collection: athletes can only access and update their own document; admins have full management access
     match /users/{email} {
-      allow read, write: if true;
+      allow get: if isOwner(email) || isAdmin();
+      allow list: if isAdmin();
+      allow create, update: if (isOwner(email) || isAdmin()) && (
+        request.resource.data.email is string &&
+        request.resource.data.email.size() <= 128
+      );
+      allow delete: if isAdmin();
     }
   }
 }
+
