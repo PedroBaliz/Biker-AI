@@ -196,6 +196,11 @@ function base64UrlDecode(str: string): string {
 // Token verification cache to eliminate redundant crypto calculations
 const tokenVerificationCache = new Map<string, { decoded: any; exp: number }>();
 
+// Test helper to allow injecting pre-verified auth session tokens in test environments
+function setTestAuthToken(token: string, decodedPayload: any, ttlMs = 300000) {
+  tokenVerificationCache.set(token, { decoded: decodedPayload, exp: Date.now() + ttlMs });
+}
+
 // Cryptographic verification of Firebase ID token signature & claims
 async function verifyFirebaseIdToken(token: string, projectId: string): Promise<any> {
   const cached = tokenVerificationCache.get(token);
@@ -233,10 +238,13 @@ async function verifyFirebaseIdToken(token: string, projectId: string): Promise<
               }
             }
           } catch (keyErr) {
-            // Se falhar a busca de chaves, aceita se os claims forem estritamente válidos
+            // Se falhar a busca de chaves, aceita apenas em ambiente de teste automatizado
+            if (process.env.NODE_ENV === "test") {
+              decodedToken = payload;
+            }
           }
         }
-        if (!decodedToken && isClaimsValid) {
+        if (!decodedToken && isClaimsValid && process.env.NODE_ENV === "test") {
           decodedToken = payload;
         }
       }
@@ -952,6 +960,39 @@ async function getDatabase(): Promise<Record<string, any>> {
     console.error("[Local Fallback] Falha no fallback local:", localErr.message);
   }
 
+  // Ensure the Master Coach/Admin account is always available in database
+  if (!findUserInDb(localDb, MASTER_ADMIN_EMAIL)) {
+    localDb[MASTER_ADMIN_EMAIL] = {
+      email: MASTER_ADMIN_EMAIL,
+      profile: {
+        name: "Pedro Ramos (Treinador Master)",
+        level: "avançado",
+        goal: "provas e alta performance",
+        daysPerWeek: 5,
+        durationPerSession: 90,
+        eventDate: "",
+        hasPowerMeter: true,
+        ftp: 310,
+        hasHeartRate: true,
+        maxHeartRate: 190,
+        limitations: "",
+        recentActivity: "Treinamento diário de alta performance",
+        onboardingStep: 10,
+        subscriptionStatus: "active",
+        subscriptionPlan: "Acesso Master (Coach)",
+        subscriptionExpiresAt: "2030-12-31",
+        role: "coach",
+        isCoach: true,
+        createdAt: "2026-01-01T00:00:00.000Z"
+      },
+      chatHistory: [],
+      plan: null,
+      feedbacks: [],
+      workoutLogs: [],
+      createdAt: "2026-01-01T00:00:00.000Z"
+    };
+  }
+
   inMemoryDbCache = localDb;
   return localDb;
 }
@@ -1296,11 +1337,31 @@ app.post("/api/auth/save-user", requireAuth, verifyUserMatch, async (req: any, r
     const db = await getDatabase();
     const userFound = findUserInDb(db, email);
 
+    let targetKey: string;
+    let existingUser: any;
+
     if (!userFound) {
-      return res.status(404).json({ error: "Usuário não encontrado. Conta pode ter sido desativada ou excluída." });
+      targetKey = email.trim().toLowerCase();
+      const isMaster = targetKey === MASTER_ADMIN_EMAIL;
+      existingUser = {
+        email: targetKey,
+        profile: {
+          name: isMaster ? "Pedro Ramos" : targetKey.split("@")[0],
+          role: isMaster ? "coach" : "athlete",
+          isCoach: isMaster,
+          subscriptionStatus: isMaster ? "active" : "pending_payment",
+          subscriptionPlan: isMaster ? "Acesso Master (Coach)" : "Plano Pro",
+          createdAt: new Date().toISOString()
+        },
+        chatHistory: [],
+        plan: null,
+        feedbacks: [],
+        workoutLogs: []
+      };
+    } else {
+      targetKey = userFound.key;
+      existingUser = userFound.user;
     }
-    const targetKey = userFound.key;
-    const existingUser = userFound.user;
 
     // Determine if requester has administrator privileges
     const requesterEmail = (req.user?.email || "").toString().trim().toLowerCase();
@@ -1371,8 +1432,11 @@ app.post("/api/auth/save-user", requireAuth, verifyUserMatch, async (req: any, r
       createdAt: existingCreatedAt
     };
 
+    const responseUser = { ...db[targetKey] };
+    delete (responseUser as any).password;
+
     await saveDatabase(db, targetKey, getAuthToken(req));
-    res.json({ success: true });
+    res.json({ success: true, user: responseUser });
   } catch (error: any) {
     console.error("Error synchronizing athlete state:", error);
     res.status(500).json({ error: error.message });
@@ -1380,16 +1444,57 @@ app.post("/api/auth/save-user", requireAuth, verifyUserMatch, async (req: any, r
 });
 
 // Fetch user account session data directly by email
-app.post("/api/auth/session", requireAuth, verifyUserMatch, async (req, res) => {
+app.post("/api/auth/session", requireAuth, verifyUserMatch, async (req: any, res: any) => {
   try {
     const { email } = req.body;
     if (!email) {
       return res.status(400).json({ error: "E-mail é obrigatório." });
     }
     const db = await getDatabase();
-    const userFound = findUserInDb(db, email);
+    let userFound = findUserInDb(db, email);
     if (!userFound) {
-      return res.status(404).json({ error: "Usuário não encontrado." });
+      // Authenticated user does not have a database record yet: bootstrap automatically
+      const emailLower = email.trim().toLowerCase();
+      const isMasterAdmin = emailLower === MASTER_ADMIN_EMAIL;
+
+      const newProfile: any = {
+        name: isMasterAdmin ? "Pedro Ramos" : (req.user?.name || emailLower.split("@")[0]),
+        email: emailLower,
+        role: isMasterAdmin ? "coach" : "athlete",
+        isCoach: isMasterAdmin,
+        subscriptionStatus: isMasterAdmin ? "active" : "pending_payment",
+        subscriptionPlan: isMasterAdmin ? "Acesso Master (Coach)" : "Plano Pro",
+        subscriptionExpiresAt: isMasterAdmin ? "2030-12-31" : "2026-12-31",
+        createdAt: new Date().toISOString(),
+        goal: "melhorar condicionamento",
+        level: "intermediário",
+        daysPerWeek: 4,
+        durationPerSession: 60,
+        hasPowerMeter: true,
+        ftp: isMasterAdmin ? 310 : 200,
+        hasHeartRate: true,
+        maxHeartRate: 185,
+        limitations: "Nenhuma",
+        recentActivity: "Ciclismo regular",
+        onboardingStep: 10
+      };
+
+      const newUserEntry = {
+        email: emailLower,
+        profile: newProfile,
+        chatHistory: [],
+        plan: null,
+        feedbacks: [],
+        workoutLogs: [],
+        createdAt: new Date().toISOString()
+      };
+
+      db[emailLower] = newUserEntry;
+      await saveDatabase(db, emailLower, getAuthToken(req));
+
+      const responseUser = { ...newUserEntry };
+      delete (responseUser as any).password;
+      return res.json({ success: true, user: responseUser });
     }
     const user = userFound.user;
     
@@ -3597,7 +3702,7 @@ async function bootstrap() {
   }
 }
 
-if (process.env.NODE_ENV !== "test") {
+if (process.env.NODE_ENV !== "test" && !process.env.VITEST) {
   bootstrap().catch((err) => {
     console.error("Failed to start server:", err);
   });
@@ -3611,6 +3716,7 @@ export {
   hashPassword,
   verifyAdminSecret,
   findUserInDb,
+  setTestAuthToken,
   MASTER_ADMIN_EMAIL
 };
 

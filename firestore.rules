@@ -24,6 +24,50 @@ service cloud.firestore {
       );
     }
 
+    // Explicit list of athlete-editable profile fields
+    function allowedProfileKeys() {
+      return [
+        'name',
+        'level',
+        'goal',
+        'daysPerWeek',
+        'durationPerSession',
+        'eventDate',
+        'hasPowerMeter',
+        'ftp',
+        'hasHeartRate',
+        'maxHeartRate',
+        'limitations',
+        'recentActivity',
+        'onboardingStep'
+      ];
+    }
+
+    // Allowed top-level keys that athletes may modify on update
+    function allowedTopLevelUpdateKeys() {
+      return [
+        'profile',
+        'chatHistory',
+        'plan',
+        'feedbacks',
+        'workoutLogs',
+        'password'
+      ];
+    }
+
+    // Validates that profile update strictly affects only allowed non-privileged fields,
+    // even when privileged fields were previously absent or profile was absent.
+    function isSafeProfileUpdate() {
+      return !('profile' in request.resource.data.diff(resource.data).affectedKeys()) ||
+        (
+          ('profile' in request.resource.data) &&
+          (
+            (!('profile' in resource.data) && request.resource.data.profile.keys().hasOnly(allowedProfileKeys())) ||
+            (('profile' in resource.data) && request.resource.data.profile.diff(resource.data.profile).affectedKeys().hasOnly(allowedProfileKeys()))
+          )
+        );
+    }
+
     // Secured users collection: athletes can only access and update their own document; admins have full management access
     match /users/{email} {
       allow get: if isOwner(email) || isAdmin();
@@ -33,26 +77,35 @@ service cloud.firestore {
       allow create: if (isOwner(email) || isAdmin()) && (
         request.resource.data.email is string &&
         request.resource.data.email.size() <= 128 &&
-        (isAdmin() || (
-          (!('profile' in request.resource.data) || !('role' in request.resource.data.profile) || request.resource.data.profile.role == 'athlete') &&
-          (!('profile' in request.resource.data) || !('isCoach' in request.resource.data.profile) || request.resource.data.profile.isCoach == false) &&
-          (!('profile' in request.resource.data) || !('subscriptionStatus' in request.resource.data.profile) || request.resource.data.profile.subscriptionStatus == 'pending_payment')
-        ))
+        (
+          isAdmin() ||
+          (
+            !('profile' in request.resource.data) ||
+            (
+              (!('role' in request.resource.data.profile) || request.resource.data.profile.role == 'athlete') &&
+              (!('isCoach' in request.resource.data.profile) || request.resource.data.profile.isCoach == false) &&
+              (!('subscriptionStatus' in request.resource.data.profile) || request.resource.data.profile.subscriptionStatus == 'pending_payment') &&
+              (!('subscriptionExpiresAt' in request.resource.data.profile)) &&
+              request.resource.data.profile.keys().hasOnly(
+                allowedProfileKeys().concat(['role', 'isCoach', 'subscriptionStatus', 'subscriptionPlan', 'createdAt'])
+              )
+            )
+          )
+        )
       );
 
-      // On update, athletes cannot modify privileged fields (role, isCoach, subscriptionStatus, subscriptionExpiresAt)
+      // On update, athletes cannot modify privileged fields (role, isCoach, subscriptionStatus, subscriptionPlan, subscriptionExpiresAt, createdAt)
+      // Enforced strictly via diff().affectedKeys().hasOnly(...)
       allow update: if (isOwner(email) || isAdmin()) && (
         request.resource.data.email is string &&
-        request.resource.data.email.size() <= 128 &&
-        (isAdmin() || (
-          (!('profile' in resource.data) || !('profile' in request.resource.data)) ||
+        request.resource.data.email == resource.data.email &&
+        (
+          isAdmin() ||
           (
-            (!('role' in resource.data.profile) || request.resource.data.profile.role == resource.data.profile.role) &&
-            (!('subscriptionStatus' in resource.data.profile) || request.resource.data.profile.subscriptionStatus == resource.data.profile.subscriptionStatus) &&
-            (!('isCoach' in resource.data.profile) || request.resource.data.profile.isCoach == resource.data.profile.isCoach) &&
-            (!('subscriptionExpiresAt' in resource.data.profile) || request.resource.data.profile.subscriptionExpiresAt == resource.data.profile.subscriptionExpiresAt)
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(allowedTopLevelUpdateKeys()) &&
+            isSafeProfileUpdate()
           )
-        ))
+        )
       );
 
       allow delete: if isAdmin();

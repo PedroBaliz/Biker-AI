@@ -1,10 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import request from "supertest";
 import {
+  app,
   requireAuth,
   requireAdmin,
   verifyPassword,
   hashPassword,
   verifyAdminSecret,
+  setTestAuthToken,
   MASTER_ADMIN_EMAIL
 } from "../server";
 
@@ -147,41 +150,129 @@ describe("Security & Authentication Real Middleware Tests", () => {
     });
   });
 
-  describe("Privilege Escalation Defense", () => {
-    it("should not allow client-supplied profile.role or subscriptionStatus to overwrite server values for non-admins", () => {
-      const existingAthlete = {
-        email: "ciclista@exemplo.com",
-        profile: {
-          name: "Ciclista Normal",
-          role: "athlete",
-          isCoach: false,
-          subscriptionStatus: "pending_payment",
-          subscriptionPlan: "Plano Pro"
+  describe("Real /api/auth/save-user Route & Privilege Escalation Prevention", () => {
+    const demoAthleteEmail = "atleta.demo@exemplo.com";
+    const testToken = "test-valid-bearer-token-for-athlete-demo";
+
+    beforeEach(() => {
+      process.env.ADMIN_PASSWORD = "ValidAdminSecret_2026!";
+      // Seed pre-verified auth session for the demo athlete
+      setTestAuthToken(testToken, {
+        email: demoAthleteEmail,
+        uid: "test-demo-athlete-uid",
+        sub: "test-demo-athlete-uid"
+      });
+    });
+
+    it("should return 401 Unauthorized when /api/auth/save-user is called without credentials", async () => {
+      const res = await request(app)
+        .post("/api/auth/save-user")
+        .send({
+          email: demoAthleteEmail,
+          userAccount: { email: demoAthleteEmail }
+        });
+
+      expect(res.status).toBe(401);
+      expect(res.body).toHaveProperty("error");
+    });
+
+    it("should return 403 Forbidden when an athlete attempts cross-user modification of another account", async () => {
+      const res = await request(app)
+        .post("/api/auth/save-user")
+        .set("Authorization", `Bearer ${testToken}`)
+        .send({
+          email: "outro.atleta@exemplo.com",
+          userAccount: { email: "outro.atleta@exemplo.com", profile: { name: "Hacked" } }
+        });
+
+      expect(res.status).toBe(403);
+      expect(res.body.error).toContain("Acesso negado");
+    });
+
+    it("should accept legitimate athlete updates but strictly block privilege escalation attempts in live save-user route", async () => {
+      const escalationPayload = {
+        email: demoAthleteEmail,
+        userAccount: {
+          email: demoAthleteEmail,
+          profile: {
+            name: "Atleta Atualizado com Sucesso",
+            ftp: 255,
+            level: "avançado",
+            // Malicious attempts to escalate privileges:
+            role: "admin",
+            isCoach: true,
+            subscriptionStatus: "active_lifetime",
+            subscriptionPlan: "VIP Gratuito Ilimitado"
+          }
         }
       };
 
-      const maliciousPayload = {
-        name: "Ciclista Normal",
-        role: "admin", // Malicious attempt to escalate
-        isCoach: true,  // Malicious attempt to escalate
-        subscriptionStatus: "active" // Malicious attempt to bypass payment
-      };
+      const res = await request(app)
+        .post("/api/auth/save-user")
+        .set("Authorization", `Bearer ${testToken}`)
+        .send(escalationPayload);
 
-      // Simulates the sanitization logic applied inside /api/auth/save-user
-      const isCallerAdmin = false;
-      const safeProfile = isCallerAdmin ? maliciousPayload : {
-        ...existingAthlete.profile,
-        name: maliciousPayload.name,
-        role: existingAthlete.profile.role,
-        isCoach: existingAthlete.profile.isCoach,
-        subscriptionStatus: existingAthlete.profile.subscriptionStatus,
-        subscriptionPlan: existingAthlete.profile.subscriptionPlan
-      };
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.user).toBeDefined();
 
-      expect(safeProfile.name).toBe("Ciclista Normal");
-      expect(safeProfile.role).toBe("athlete"); // Escalation blocked!
-      expect(safeProfile.isCoach).toBe(false);  // Escalation blocked!
-      expect(safeProfile.subscriptionStatus).toBe("pending_payment"); // Escalation blocked!
+      const savedProfile = res.body.user.profile;
+
+      // Legitimate profile fields were updated
+      expect(savedProfile.name).toBe("Atleta Atualizado com Sucesso");
+      expect(savedProfile.ftp).toBe(255);
+      expect(savedProfile.level).toBe("avançado");
+
+      // Privileged fields were BLOCKED and preserved:
+      expect(savedProfile.role).toBe("athlete");
+      expect(savedProfile.isCoach).toBe(false);
+      expect(savedProfile.role).not.toBe("admin");
+      expect(savedProfile.subscriptionPlan).not.toBe("VIP Gratuito Ilimitado");
+    });
+
+    it("should auto-bootstrap and return 200 when an authenticated user does not have a prior DB record", async () => {
+      const newUserEmail = "novo.ciclista@exemplo.com";
+      const newToken = "test-token-new-cyclist";
+      setTestAuthToken(newToken, {
+        email: newUserEmail,
+        uid: "test-uid-new-cyclist",
+        sub: "test-uid-new-cyclist"
+      });
+
+      const res = await request(app)
+        .post("/api/auth/session")
+        .set("Authorization", `Bearer ${newToken}`)
+        .send({ email: newUserEmail });
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.user).toBeDefined();
+      expect(res.body.user.email).toBe(newUserEmail);
+      expect(res.body.user.profile.role).toBe("athlete");
+      expect(res.body.user.profile.isCoach).toBe(false);
+    });
+
+    it("should seamlessly return Master Coach profile for MASTER_ADMIN_EMAIL on /api/auth/session", async () => {
+      const adminToken = "test-token-master-admin";
+      setTestAuthToken(adminToken, {
+        email: MASTER_ADMIN_EMAIL,
+        uid: "master-admin-uid",
+        sub: "master-admin-uid"
+      });
+
+      const res = await request(app)
+        .post("/api/auth/session")
+        .set("Authorization", `Bearer ${adminToken}`)
+        .send({ email: MASTER_ADMIN_EMAIL });
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.user).toBeDefined();
+      expect(res.body.user.email).toBe(MASTER_ADMIN_EMAIL);
+      expect(res.body.user.profile.role).toBe("coach");
+      expect(res.body.user.profile.isCoach).toBe(true);
+      expect(res.body.user.profile.subscriptionStatus).toBe("active");
     });
   });
 });
+

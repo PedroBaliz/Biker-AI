@@ -12,8 +12,12 @@
 ---
 
 ### 🌐 Demonstração Online (Live Demo)
-Acesse a aplicação em produção/demonstração:  
-👉 **[https://ais-pre-ig3xpt2tylya4dpumxckiy-403337948550.us-west2.run.app](https://ais-pre-ig3xpt2tylya4dpumxckiy-403337948550.us-west2.run.app)**
+Acesse a aplicação em produção e teste todas as funcionalidades em tempo real:  
+🔗 **[https://ais-pre-ig3xpt2tylya4dpumxckiy-403337948550.us-west2.run.app](https://ais-pre-ig3xpt2tylya4dpumxckiy-403337948550.us-west2.run.app)**
+
+> **Credenciais de Demonstração (Seed Demo):**  
+> - **Atleta:** `atleta.demo@exemplo.com` (visualização de microciclo, chat do treinador e histórico)  
+> - **Treinador (Admin):** `treinador.demo@exemplo.com` (painel de gestão, status de atletas e backups)
 
 ---
 
@@ -110,13 +114,28 @@ biker-ai/
 
 ---
 
-## 🔒 Segurança e Boas Práticas
+## 🔒 Segurança e Defesa em Profundidade
 
-- **Controle de Acesso Baseado em Papéis (RBAC):** Regras de segurança no Firestore (`firestore.rules`) garantem que cada atleta acesse e modifique apenas seus próprios dados (`isOwner(email)`), impedindo leitura ou gravação não autorizada.
-- **Validação Criptográfica de Tokens:** A função `requireAuth` valida tokens JWT emitidos pelo Google Firebase utilizando as chaves públicas oficiais do Google (RS256). Não há confiança cega em dados arbitrários informados pelo cliente.
-- **Proteção de Senhas:** Senhas locais passam por hash **PBKDF2** com 100.000 iterações, SHA-256 e *salt* criptográfico exclusivo por usuário.
-- **Prevenção de Timing Attacks:** Validações de segredos administrativos utilizam `crypto.timingSafeEqual`.
-- **Sanitização de Logs:** Logs de servidor nunca registram cabeçalhos de autorização, cookies ou tokens de acesso.
+- **Defesa Contra Escalada de Privilégios no Firestore (`firestore.rules`):**  
+  As regras do Cloud Firestore utilizam uma lista restrita de campos editáveis combinada com `diff().affectedKeys().hasOnly(...)`. Essa validação impede que um usuário conceda privilégios a si mesmo (como adicionar ou alterar `role`, `isCoach`, `subscriptionStatus`, `subscriptionPlan`, `subscriptionExpiresAt` ou `createdAt`), mesmo quando esses campos estiverem ausentes no documento original.
+- **Pipeline de Autorização no Servidor Express (`server.ts`):**  
+  - `requireAuth`: exige token JWT oficial assinado pelo Google Firebase (RS256) ou credencial administrativa validada via `crypto.timingSafeEqual`.
+  - `verifyUserMatch`: garante que um atleta autenticado só consiga ler ou modificar seus próprios registros, bloqueando qualquer tentativa de scraping ou alteração de dados de terceiros.
+  - Sanitização de perfil na rota real `/api/auth/save-user`: apenas campos não-privilegiados do atleta (`name`, `level`, `goal`, `ftp`, `maxHeartRate`, etc.) podem ser atualizados pelo cliente; status de assinatura e papéis administrativos são rigorosamente preservados do banco.
+- **Proteção de Senhas:** Senhas locais passam por hash **PBKDF2** nativo com 100.000 iterações, SHA-256 e *salt* criptográfico exclusivo de 16 bytes por usuário.
+- **Sanitização de Logs e Telemetria:** Logs de requisições registram apenas método, rota e status HTTP, sem nunca gravar cabeçalhos de autorização, cookies ou tokens de acesso.
+
+---
+
+## 💾 Dados de Demonstração (Seed Data)
+
+Para permitir a execução, testes automatizados e avaliação local sem necessidade de banco em nuvem inicial:
+- O repositório inclui registros **100% fictícios** de exemplo em `users_db.json` e no modelo `users_db.example.json`.
+- Nenhum dado pessoal real ou de produção está presente no repositório.
+- As senhas dos registros de teste utilizam formato criptográfico `salt:hash` gerado por PBKDF2.
+- Contas incluídas para demonstração:
+  - `atleta.demo@exemplo.com`: Atleta fictício com treinos e microciclos preenchidos.
+  - `treinador.demo@exemplo.com`: Conta modelo de treinador para testes do painel administrativo.
 
 ---
 
@@ -183,11 +202,12 @@ npm start
 
 ## 🧪 Suíte de Testes Automatizados
 
-O projeto conta com testes unitários em `tests/auth_security.test.ts` cobrindo:
-- Geração e verificação de hashes PBKDF2 com *salt*.
-- Comparação em tempo constante para credenciais administrativas.
-- Bloqueio de tentativas de spoofing de identidade sem token válido.
-- Sanitização de logs contra vazamento de credenciais e cabeçalhos sensíveis.
+O projeto conta com uma suíte de testes com Vitest e Supertest em `tests/auth_security.test.ts`, exercitando as rotas e middlewares reais do servidor:
+- **Rotas Reais e Supertest:** Execução real da rota `/api/auth/save-user` simulando tentativas de ataque por clientes autenticados.
+- **Prevenção de Escalada de Privilégios:** Validação prática de que requisições com `role: "admin"`, `isCoach: true` ou `subscriptionStatus: "active"` têm suas tentativas bloqueadas, preservando os dados legítimos do banco e atualizando apenas os atributos permitidos do atleta (`name`, `ftp`, etc.).
+- **Autenticação e Sessões:** Rejeição de requisições desprovidas de credenciais (401) e proteção contra falsificação de identidade entre usuários com `verifyUserMatch` (403).
+- **Criptografia & Hashes PBKDF2:** Geração e verificação de hashes PBKDF2 com *salt* dinâmico e rejeição de entradas corrompidas.
+- **Segurança Temporal:** Comparação em tempo constante (`timingSafeEqual`) de segredos administrativos.
 
 ---
 

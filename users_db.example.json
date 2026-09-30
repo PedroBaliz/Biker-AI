@@ -2,14 +2,14 @@
   "atleta.demo@exemplo.com": {
     "email": "atleta.demo@exemplo.com",
     "profile": {
-      "name": "Atleta Atualizado com Sucesso",
-      "level": "avançado",
+      "name": "Atleta Demonstração",
+      "level": "intermediário",
       "goal": "melhorar condicionamento",
       "daysPerWeek": 4,
       "durationPerSession": 60,
       "eventDate": "",
       "hasPowerMeter": true,
-      "ftp": 255,
+      "ftp": 220,
       "hasHeartRate": true,
       "maxHeartRate": 185,
       "limitations": "Nenhuma",
@@ -21,8 +21,7 @@
       "role": "athlete",
       "isDemoAccount": true,
       "demoNotice": "Registro fictício de exemplo para ambiente de testes e desenvolvimento",
-      "createdAt": "2026-09-01T12:00:00.000Z",
-      "isCoach": false
+      "createdAt": "2026-09-01T12:00:00.000Z"
     },
     "chatHistory": [
       {
@@ -66,8 +65,7 @@
     },
     "feedbacks": [],
     "workoutLogs": [],
-    "password": "4a7f8e12b3c4d5e6f708192a3b4c5d6e:e5b8d9a4c3b2a1f0e9d8c7b6a5f4e3d2c1b0a9f8e7d6c5b4a3f2e1d0c9b8a7f6e5d4c3b2a1f0e9d8c7b6a5f4e3d2c1b0a9f8e7d6c5b4a3f2e1d0c9b8a7f6e5d4",
-    "createdAt": "2026-09-01T12:00:00.000Z"
+    "password": "4a7f8e12b3c4d5e6f708192a3b4c5d6e:e5b8d9a4c3b2a1f0e9d8c7b6a5f4e3d2c1b0a9f8e7d6c5b4a3f2e1d0c9b8a7f6e5d4c3b2a1f0e9d8c7b6a5f4e3d2c1b0a9f8e7d6c5b4a3f2e1d0c9b8a7f6e5d4"
   },
   "treinador.demo@exemplo.com": {
     "email": "treinador.demo@exemplo.com",
@@ -99,63 +97,5 @@
     "feedbacks": [],
     "workoutLogs": [],
     "password": "9f8e7d6c5b4a3f2e1d0c9b8a7f6e5d4c:1a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5d6e7f809"
-  },
-  "pedro.bramos@sempreceub.com": {
-    "email": "pedro.bramos@sempreceub.com",
-    "profile": {
-      "name": "Pedro Ramos (Treinador Master)",
-      "level": "avançado",
-      "goal": "provas e alta performance",
-      "daysPerWeek": 5,
-      "durationPerSession": 90,
-      "eventDate": "",
-      "hasPowerMeter": true,
-      "ftp": 310,
-      "hasHeartRate": true,
-      "maxHeartRate": 190,
-      "limitations": "",
-      "recentActivity": "Treinamento diário de alta performance",
-      "onboardingStep": 10,
-      "subscriptionStatus": "active",
-      "subscriptionPlan": "Acesso Master (Coach)",
-      "subscriptionExpiresAt": "2030-12-31",
-      "role": "coach",
-      "isCoach": true,
-      "createdAt": "2026-01-01T00:00:00.000Z"
-    },
-    "chatHistory": [],
-    "plan": null,
-    "feedbacks": [],
-    "workoutLogs": [],
-    "createdAt": "2026-01-01T00:00:00.000Z"
-  },
-  "novo.ciclista@exemplo.com": {
-    "email": "novo.ciclista@exemplo.com",
-    "profile": {
-      "name": "novo.ciclista",
-      "email": "novo.ciclista@exemplo.com",
-      "role": "athlete",
-      "isCoach": false,
-      "subscriptionStatus": "pending_payment",
-      "subscriptionPlan": "Plano Pro",
-      "subscriptionExpiresAt": "2026-12-31",
-      "createdAt": "2026-09-30T10:35:18.812Z",
-      "goal": "melhorar condicionamento",
-      "level": "intermediário",
-      "daysPerWeek": 4,
-      "durationPerSession": 60,
-      "hasPowerMeter": true,
-      "ftp": 200,
-      "hasHeartRate": true,
-      "maxHeartRate": 185,
-      "limitations": "Nenhuma",
-      "recentActivity": "Ciclismo regular",
-      "onboardingStep": 10
-    },
-    "chatHistory": [],
-    "plan": null,
-    "feedbacks": [],
-    "workoutLogs": [],
-    "createdAt": "2026-09-30T10:35:18.812Z"
   }
 }
