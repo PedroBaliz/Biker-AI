@@ -210,63 +210,63 @@ async function verifyFirebaseIdToken(token: string, projectId: string): Promise<
 
   let decodedToken: any = null;
 
-  // 1. Fast-path: Verificação manual via chaves públicas do Google/Firebase
+  // 1. Try Firebase Admin SDK first (primary authoritative verification)
   try {
-    const parts = token.split(".");
-    if (parts.length === 3) {
-      const [headerB64, payloadB64, signatureB64] = parts;
-      const header = JSON.parse(base64UrlDecode(headerB64));
-      const payload = JSON.parse(base64UrlDecode(payloadB64));
-      const signature = Buffer.from(signatureB64, "base64url");
+    let adminApp: any = null;
+    try {
+      adminApp = getAdminApp();
+    } catch {
+      // App admin não inicializado
+    }
+    if (adminApp) {
+      decodedToken = await getAdminAuth(adminApp).verifyIdToken(token);
+    }
+  } catch (adminErr: any) {
+    // Falha ou bypass para verificação manual com chaves públicas
+  }
 
-      const now = Math.floor(Date.now() / 1000);
-      const isClaimsValid = payload.exp > now &&
-        (payload.iss === `https://securetoken.google.com/${projectId}` || payload.iss?.includes("securetoken.google.com")) &&
-        (payload.aud === projectId || payload.sub) &&
-        payload.sub;
+  // 2. Strict fast-path: Verificação manual via chaves públicas oficiais do Google (RS256)
+  if (!decodedToken) {
+    try {
+      const parts = token.split(".");
+      if (parts.length === 3) {
+        const [headerB64, payloadB64, signatureB64] = parts;
+        const header = JSON.parse(base64UrlDecode(headerB64));
+        const payload = JSON.parse(base64UrlDecode(payloadB64));
+        const signature = Buffer.from(signatureB64, "base64url");
 
-      if (isClaimsValid) {
-        if (header.alg === "RS256") {
-          try {
-            const keys = await fetchGooglePublicKeys();
-            const cert = keys[header.kid];
-            if (cert) {
-              const verifier = crypto.createVerify("SHA256");
-              verifier.update(`${headerB64}.${payloadB64}`);
-              if (verifier.verify(cert, signature)) {
+        const now = Math.floor(Date.now() / 1000);
+        // Strict project claims check: MUST match exact projectId and exact issuer
+        const isClaimsValid = payload.exp > now &&
+          payload.iss === `https://securetoken.google.com/${projectId}` &&
+          payload.aud === projectId &&
+          Boolean(payload.sub);
+
+        if (isClaimsValid) {
+          if (header.alg === "RS256") {
+            try {
+              const keys = await fetchGooglePublicKeys();
+              const cert = keys[header.kid];
+              if (cert) {
+                const verifier = crypto.createVerify("SHA256");
+                verifier.update(`${headerB64}.${payloadB64}`);
+                if (verifier.verify(cert, signature)) {
+                  decodedToken = payload;
+                }
+              }
+            } catch (keyErr) {
+              if (process.env.NODE_ENV === "test") {
                 decodedToken = payload;
               }
             }
-          } catch (keyErr) {
-            // Se falhar a busca de chaves, aceita apenas em ambiente de teste automatizado
-            if (process.env.NODE_ENV === "test") {
-              decodedToken = payload;
-            }
+          }
+          if (!decodedToken && isClaimsValid && process.env.NODE_ENV === "test") {
+            decodedToken = payload;
           }
         }
-        if (!decodedToken && isClaimsValid && process.env.NODE_ENV === "test") {
-          decodedToken = payload;
-        }
       }
-    }
-  } catch (fastErr) {
-    // Continuar para o fallback caso falhe a decodificação rápida
-  }
-
-  // 2. Fallback para verificação nativa usando o SDK de administração do Firebase (se app inicializado)
-  if (!decodedToken) {
-    try {
-      let adminApp: any = null;
-      try {
-        adminApp = getAdminApp();
-      } catch {
-        // App admin não inicializado
-      }
-      if (adminApp) {
-        decodedToken = await getAdminAuth(adminApp).verifyIdToken(token);
-      }
-    } catch (adminErr: any) {
-      // Ignorar e falhar graciosamente
+    } catch (fastErr) {
+      // Erro na decodificação do token
     }
   }
 
@@ -728,36 +728,9 @@ app.use("/api", generalApiLimiter);
 
 // In-memory cache to keep performance high and prevent disk read fatigue
 let inMemoryDbCache: Record<string, any> | null = null;
-
-// Fetch all users from Firestore via Firebase Admin (secure) or fallback to Firestore Lite SDK
-async function fetchFirestoreUsers(): Promise<Record<string, any>> {
-  if (adminFirestoreDb) {
-    try {
-      const snapshot = await adminFirestoreDb.collection("users").get();
-      const users: Record<string, any> = {};
-      snapshot.forEach((doc: any) => {
-        users[doc.id] = doc.data();
-      });
-      return users;
-    } catch (err: any) {
-      if (err.message && (err.message.includes("default credentials") || err.message.includes("UNAUTHENTICATED"))) {
-        adminFirestoreDb = null;
-      }
-      console.warn("[Firebase Admin] Falha ao obter usuários no Firestore Admin, usando fallback:", err.message);
-    }
-  }
-
-  if (!useFirestore || !firestoreDb) {
-    throw new Error("Firestore não está habilitado.");
-  }
-  const colRef = collection(firestoreDb, "users");
-  const snapshot = await getDocs(colRef);
-  const users: Record<string, any> = {};
-  snapshot.docs.forEach((doc) => {
-    users[doc.id] = doc.data();
-  });
-  return users;
-}
+let inMemoryDbCacheTimestamp: number = 0;
+let inMemoryDbCacheSource: "firestore" | "local_cache" = "local_cache";
+const DB_CACHE_TTL_MS = 30000; // 30 seconds TTL
 
 // Helper to extract JWT ID token from request headers
 function getAuthToken(req: any): string | undefined {
@@ -811,6 +784,173 @@ function toFirestoreDocument(fields: Record<string, any>) {
     docFields[key] = toFirestoreValue(fields[key]);
   }
   return { fields: docFields };
+}
+
+// Convert Firestore REST Value format back into standard JavaScript object
+function fromFirestoreValue(val: any): any {
+  if (!val || typeof val !== "object") return val;
+  if ("nullValue" in val) return null;
+  if ("stringValue" in val) return val.stringValue;
+  if ("booleanValue" in val) return Boolean(val.booleanValue);
+  if ("integerValue" in val) {
+    const num = Number(val.integerValue);
+    return isNaN(num) ? val.integerValue : num;
+  }
+  if ("doubleValue" in val) return Number(val.doubleValue);
+  if ("timestampValue" in val) return val.timestampValue;
+  if ("arrayValue" in val) {
+    return Array.isArray(val.arrayValue?.values) ? val.arrayValue.values.map(fromFirestoreValue) : [];
+  }
+  if ("mapValue" in val) {
+    const res: Record<string, any> = {};
+    const fields = val.mapValue?.fields || {};
+    for (const k of Object.keys(fields)) {
+      res[k] = fromFirestoreValue(fields[k]);
+    }
+    return res;
+  }
+  return val;
+}
+
+// Convert Firestore REST Document payload to high-level JavaScript object
+function fromFirestoreDocument(doc: any): Record<string, any> {
+  if (!doc || !doc.fields) return {};
+  const res: Record<string, any> = {};
+  for (const k of Object.keys(doc.fields)) {
+    res[k] = fromFirestoreValue(doc.fields[k]);
+  }
+  return res;
+}
+
+// Fetch all users from Firestore via Firebase Admin (secure), REST API with ID Token, or fallback to Firestore Lite SDK
+async function fetchFirestoreUsers(idToken?: string): Promise<Record<string, any>> {
+  if (adminFirestoreDb) {
+    try {
+      const snapshot = await adminFirestoreDb.collection("users").get();
+      const users: Record<string, any> = {};
+      snapshot.forEach((doc: any) => {
+        users[doc.id] = doc.data();
+      });
+      return users;
+    } catch (err: any) {
+      if (err.message && (err.message.includes("default credentials") || err.message.includes("UNAUTHENTICATED"))) {
+        adminFirestoreDb = null;
+      }
+      console.warn("[Firebase Admin] Falha ao obter usuários no Firestore Admin, usando fallback:", err.message);
+    }
+  }
+
+  // REST API with idToken (for admin queries or when token is provided)
+  if (idToken && firebaseAppletConfig && firebaseAppletConfig.projectId) {
+    try {
+      const projectId = firebaseAppletConfig.projectId;
+      const dbId = firebaseAppletConfig.firestoreDatabaseId || "(default)";
+      const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/${dbId}/documents/users`;
+      const res = await fetch(url, {
+        headers: {
+          "Authorization": idToken.startsWith("Bearer ") ? idToken : `Bearer ${idToken}`
+        }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const users: Record<string, any> = {};
+        if (data.documents && Array.isArray(data.documents)) {
+          for (const d of data.documents) {
+            const docId = d.name.split("/").pop();
+            users[docId] = fromFirestoreDocument(d);
+          }
+        }
+        console.log(`[Firestore REST] Carregados ${Object.keys(users).length} usuários via REST API com ID Token.`);
+        return users;
+      } else {
+        const errorText = await res.text();
+        console.warn("[Firestore REST] Falha ao listar usuários via REST:", errorText);
+      }
+    } catch (restErr: any) {
+      console.warn("[Firestore REST Exception] Erro ao listar usuários:", restErr.message);
+    }
+  }
+
+  if (!useFirestore || !firestoreDb) {
+    throw new Error("Firestore não está habilitado.");
+  }
+  const colRef = collection(firestoreDb, "users");
+  const snapshot = await getDocs(colRef);
+  const users: Record<string, any> = {};
+  snapshot.docs.forEach((doc) => {
+    users[doc.id] = doc.data();
+  });
+  return users;
+}
+
+// Fetch a single user doc from Firestore via Admin SDK, REST API (with user ID Token), or Lite SDK
+async function fetchFirestoreUser(email: string, idToken?: string): Promise<{ found: boolean; data?: any; error?: string }> {
+  const emailKey = email.trim().toLowerCase();
+
+  // In test environments, avoid remote Google API calls with mock test tokens
+  if (process.env.NODE_ENV === "test" || process.env.VITEST) {
+    return { found: false };
+  }
+
+  // 1. Try Firebase Admin SDK
+  if (adminFirestoreDb) {
+    try {
+      const docSnap = await adminFirestoreDb.collection("users").doc(emailKey).get();
+      if (docSnap.exists) {
+        return { found: true, data: docSnap.data() };
+      }
+      return { found: false };
+    } catch (err: any) {
+      console.warn(`[Firebase Admin] Falha ao obter usuário único ${emailKey}:`, err.message);
+    }
+  }
+
+  // 2. Try REST API using user's Auth ID token
+  if (idToken && firebaseAppletConfig && firebaseAppletConfig.projectId) {
+    try {
+      const projectId = firebaseAppletConfig.projectId;
+      const dbId = firebaseAppletConfig.firestoreDatabaseId || "(default)";
+      const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/${dbId}/documents/users/${emailKey}`;
+      const res = await fetch(url, {
+        headers: {
+          "Authorization": idToken.startsWith("Bearer ") ? idToken : `Bearer ${idToken}`
+        }
+      });
+      if (res.status === 200) {
+        const docJson = await res.json();
+        const data = fromFirestoreDocument(docJson);
+        return { found: true, data };
+      } else if (res.status === 404 || res.status === 401 || res.status === 403) {
+        return { found: false };
+      } else if (res.status >= 500) {
+        const errorText = await res.text();
+        console.warn(`[Firestore REST] Erro de servidor no Firestore ${emailKey} (${res.status}):`, errorText);
+        return { found: false, error: `Firestore status ${res.status}: ${errorText}` };
+      }
+    } catch (restErr: any) {
+      console.warn(`[Firestore REST Exception] Erro ao buscar usuário ${emailKey}:`, restErr.message);
+      return { found: false, error: restErr.message };
+    }
+  }
+
+  // 3. Fallback to client Lite SDK
+  if (useFirestore && firestoreDb) {
+    try {
+      const colRef = collection(firestoreDb, "users");
+      const snapshot = await getDocs(colRef);
+      for (const d of snapshot.docs) {
+        if (d.id.toLowerCase() === emailKey) {
+          return { found: true, data: d.data() };
+        }
+      }
+      return { found: false };
+    } catch (e: any) {
+      console.warn(`[Firestore Lite SDK] Erro ao buscar usuário único ${emailKey}:`, e.message);
+      return { found: false, error: e.message };
+    }
+  }
+
+  return { found: false };
 }
 
 // Save a single user doc in Firestore via Firebase Admin (secure), REST API with ID Token, or fallback to Firestore Lite SDK
@@ -928,36 +1068,42 @@ async function deleteFirestoreUser(email: string, idToken?: string): Promise<voi
   }
 }
 
-// Local database retriever helper backed by Firebase Firestore Lite SDK
-async function getDatabase(): Promise<Record<string, any>> {
-  if (inMemoryDbCache) {
-    return inMemoryDbCache;
+// Local database retriever helper backed by Firebase Firestore or local cache
+async function getDatabaseWithSource(forceRefresh = false, idToken?: string): Promise<{ db: Record<string, any>; source: "firestore" | "local_cache" }> {
+  const isCacheValid = inMemoryDbCache && (Date.now() - inMemoryDbCacheTimestamp < DB_CACHE_TTL_MS);
+  if (!forceRefresh && isCacheValid && inMemoryDbCache) {
+    return { db: inMemoryDbCache, source: inMemoryDbCacheSource };
   }
 
   const localDb: Record<string, any> = {};
+  let resolvedSource: "firestore" | "local_cache" = "local_cache";
 
   if (useFirestore) {
     try {
-      const users = await fetchFirestoreUsers();
-      Object.assign(localDb, users);
-      console.log(`[Firestore SDK] Carregados ${Object.keys(localDb).length} usuários com sucesso.`);
-      inMemoryDbCache = localDb;
-      return localDb;
+      const users = await fetchFirestoreUsers(idToken);
+      if (Object.keys(users).length > 0) {
+        Object.assign(localDb, users);
+        resolvedSource = "firestore";
+        console.log(`[Firestore SDK] Carregados ${Object.keys(localDb).length} usuários com sucesso do Firestore.`);
+      }
     } catch (err: any) {
-      console.warn("[Firestore SDK] Falha ao carregar do Firestore via SDK, usando fallback local:", err.message);
+      console.warn("[Firestore SDK] Falha ao carregar do Firestore, usando fallback local:", err.message);
     }
   }
 
-  // Fallback to local file if Firestore is not accessible or not enabled
-  try {
-    if (fs.existsSync(USERS_DB_PATH)) {
-      const data = fs.readFileSync(USERS_DB_PATH, "utf-8");
-      const parsed = JSON.parse(data);
-      Object.assign(localDb, parsed);
-      console.log(`[Banco Local] Carregados ${Object.keys(localDb).length} usuários com sucesso do banco de dados local.`);
+  // Fallback to local file if Firestore returned empty or was unreachable
+  if (Object.keys(localDb).length === 0) {
+    try {
+      if (fs.existsSync(USERS_DB_PATH)) {
+        const data = fs.readFileSync(USERS_DB_PATH, "utf-8");
+        const parsed = JSON.parse(data);
+        Object.assign(localDb, parsed);
+        resolvedSource = "local_cache";
+        console.log(`[Banco Local] Carregados ${Object.keys(localDb).length} usuários com sucesso do banco de dados local.`);
+      }
+    } catch (localErr: any) {
+      console.error("[Local Fallback] Falha no fallback local:", localErr.message);
     }
-  } catch (localErr: any) {
-    console.error("[Local Fallback] Falha no fallback local:", localErr.message);
   }
 
   // Ensure the Master Coach/Admin account is always available in database
@@ -994,7 +1140,14 @@ async function getDatabase(): Promise<Record<string, any>> {
   }
 
   inMemoryDbCache = localDb;
-  return localDb;
+  inMemoryDbCacheTimestamp = Date.now();
+  inMemoryDbCacheSource = resolvedSource;
+  return { db: localDb, source: resolvedSource };
+}
+
+async function getDatabase(forceRefresh = false, idToken?: string): Promise<Record<string, any>> {
+  const result = await getDatabaseWithSource(forceRefresh, idToken);
+  return result.db;
 }
 
 // Local database saving helper
@@ -1053,8 +1206,12 @@ async function triggerAutomaticBackup(db: Record<string, any>) {
 
 async function saveDatabase(db: Record<string, any>, targetEmail?: string, idToken?: string) {
   inMemoryDbCache = db;
+  inMemoryDbCacheTimestamp = Date.now();
 
-  // Persistir no Firestore se habilitado via SDK
+  let firestoreSuccess = false;
+  let firestoreError: any = null;
+
+  // Persistir no Firestore se habilitado
   if (useFirestore) {
     try {
       if (targetEmail) {
@@ -1062,11 +1219,14 @@ async function saveDatabase(db: Record<string, any>, targetEmail?: string, idTok
         const emailKey = targetEmail.trim().toLowerCase();
         try {
           await saveFirestoreUser(emailKey, db[emailKey], idToken);
+          firestoreSuccess = true;
+          console.log(`[Firestore SDK] Usuário ${emailKey} sincronizado com sucesso no Firestore.`);
         } catch (err: any) {
+          firestoreError = err;
           console.error(`[Firestore SDK] Erro ao salvar usuário específico ${emailKey}:`, err.message);
         }
       } else {
-        // Fallback para salvar todos (por exemplo, migrações ou tarefas administrativas)
+        // Fallback para salvar todos (por exemplo, migrações, restores ou tarefas administrativas)
         const savePromises = Object.keys(db).map(async (email) => {
           try {
             await saveFirestoreUser(email, db[email], idToken);
@@ -1075,24 +1235,35 @@ async function saveDatabase(db: Record<string, any>, targetEmail?: string, idTok
           }
         });
         await Promise.all(savePromises);
+        firestoreSuccess = true;
+        console.log("[Firestore SDK] Banco de dados sincronizado com sucesso no Firestore.");
       }
-      console.log("[Firestore SDK] Banco de dados sincronizado com sucesso no Firestore.");
     } catch (err: any) {
+      firestoreError = err;
       console.error("[Firestore SDK] ERRO ao sincronizar com Firestore:", err.message);
     }
   }
 
   // Gravar arquivo local como cópia de segurança de forma assíncrona
+  let diskSuccess = false;
+  let diskError: any = null;
   try {
     await fs.promises.writeFile(USERS_DB_PATH, JSON.stringify(db, null, 2), "utf-8");
+    diskSuccess = true;
     console.log("[Banco Local] Cópia local persistida com sucesso.");
     
     // Dispara backup automático em plano de fundo sem travar a thread de resposta
     triggerAutomaticBackup(db).catch(err => {
       console.error("[Backup Automático] Falha na promessa de backup automático:", err);
     });
-  } catch (err) {
+  } catch (err: any) {
+    diskError = err;
     console.error("FALHA ao salvar cache de banco de dados local:", err);
+  }
+
+  // Se a gravação em disco falhar e o Firestore não tiver persistido, repassar erro à rota!
+  if (!diskSuccess && (!useFirestore || !firestoreSuccess)) {
+    throw new Error(`Falha crítica de persistência de dados: ${diskError?.message || firestoreError?.message || "Não foi possível persistir em disco ou nuvem"}`);
   }
 }
 
@@ -1207,6 +1378,23 @@ app.post("/api/auth/register", async (req, res) => {
     const emailKey = email.trim().toLowerCase();
 
     if (db[emailKey]) {
+      const existing = db[emailKey];
+      // Check if this record was just auto-bootstrapped by onAuthStateChanged/session without a password
+      const isBootstrappedWithoutPassword = !existing.password;
+      const hasNoPlanOrWorkouts = (!existing.plan || Object.keys(existing.plan).length === 0) &&
+                                  (!existing.workoutLogs || existing.workoutLogs.length === 0);
+
+      if (isBootstrappedWithoutPassword || hasNoPlanOrWorkouts) {
+        existing.password = hashPassword(password);
+        if (existing.profile) {
+          existing.profile.name = name.trim();
+        }
+        await saveDatabase(db, emailKey, getAuthToken(req));
+        const responseUser = { ...existing };
+        delete (responseUser as any).password;
+        return res.json({ success: true, user: responseUser });
+      }
+
       return res.status(400).json({ error: "Este endereço de e-mail já está cadastrado. Faça login para acessar." });
     }
 
@@ -1450,11 +1638,29 @@ app.post("/api/auth/session", requireAuth, verifyUserMatch, async (req: any, res
     if (!email) {
       return res.status(400).json({ error: "E-mail é obrigatório." });
     }
-    const db = await getDatabase();
-    let userFound = findUserInDb(db, email);
+    const emailLower = email.trim().toLowerCase();
+    const authToken = getAuthToken(req);
+
+    const db = await getDatabase(false, authToken);
+    let userFound = findUserInDb(db, emailLower);
+
+    // If not in local/cached DB, explicitly attempt to fetch this specific user doc from Firestore
+    if (!userFound && useFirestore) {
+      const singleFetch = await fetchFirestoreUser(emailLower, authToken);
+      if (singleFetch.found && singleFetch.data) {
+        db[emailLower] = singleFetch.data;
+        inMemoryDbCache = db;
+        inMemoryDbCacheTimestamp = Date.now();
+        userFound = { user: singleFetch.data, key: emailLower };
+      } else if (singleFetch.error) {
+        // Communication or permission failure: do NOT assume absent account and do NOT overwrite with blank!
+        console.warn(`[Session] Erro ao consultar Firestore para ${emailLower}:`, singleFetch.error);
+        return res.status(503).json({ error: "Falha temporária ao consultar dados do atleta na nuvem. Tente novamente." });
+      }
+    }
+
     if (!userFound) {
       // Authenticated user does not have a database record yet: bootstrap automatically
-      const emailLower = email.trim().toLowerCase();
       const isMasterAdmin = emailLower === MASTER_ADMIN_EMAIL;
 
       const newProfile: any = {
@@ -3265,7 +3471,8 @@ app.post("/api/admin/verify-access", requireAuth, async (req: any, res: any) => 
 // Fetch all registered users in the database
 app.get("/api/admin/users", requireAuth, requireAdmin, async (req, res) => {
   try {
-    const db = await getDatabase();
+    const authToken = getAuthToken(req);
+    const { db, source } = await getDatabaseWithSource(true, authToken);
     // Return all users metadata (omitting passwords)
     const userList = Object.keys(db).map((key) => {
       const user = db[key];
@@ -3318,7 +3525,7 @@ app.get("/api/admin/users", requireAuth, requireAdmin, async (req, res) => {
         feedbacks: user.feedbacks || []
       };
     });
-    res.json({ success: true, users: userList });
+    res.json({ success: true, users: userList, source });
   } catch (error: any) {
     console.error("Error fetching admin users:", error);
     res.status(500).json({ error: error.message });
@@ -3514,7 +3721,18 @@ app.post("/api/admin/backups/restore", requireAuth, requireAdmin, async (req, re
 
     // Atualiza o cache e reescreve o arquivo JSON principal de usuários
     inMemoryDbCache = restoredDb;
+    inMemoryDbCacheTimestamp = Date.now();
     fs.writeFileSync(USERS_DB_PATH, JSON.stringify(restoredDb, null, 2), "utf-8");
+
+    // Sincroniza todos os registros restaurados no Firestore
+    if (useFirestore) {
+      try {
+        await saveDatabase(restoredDb, undefined, getAuthToken(req));
+        console.log(`[Backup Automático] ${Object.keys(restoredDb).length} usuários restaurados foram sincronizados com o Firestore.`);
+      } catch (syncErr: any) {
+        console.warn("[Backup Automático] Aviso: falha ao sincronizar restore com Firestore:", syncErr.message);
+      }
+    }
 
     console.log(`[Backup Automático] Banco de dados restaurado com sucesso para a versão: ${filename}`);
     res.json({ success: true, message: `Banco de dados restaurado com sucesso para a versão: ${filename}` });
@@ -3717,6 +3935,11 @@ export {
   verifyAdminSecret,
   findUserInDb,
   setTestAuthToken,
+  getDatabase,
+  getDatabaseWithSource,
+  fetchFirestoreUser,
+  fetchFirestoreUsers,
+  saveDatabase,
   MASTER_ADMIN_EMAIL
 };
 

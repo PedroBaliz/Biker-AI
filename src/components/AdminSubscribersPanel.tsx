@@ -57,6 +57,7 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
   
   // Selection
   const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
+  const [dbSource, setDbSource] = useState<"firestore" | "local_cache" | null>(null);
 
   // Backups tab and management state
   const [rightTab, setRightTab] = useState<"athlete" | "backups" | "feedbacks">("athlete");
@@ -174,6 +175,9 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
         const data = await response.json();
         if (data.success && data.users) {
           setUsers(data.users);
+          if (data.source) {
+            setDbSource(data.source);
+          }
           
           // Sync selected user details if currently selected
           if (selectedUser) {
@@ -449,9 +453,18 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
             <Users className="w-6 h-6 animate-pulse" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <h2 className="font-heading font-black text-lg tracking-tight">Painel Administrativo Biker AI</h2>
               <span className="bg-lime-400/20 text-lime-400 text-[9.5px] font-extrabold uppercase px-2 py-0.5 rounded-full border border-lime-400/30">Coach & Assinantes</span>
+              {dbSource === "firestore" ? (
+                <span className="bg-emerald-500/20 text-emerald-400 text-[9.5px] font-extrabold uppercase px-2 py-0.5 rounded-full border border-emerald-500/30 flex items-center gap-1">
+                  <UploadCloud className="w-3 h-3" /> Nuvem (Firestore)
+                </span>
+              ) : dbSource === "local_cache" ? (
+                <span className="bg-amber-500/20 text-amber-400 text-[9.5px] font-extrabold uppercase px-2 py-0.5 rounded-full border border-amber-500/30 flex items-center gap-1" title="Exibindo cópia local. Clique no botão de recarregar para consultar o Firestore.">
+                  <Database className="w-3 h-3" /> Cache Local
+                </span>
+              ) : null}
             </div>
             <p className="text-xs text-slate-400 font-sans mt-0.5">Gerenciador de faturamento, controle de acessos, status de mensalidade e fisiologia esportiva</p>
           </div>
@@ -549,6 +562,26 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
           </div>
         </div>
       </div>
+
+      {/* LOCAL CACHE NOTICE */}
+      {dbSource === "local_cache" && (
+        <div className="p-3.5 bg-amber-500/10 border border-amber-500/20 text-amber-900 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs shadow-xs">
+          <div className="flex items-center gap-2.5">
+            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+            <span className="text-slate-700">
+              <strong className="font-semibold text-slate-900">Modo Cópia Local:</strong> Exibindo atletas a partir do armazenamento local do servidor. Clique para forçar sincronização com o Firestore.
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={loadSubscribers}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-450 text-white font-bold rounded-xl text-xs transition-colors shrink-0 shadow-xs cursor-pointer"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
+            <span>Sincronizar Nuvem</span>
+          </button>
+        </div>
+      )}
 
       {/* MESSAGES */}
       <AnimatePresence mode="wait">

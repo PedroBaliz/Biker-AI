@@ -762,35 +762,36 @@ export default function App() {
         });
 
         let mergedUser: any = { email };
-        let passwordToPreserve = "123456";
         if (sessionRes.ok) {
           const sessionData = await sessionRes.json();
           mergedUser = { ...sessionData.user };
-          passwordToPreserve = sessionData.user.password || passwordToPreserve;
         }
 
         if (profileVal) mergedUser.profile = { ...profileVal, ...mergedUser.profile };
         if (planVal && !mergedUser.plan) mergedUser.plan = planVal;
         if (chatVal && (!mergedUser.chatHistory || mergedUser.chatHistory.length <= 1)) mergedUser.chatHistory = chatVal;
 
-        // Save to Firebase Firestore via server
-        await apiFetch("/api/auth/save-user", {
+        // Save to Firebase Firestore via server (omit password so existing password is never overwritten)
+        const saveRes = await apiFetch("/api/auth/save-user", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, userAccount: mergedUser, password: passwordToPreserve })
+          body: JSON.stringify({ email, userAccount: mergedUser })
         });
 
-        console.log("[Migration] Migration to Firebase complete. Removing localStorage keys.");
+        if (saveRes.ok) {
+          console.log("[Migration] Migration to Firebase complete. Removing localStorage keys.");
+          // Clear all legacy storage keys only after successful persistence
+          localStorage.removeItem("athlete_profile");
+          localStorage.removeItem("athlete_training_plan");
+          localStorage.removeItem("coach_chat_history");
+          localStorage.removeItem("current_coach_user");
+          localStorage.removeItem("coach_users");
+          localStorage.removeItem("athlete_plan_history");
+        } else {
+          console.warn("[Migration] Save-user returned non-OK status. Preserving local data.");
+        }
       } catch (e) {
         console.error("[Migration] Error transferring data to Firebase:", e);
-      } finally {
-        // Clear all legacy storage keys to guarantee they are no longer in localStorage
-        localStorage.removeItem("athlete_profile");
-        localStorage.removeItem("athlete_training_plan");
-        localStorage.removeItem("coach_chat_history");
-        localStorage.removeItem("current_coach_user");
-        localStorage.removeItem("coach_users");
-        localStorage.removeItem("athlete_plan_history");
       }
     }
   };

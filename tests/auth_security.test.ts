@@ -273,6 +273,55 @@ describe("Security & Authentication Real Middleware Tests", () => {
       expect(res.body.user.profile.isCoach).toBe(true);
       expect(res.body.user.profile.subscriptionStatus).toBe("active");
     });
+
+    it("should resolve race condition by allowing /api/auth/register on an account auto-bootstrapped by session without password", async () => {
+      const raceUserEmail = `race.athlete.${Date.now()}@exemplo.com`;
+      const raceToken = `test-race-token-${Date.now()}`;
+      setTestAuthToken(raceToken, {
+        email: raceUserEmail,
+        uid: "race-uid",
+        sub: "race-uid"
+      });
+
+      // 1. Simulate onAuthStateChanged firing first and bootstrapping the account without a password
+      const sessionRes = await request(app)
+        .post("/api/auth/session")
+        .set("Authorization", `Bearer ${raceToken}`)
+        .send({ email: raceUserEmail });
+      expect(sessionRes.status).toBe(200);
+
+      // 2. Client registration request arrives slightly later
+      const registerRes = await request(app)
+        .post("/api/auth/register")
+        .send({
+          email: raceUserEmail,
+          password: "SecureAthletePassword2026!",
+          name: "Atleta Veloz"
+        });
+
+      expect(registerRes.status).toBe(200);
+      expect(registerRes.body.success).toBe(true);
+      expect(registerRes.body.user).toBeDefined();
+      expect(registerRes.body.user.profile.name).toBe("Atleta Veloz");
+    });
+
+    it("should include data source (firestore or local_cache) in /api/admin/users response", async () => {
+      const adminToken = "test-admin-token-source";
+      setTestAuthToken(adminToken, {
+        email: MASTER_ADMIN_EMAIL,
+        uid: "admin-source-uid",
+        sub: "admin-source-uid"
+      });
+
+      const res = await request(app)
+        .get("/api/admin/users")
+        .set("Authorization", `Bearer ${adminToken}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(Array.isArray(res.body.users)).toBe(true);
+      expect(["firestore", "local_cache"]).toContain(res.body.source);
+    });
   });
 });
 
