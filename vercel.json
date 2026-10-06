@@ -6,6 +6,18 @@
       "destination": "/api"
     },
     {
+      "source": "/robots.txt",
+      "destination": "/api/robots.txt"
+    },
+    {
+      "source": "/sitemap.xml",
+      "destination": "/api/sitemap.xml"
+    },
+    {
+      "source": "/googleef65b720b90cbd44.html",
+      "destination": "/api/googleef65b720b90cbd44.html"
+    },
+    {
       "source": "/((?!api/).*)",
       "destination": "/index.html"
     }
