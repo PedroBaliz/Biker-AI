@@ -31,7 +31,6 @@ import { SEO_ARTICLES } from "./data/seoArticlesData";
 import { SeoContentPage } from "./components/SeoContentPage";
 import { updateSeoMeta, HOME_SEO_CONFIG } from "./utils/seoHead";
 import { 
-  Users,
   ShieldCheck,
   Dumbbell, 
   Bike,
@@ -39,24 +38,18 @@ import {
   Calendar, 
   Send, 
   User, 
-  Zap, 
   Activity, 
   CheckCircle2, 
   RotateCcw, 
   Heart, 
   ShieldAlert, 
-  FileCheck, 
   RefreshCw, 
   TrendingUp, 
-  ChevronRight, 
   Clock, 
   ClipboardList, 
   Sliders, 
   HelpCircle,
   LogOut,
-  Plus,
-  PlusCircle,
-  Trash2,
   Trophy,
   Eye,
   EyeOff,
@@ -73,10 +66,7 @@ import {
   BookOpen,
   ArrowRight,
   Settings,
-  ChevronDown,
   Menu,
-  Crown,
-  CreditCard,
   Bot
 } from "lucide-react";
 
@@ -699,7 +689,13 @@ export default function App() {
       }]);
 
     } catch (err: any) {
-      alert("Erro detalhado ao evoluir a planilha:\n\n" + err.message + "\n\nPor favor, tente novamente ou verifique se as credenciais do servidor estão corretas.");
+      setGlobalError({
+        url: "/api/generate-next-week",
+        method: "POST",
+        status: 500,
+        statusText: "Falha na geração",
+        message: err.message || "Erro ao evoluir a planilha. Por favor, tente novamente."
+      });
     } finally {
       setIsGeneratingNextWeek(false);
     }
@@ -1063,7 +1059,13 @@ export default function App() {
       }]);
 
     } catch (err: any) {
-      alert("Erro detalhado ao gerar a planilha:\n\n" + err.message + "\n\nPor favor, tente novamente ou verifique se as credenciais do servidor estão corretas.");
+      setGlobalError({
+        url: "/api/generate-plan",
+        method: "POST",
+        status: 500,
+        statusText: "Falha na geração",
+        message: err.message || "Erro ao gerar a planilha. Por favor, tente novamente."
+      });
     } finally {
       setIsGeneratingPlan(false);
     }
