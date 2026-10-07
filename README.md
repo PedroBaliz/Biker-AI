@@ -2,13 +2,6 @@
 
 > Plataforma de periodização, prescrição e acompanhamento de treinos de ciclismo personalizados com IA (Google Gemini), adaptados ao nível, objetivos, rotina e métricas de cada atleta.
 
-[![CI](https://github.com/PedroBaliz/Biker-AI/actions/workflows/ci.yml/badge.svg)](https://github.com/PedroBaliz/Biker-AI/actions/workflows/ci.yml)
-![Node.js](https://img.shields.io/badge/node.js-%3E%3D20-brightgreen.svg)
-![React](https://img.shields.io/badge/React-19-blue.svg)
-![TypeScript](https://img.shields.io/badge/TypeScript-5.8-blue.svg)
-![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4.0-38bdf8.svg)
-![Firebase](https://img.shields.io/badge/Firebase-Auth%20%7C%20Firestore-orange.svg)
-
 ---
 
 ### Demonstração Online (Live Demo)
