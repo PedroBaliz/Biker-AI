@@ -7,72 +7,106 @@ export function getSimplifiedText(text: string | undefined): string {
   
   let result = text;
   
-  // 1. Specific zone pattern replacements (longest/most specific first to avoid partial replacements)
-  
-  // Z1
-  const z1Repl = "Muito Leve (Passeio bem calmo para girar as pernas, sem fazer nenhuma força)";
-  result = result.replace(/Z1\s*\(Recuperação\s*Ativa\)/gi, z1Repl);
-  result = result.replace(/Z1\s*\(Recuperação\)/gi, z1Repl);
-  result = result.replace(/Z1\s*\(Regenerativo\)/gi, z1Repl);
-  result = result.replace(/\bZ1\b/g, z1Repl);
-  result = result.replace(/Zona\s*1\s*\(Recuperação\s*Ativa\)/gi, z1Repl);
-  result = result.replace(/Zona\s*1\s*\(Recuperação\)/gi, z1Repl);
-  result = result.replace(/Zona\s*1/gi, z1Repl);
-  result = result.replace(/Zona\s*Z1/gi, z1Repl);
+  // 1. Zone replacements, declared as one ordered table and evaluated per zone group
+  //    (Z1 fully resolved before Z2, before Z3, ... so no rule can clobber another zone).
+  //    Each friendly label keeps the original numeric token as a bracketed suffix,
+  //    so the athlete can still see which zone the text refers to.
+  const zoneTranslations: Array<{ zone: string; replacement: string; patterns: RegExp[] }> = [
+    {
+      zone: "Z1",
+      replacement: "Muito Leve (Passeio bem calmo para girar as pernas, sem fazer nenhuma força) [Z1]",
+      patterns: [
+        /Zona\s*1\s*\(Recuperação\s*Ativa\)/gi,
+        /Zona\s*1\s*\(Recuperação\)/gi,
+        /Zona\s*Z1/gi,
+        /Zona\s*1/gi,
+        /Z1\s*\(Recuperação\s*Ativa\)/gi,
+        /Z1\s*\(Recuperação\)/gi,
+        /Z1\s*\(Regenerativo\)/gi,
+        /\bZ1\b/g
+      ]
+    },
+    {
+      zone: "Z2",
+      replacement: "Leve (Giro confortável onde você consegue conversar normalmente ou cantar sem perder o fôlego) [Z2]",
+      patterns: [
+        /Zona\s*2\s*\(Endurance\)/gi,
+        /Zona\s*2\s*\(Resistência\)/gi,
+        /Zona\s*Z2/gi,
+        /Zona\s*2/gi,
+        /Z2\s*\(Endurance\)/gi,
+        /Z2\s*\(Resistência\)/gi,
+        /\bZ2\b/g
+      ]
+    },
+    {
+      zone: "Z3",
+      replacement: "Moderado (Esforço firme, o fôlego fica mais fundo e focado, mas você ainda tem total controle) [Z3]",
+      patterns: [
+        /Zona\s*3\s*\(Tempo\/Ritmo\)/gi,
+        /Zona\s*3\s*\(Tempo\)/gi,
+        /Zona\s*Z3/gi,
+        /Zona\s*3/gi,
+        /Z3\s*\(Tempo\/Ritmo\)/gi,
+        /Z3\s*\(Tempo\)/gi,
+        /Z3\s*\(Ritmo\)/gi,
+        /\bZ3\b/g
+      ]
+    },
+    {
+      zone: "Z4",
+      replacement: "Forte (Esforço pesado e pernas ardendo de cansaço. Respiração acelerada, você só consegue falar poucas palavras seguidas) [Z4]",
+      patterns: [
+        /Zona\s*4\s*\(Limiar\s*de\s*Lactato\)/gi,
+        /Zona\s*4\s*\(Limiar\)/gi,
+        /Zona\s*Z4/gi,
+        /Zona\s*4/gi,
+        /Z4\s*\(Limiar\s*de\s*Lactato\)/gi,
+        /Z4\s*\(Limiar\)/gi,
+        /\bZ4\b/g
+      ]
+    },
+    {
+      zone: "Z5",
+      replacement: "Muito Forte (Fôlego extremo e coração batendo muito forte. Ritmo ofegante que você aguenta por no máximo alguns minutos) [Z5]",
+      patterns: [
+        /Zona\s*5\s*\(VO2\s*M[aá]ximo\)/gi,
+        /Zona\s*Z5/gi,
+        /Zona\s*5/gi,
+        /Z5\s*\(VO2\s*M[aá]ximo\)/gi,
+        /Z5\s*\(VO2\s*Max\)/gi,
+        /\bZ5\b/g
+      ]
+    },
+    {
+      zone: "Z6",
+      replacement: "Explosivo (Força total nas pernas para arrancadas rápidas ou subidas muito curtas de menos de 2 minutos) [Z6]",
+      patterns: [
+        /Zona\s*6\s*\(Capacidade\s+Anaer[oó]bica\)/gi,
+        /Zona\s*Z6/gi,
+        /Zona\s*6/gi,
+        /Z6\s*\(Capacidade\s+Anaer[oó]bica\)/gi,
+        /\bZ6\b/g
+      ]
+    },
+    {
+      zone: "Z7",
+      replacement: "Explosão Máxima (Esforço de arrancada total com toda a força do seu corpo de poucos segundos) [Z7]",
+      patterns: [
+        /Zona\s*7\s*\(Pot[eê]ncia\s+Neuromuscular\)/gi,
+        /Zona\s*Z7/gi,
+        /Zona\s*7/gi,
+        /Z7\s*\(Pot[eê]ncia\s+Neuromuscular\)/gi,
+        /\bZ7\b/g
+      ]
+    }
+  ];
 
-  // Z2
-  const z2Repl = "Leve (Giro confortável onde você consegue conversar normalmente ou cantar sem perder o fôlego)";
-  result = result.replace(/Z2\s*\(Endurance\)/gi, z2Repl);
-  result = result.replace(/Z2\s*\(Resistência\)/gi, z2Repl);
-  result = result.replace(/\bZ2\b/g, z2Repl);
-  result = result.replace(/Zona\s*2\s*\(Endurance\)/gi, z2Repl);
-  result = result.replace(/Zona\s*2\s*\(Resistência\)/gi, z2Repl);
-  result = result.replace(/Zona\s*2/gi, z2Repl);
-  result = result.replace(/Zona\s*Z2/gi, z2Repl);
-
-  // Z3
-  const z3Repl = "Moderado (Esforço firme, o fôlego fica mais fundo e focado, mas você ainda tem total controle)";
-  result = result.replace(/Z3\s*\(Tempo\/Ritmo\)/gi, z3Repl);
-  result = result.replace(/Z3\s*\(Tempo\)/gi, z3Repl);
-  result = result.replace(/Z3\s*\(Ritmo\)/gi, z3Repl);
-  result = result.replace(/\bZ3\b/g, z3Repl);
-  result = result.replace(/Zona\s*3\s*\(Tempo\/Ritmo\)/gi, z3Repl);
-  result = result.replace(/Zona\s*3\s*\(Tempo\)/gi, z3Repl);
-  result = result.replace(/Zona\s*3/gi, z3Repl);
-  result = result.replace(/Zona\s*Z3/gi, z3Repl);
-
-  // Z4
-  const z4Repl = "Forte (Esforço pesado e pernas ardendo de cansaço. Respiração acelerada, você só consegue falar poucas palavras seguidas)";
-  result = result.replace(/Z4\s*\(Limiar\s*de\s*Lactato\)/gi, z4Repl);
-  result = result.replace(/Z4\s*\(Limiar\)/gi, z4Repl);
-  result = result.replace(/\bZ4\b/g, z4Repl);
-  result = result.replace(/Zona\s*4\s*\(Limiar\s*de\s*Lactato\)/gi, z4Repl);
-  result = result.replace(/Zona\s*4\s*\(Limiar\)/gi, z4Repl);
-  result = result.replace(/Zona\s*4/gi, z4Repl);
-  result = result.replace(/Zona\s*Z4/gi, z4Repl);
-
-  // Z5
-  const z5Repl = "Muito Forte (Fôlego extremo e coração batendo muito forte. Ritmo ofegante que você aguenta por no máximo alguns minutos)";
-  result = result.replace(/Z5\s*\(VO2\s*M[aá]ximo\)/gi, z5Repl);
-  result = result.replace(/Z5\s*\(VO2\s*Max\)/gi, z5Repl);
-  result = result.replace(/\bZ5\b/g, z5Repl);
-  result = result.replace(/Zona\s*5\s*\(VO2\s*M[aá]ximo\)/gi, z5Repl);
-  result = result.replace(/Zona\s*5/gi, z5Repl);
-  result = result.replace(/Zona\s*Z5/gi, z5Repl);
-
-  // Z6
-  const z6Repl = "Explosivo (Força total nas pernas para arrancadas rápidas ou subidas muito curtas de menos de 2 minutos)";
-  result = result.replace(/Z6\s*\(Capacidade\s+Anaer[oó]bica\)/gi, z6Repl);
-  result = result.replace(/\bZ6\b/g, z6Repl);
-  result = result.replace(/Zona\s*6/gi, z6Repl);
-  result = result.replace(/Zona\s*Z6/gi, z6Repl);
-
-  // Z7
-  const z7Repl = "Explosão Máxima (Esforço de arrancada total com toda a força do seu corpo de poucos segundos)";
-  result = result.replace(/Z7\s*\(Pot[eê]ncia\s+Neuromuscular\)/gi, z7Repl);
-  result = result.replace(/\bZ7\b/g, z7Repl);
-  result = result.replace(/Zona\s*7/gi, z7Repl);
-  result = result.replace(/Zona\s*Z7/gi, z7Repl);
+  for (const { replacement, patterns } of zoneTranslations) {
+    for (const pattern of patterns) {
+      result = result.replace(pattern, replacement);
+    }
+  }
 
   // 2. Specific metrics and Cadence conversions
   result = result.replace(/(\d+)\s*RPM/gi, "$1 giros das pernas por minuto (ritmo de pedalada)");

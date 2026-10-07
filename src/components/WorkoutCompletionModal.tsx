@@ -33,7 +33,7 @@ export const WorkoutCompletionModal: React.FC<WorkoutCompletionModalProps> = ({
 }) => {
   // Step 1: Completou o treino?
   const [completedStatus, setCompletedStatus] = useState<"sim" | "parcialmente" | "nao">(
-    workout.completionStatus || (workout.completed ? "sim" : "sim")
+    workout.completionStatus || (workout.completed ? "sim" : "nao")
   );
 
   // Step 2: Dificuldade
@@ -146,11 +146,13 @@ export const WorkoutCompletionModal: React.FC<WorkoutCompletionModalProps> = ({
               1. Você completou o treino?
             </label>
             <div className="grid grid-cols-3 gap-2">
-              {[
-                { value: "sim", label: "Sim", desc: "100% feito", color: "peer-checked:bg-emerald-50 peer-checked:border-emerald-500 peer-checked:text-emerald-900" },
-                { value: "parcialmente", label: "Parcialmente", desc: "Parte da meta", color: "peer-checked:bg-amber-50 peer-checked:border-amber-500 peer-checked:text-amber-900" },
-                { value: "nao", label: "Não", desc: "Não realizei", color: "peer-checked:bg-rose-50 peer-checked:border-rose-500 peer-checked:text-rose-900" }
-              ].map((item) => (
+              {(
+                [
+                  { value: "sim", label: "Sim", desc: "100% feito", color: "peer-checked:bg-emerald-50 peer-checked:border-emerald-500 peer-checked:text-emerald-900" },
+                  { value: "parcialmente", label: "Parcialmente", desc: "Parte da meta", color: "peer-checked:bg-amber-50 peer-checked:border-amber-500 peer-checked:text-amber-900" },
+                  { value: "nao", label: "Não", desc: "Não realizei", color: "peer-checked:bg-rose-50 peer-checked:border-rose-500 peer-checked:text-rose-900" }
+                ] satisfies readonly { value: "sim" | "parcialmente" | "nao"; label: string; desc: string; color: string }[]
+              ).map((item) => (
                 <label
                   key={item.value}
                   className="cursor-pointer relative block"
@@ -160,7 +162,7 @@ export const WorkoutCompletionModal: React.FC<WorkoutCompletionModalProps> = ({
                     name="completion_status"
                     value={item.value}
                     checked={completedStatus === item.value}
-                    onChange={() => setCompletedStatus(item.value as any)}
+                    onChange={() => setCompletedStatus(item.value)}
                     className="sr-only peer"
                   />
                   <div className={`p-3 rounded-2xl border-2 border-slate-200 hover:border-slate-300 text-center transition-all ${item.color}`}>
@@ -178,12 +180,14 @@ export const WorkoutCompletionModal: React.FC<WorkoutCompletionModalProps> = ({
               2. Como foi a dificuldade?
             </label>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {[
-                { value: "facil", label: "Fácil", badge: "Leve" },
-                { value: "adequada", label: "Adequada", badge: "No ponto" },
-                { value: "dificil", label: "Difícil", badge: "Puxado" },
-                { value: "muito_dificil", label: "Muito difícil", badge: "Extremo" }
-              ].map((item) => (
+              {(
+                [
+                  { value: "facil", label: "Fácil", badge: "Leve" },
+                  { value: "adequada", label: "Adequada", badge: "No ponto" },
+                  { value: "dificil", label: "Difícil", badge: "Puxado" },
+                  { value: "muito_dificil", label: "Muito difícil", badge: "Extremo" }
+                ] satisfies readonly { value: "facil" | "adequada" | "dificil" | "muito_dificil"; label: string; badge: string }[]
+              ).map((item) => (
                 <label
                   key={item.value}
                   className="cursor-pointer relative block"
@@ -193,7 +197,7 @@ export const WorkoutCompletionModal: React.FC<WorkoutCompletionModalProps> = ({
                     name="difficulty"
                     value={item.value}
                     checked={difficulty === item.value}
-                    onChange={() => setDifficulty(item.value as any)}
+                    onChange={() => setDifficulty(item.value)}
                     className="sr-only peer"
                   />
                   <div className="p-3 rounded-2xl border-2 border-slate-200 hover:border-slate-300 text-center transition-all peer-checked:bg-lime-50 peer-checked:border-lime-500 peer-checked:text-slate-950">

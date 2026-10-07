@@ -32,14 +32,58 @@ export function removeLocalData(key: string): void {
 }
 
 /**
- * Creates a debounced version of a function for non-blocking persistence
+ * A debounced function that also exposes cancel() and flush() controls.
  */
-export function debounce<T extends (...args: any[]) => void>(func: T, waitMs: number): (...args: Parameters<T>) => void {
-  let timeout: NodeJS.Timeout | null = null;
-  return (...args: Parameters<T>) => {
-    if (timeout) clearTimeout(timeout);
+export interface DebouncedFunction<Args extends any[]> {
+  (...args: Args): void;
+  /** Cancels any pending invocation without running it. */
+  cancel: () => void;
+  /** Immediately runs a pending invocation (if any) with its last arguments. */
+  flush: () => void;
+}
+
+/**
+ * Creates a debounced version of a function for non-blocking persistence.
+ * The returned function exposes cancel() and flush() so callers can drop or
+ * force pending writes (e.g. on component unmount).
+ */
+export function debounce<T extends (...args: any[]) => void>(
+  func: T,
+  waitMs: number
+): DebouncedFunction<Parameters<T>> {
+  let timeout: ReturnType<typeof setTimeout> | null = null;
+  let lastArgs: Parameters<T> | null = null;
+
+  const clear = () => {
+    if (timeout !== null) {
+      clearTimeout(timeout);
+      timeout = null;
+    }
+  };
+
+  const debounced = (...args: Parameters<T>) => {
+    lastArgs = args;
+    clear();
     timeout = setTimeout(() => {
-      func(...args);
+      timeout = null;
+      const pending = lastArgs;
+      lastArgs = null;
+      if (pending) func(...pending);
     }, waitMs);
   };
+
+  debounced.cancel = () => {
+    clear();
+    lastArgs = null;
+  };
+
+  debounced.flush = () => {
+    if (timeout === null || !lastArgs) return;
+    clear();
+    const pending = lastArgs;
+    lastArgs = null;
+    func(...pending);
+  };
+
+  return debounced;
 }

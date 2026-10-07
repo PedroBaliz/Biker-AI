@@ -7,113 +7,131 @@ interface ZoneCalculatorProps {
   isSimpleMode?: boolean;
 }
 
+/** Shared Tailwind palette applied to every zone list (Z1..Z7, truncated for HR zones). */
+const ZONE_COLORS = [
+  "bg-emerald-50 text-emerald-700 border-emerald-200", // Z1
+  "bg-sky-50 text-sky-700 border-sky-200", // Z2
+  "bg-amber-50 text-amber-700 border-amber-200", // Z3
+  "bg-orange-50 text-orange-700 border-orange-200", // Z4
+  "bg-rose-50 text-rose-700 border-rose-200", // Z5
+  "bg-purple-50 text-purple-700 border-purple-200", // Z6
+  "bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200" // Z7
+];
+
+const ZONE_COLORS_FALLBACK = "bg-gray-50 text-gray-700 border-gray-200";
+
+interface ZoneCardProps {
+  zone: { name: string; range: string; desc: string; purpose: string };
+  idx: number;
+  idPrefix: string;
+  color: string;
+}
+
+/** Single zone row, shared by the power and heart-rate zone lists. */
+function ZoneCard({ zone, idx, idPrefix, color }: ZoneCardProps) {
+  return (
+    <div
+      key={`${idPrefix}-${idx}`}
+      id={`${idPrefix}-zone-${idx + 1}`}
+      className={`p-4 rounded-2xl border text-xs transition-all hover:translate-x-1.5 duration-200 shadow-3xs ${color}`}
+    >
+      <div className="flex justify-between items-center font-black mb-1.5 font-heading">
+        <span className="text-sm">{zone.name}</span>
+        <span className="font-mono bg-white/95 px-2.5 py-1 rounded-lg shadow-3xs border border-inherit text-xs font-bold">{zone.range}</span>
+      </div>
+      <div className="flex justify-between text-slate-500 font-bold text-[9px] uppercase tracking-wider mb-2 font-sans">
+        <span>Porcentagem Alvo: {zone.desc}</span>
+      </div>
+      <p className="text-[11.5px] leading-relaxed text-slate-650 font-sans">{zone.purpose}</p>
+    </div>
+  );
+}
+
 function ZoneCalculatorInner({ profile, isSimpleMode = false }: ZoneCalculatorProps) {
   const ftp = profile.ftp || 200;
   const fcMax = profile.maxHeartRate || 180;
   const [showGlossary, setShowGlossary] = React.useState(true);
 
   const powerZones = [
-    { 
-      name: isSimpleMode ? "Muito Leve (Giro Regenerativo)" : "Z1 - Pedal Leve / Giro", 
-      range: `< ${Math.round(ftp * 0.55)}W`, 
-      desc: isSimpleMode ? "Giro livre sem peso ou cansaço" : "< 55% do FTP", 
-      purpose: "Aquecimento, soltura das pernas e descanso ativo após treinos fortes." 
+    {
+      name: isSimpleMode ? "Muito Leve (Giro Regenerativo)" : "Z1 - Pedal Leve / Giro",
+      range: `< ${Math.round(ftp * 0.55)}W`,
+      desc: isSimpleMode ? "Giro livre sem peso ou cansaço" : "< 55% do FTP",
+      purpose: "Aquecimento, soltura das pernas e descanso ativo após treinos fortes."
     },
-    { 
-      name: isSimpleMode ? "Leve (Giro Confortável / Ritmo de Conversa)" : "Z2 - Ritmo de Viagem", 
-      range: `${Math.round(ftp * 0.56)}W - ${Math.round(ftp * 0.75)}W`, 
-      desc: isSimpleMode ? "Confortável para conversar normalmente" : "56% a 75% do FTP", 
-      purpose: "Melhora do fôlego básico, queima saudável de energia e resistência geral para pedalar por horas." 
+    {
+      name: isSimpleMode ? "Leve (Giro Confortável / Ritmo de Conversa)" : "Z2 - Ritmo de Viagem",
+      range: `${Math.round(ftp * 0.56)}W - ${Math.round(ftp * 0.75)}W`,
+      desc: isSimpleMode ? "Confortável para conversar normalmente" : "56% a 75% do FTP",
+      purpose: "Melhora do fôlego básico, queima saudável de energia e resistência geral para pedalar por horas."
     },
-    { 
-      name: isSimpleMode ? "Moderado (Esforço Firme / Fôlego Presente)" : "Z3 - Ritmo Firme", 
-      range: `${Math.round(ftp * 0.76)}W - ${Math.round(ftp * 0.90)}W`, 
-      desc: isSimpleMode ? "Esforço constante e fôlego mais profundo" : "76% a 90% do FTP", 
-      purpose: "Velocidade média constante de estrada, ideal para treinar a força em planos e ventos moderados." 
+    {
+      name: isSimpleMode ? "Moderado (Esforço Firme / Fôlego Presente)" : "Z3 - Ritmo Firme",
+      range: `${Math.round(ftp * 0.76)}W - ${Math.round(ftp * 0.90)}W`,
+      desc: isSimpleMode ? "Esforço constante e fôlego mais profundo" : "76% a 90% do FTP",
+      purpose: "Velocidade média constante de estrada, ideal para treinar a força em planos e ventos moderados."
     },
-    { 
-      name: isSimpleMode ? "Forte (No Seu Limite / Falar Poucas Palavras)" : "Z4 - Esforço Forte", 
-      range: `${Math.round(ftp * 0.91)}W - ${Math.round(ftp * 1.05)}W`, 
-      desc: isSimpleMode ? "Respiração pesada, pernas queimando" : "91% a 105% do FTP", 
-      purpose: "Melhora da força geral e resistência para aguentar subidas longas com bastante intensidade." 
+    {
+      name: isSimpleMode ? "Forte (No Seu Limite / Falar Poucas Palavras)" : "Z4 - Esforço Forte",
+      range: `${Math.round(ftp * 0.91)}W - ${Math.round(ftp * 1.05)}W`,
+      desc: isSimpleMode ? "Respiração pesada, pernas queimando" : "91% a 105% do FTP",
+      purpose: "Melhora da força geral e resistência para aguentar subidas longas com bastante intensidade."
     },
-    { 
-      name: isSimpleMode ? "Muito Forte (Fôlego Extremo / VO2 Max)" : "Z5 - Fôlego Máximo", 
-      range: `${Math.round(ftp * 1.06)}W - ${Math.round(ftp * 1.20)}W`, 
-      desc: isSimpleMode ? "Fôlego no limite extremo ofegante" : "106% a 120% do FTP", 
-      purpose: "Intensidade muito alta para aumentar sua capacidade respiratória e fôlego sob cansaço severo." 
+    {
+      name: isSimpleMode ? "Muito Forte (Fôlego Extremo / VO2 Max)" : "Z5 - Fôlego Máximo",
+      range: `${Math.round(ftp * 1.06)}W - ${Math.round(ftp * 1.20)}W`,
+      desc: isSimpleMode ? "Fôlego no limite extremo ofegante" : "106% a 120% do FTP",
+      purpose: "Intensidade muito alta para aumentar sua capacidade respiratória e fôlego sob cansaço severo."
     },
-    { 
-      name: isSimpleMode ? "Explosivo (Força Máxima / Arrancada)" : "Z6 - Força Explosiva", 
-      range: `${Math.round(ftp * 1.21)}W - ${Math.round(ftp * 1.50)}W`, 
-      desc: isSimpleMode ? "Arrancada forte com pernas pesadas" : "121% a 150% do FTP", 
-      purpose: "Acelerações fortes para ultrapassagens, fugas ou subidas curtas de alta velocidade." 
+    {
+      name: isSimpleMode ? "Explosivo (Força Máxima / Arrancada)" : "Z6 - Força Explosiva",
+      range: `${Math.round(ftp * 1.21)}W - ${Math.round(ftp * 1.50)}W`,
+      desc: isSimpleMode ? "Arrancada forte com pernas pesadas" : "121% a 150% do FTP",
+      purpose: "Acelerações fortes para ultrapassagens, fugas ou subidas curtas de alta velocidade."
     },
-    { 
-      name: isSimpleMode ? "Explosão Máxima" : "Z7 - Arrancada Máxima", 
-      range: `> ${Math.round(ftp * 1.51)}W`, 
-      desc: isSimpleMode ? "Força muscular total instantânea" : "> 150% do FTP", 
-      purpose: "Esforço extremo de poucos segundos para ganhar força explosiva e potência muscular instantânea." 
+    {
+      name: isSimpleMode ? "Explosão Máxima" : "Z7 - Arrancada Máxima",
+      range: `> ${Math.round(ftp * 1.51)}W`,
+      desc: isSimpleMode ? "Força muscular total instantânea" : "> 150% do FTP",
+      purpose: "Esforço extremo de poucos segundos para ganhar força explosiva e potência muscular instantânea."
     }
   ];
 
   const hrZones = [
-    { 
-      name: isSimpleMode ? "Muito Leve (Giro Regenerativo / Sem Esforço)" : "Z1 - Super Leve / Soltura", 
-      range: `< ${Math.round(fcMax * 0.65)} bpm`, 
-      desc: isSimpleMode ? "Super tranquilo para girar e relaxar" : "< 65% da FCmax", 
-      purpose: "Aquecimento inicial ou pedalada tranquila para soltar as pernas e relaxar." 
+    {
+      name: isSimpleMode ? "Muito Leve (Giro Regenerativo / Sem Esforço)" : "Z1 - Super Leve / Soltura",
+      range: `< ${Math.round(fcMax * 0.65)} bpm`,
+      desc: isSimpleMode ? "Super tranquilo para girar e relaxar" : "< 65% da FCmax",
+      purpose: "Aquecimento inicial ou pedalada tranquila para soltar as pernas e relaxar."
     },
-    { 
-      name: isSimpleMode ? "Leve (Giro Confortável / Ritmo de Conversa)" : "Z2 - Ritmo Confortável", 
-      range: `${Math.round(fcMax * 0.65)} - ${Math.round(fcMax * 0.79)} bpm`, 
-      desc: isSimpleMode ? "Dá para conversar sem perder o ar" : "65% a 79% da FCmax", 
-      purpose: "Resistência geral onde você consegue conversar normalmente sem perder o fôlego." 
+    {
+      name: isSimpleMode ? "Leve (Giro Confortável / Ritmo de Conversa)" : "Z2 - Ritmo Confortável",
+      range: `${Math.round(fcMax * 0.65)} - ${Math.round(fcMax * 0.79)} bpm`,
+      desc: isSimpleMode ? "Dá para conversar sem perder o ar" : "65% a 79% da FCmax",
+      purpose: "Resistência geral onde você consegue conversar normalmente sem perder o fôlego."
     },
-    { 
-      name: isSimpleMode ? "Moderado (Esforço Firme / Fôlego Presente)" : "Z3 - Ritmo Moderado", 
-      range: `${Math.round(fcMax * 0.80)} - ${Math.round(fcMax * 0.89)} bpm`, 
-      desc: isSimpleMode ? "Respiração mais profunda e ritmada" : "80% a 89% da FCmax", 
-      purpose: "Velocidade moderada, respiração um pouco mais profunda, ideal para focar na postura e ritmo firme." 
+    {
+      name: isSimpleMode ? "Moderado (Esforço Firme / Fôlego Presente)" : "Z3 - Ritmo Moderado",
+      range: `${Math.round(fcMax * 0.80)} - ${Math.round(fcMax * 0.89)} bpm`,
+      desc: isSimpleMode ? "Respiração mais profunda e ritmada" : "80% a 89% da FCmax",
+      purpose: "Velocidade moderada, respiração um pouco mais profunda, ideal para focar na postura e ritmo firme."
     },
-    { 
-      name: isSimpleMode ? "Forte (No Seu Limite / Falar Poucas Palavras)" : "Z4 - Limite de Esforço", 
-      range: `${Math.round(fcMax * 0.90)} - ${Math.round(fcMax * 0.94)} bpm`, 
-      desc: isSimpleMode ? "Esforço pesado e respiração acelerada" : "90% a 94% da FCmax", 
-      purpose: "Treino intenso, pernas começam a pesar bastante e a respiração fica acelerada." 
+    {
+      name: isSimpleMode ? "Forte (No Seu Limite / Falar Poucas Palavras)" : "Z4 - Limite de Esforço",
+      range: `${Math.round(fcMax * 0.90)} - ${Math.round(fcMax * 0.94)} bpm`,
+      desc: isSimpleMode ? "Esforço pesado e respiração acelerada" : "90% a 94% da FCmax",
+      purpose: "Treino intenso, pernas começam a pesar bastante e a respiração fica acelerada."
     },
-    { 
-      name: isSimpleMode ? "Muito Forte / Esforço Extremo" : "Z5 - Esforço Extremo", 
-      range: `> ${Math.round(fcMax * 0.95)} bpm`, 
-      desc: isSimpleMode ? "Força total e fôlego no limite máximo" : ">= 95% da FCmax", 
-      purpose: "Força total e fôlego no limite máximo para simulação de competições ou picos de esforço." 
+    {
+      name: isSimpleMode ? "Muito Forte / Esforço Extremo" : "Z5 - Esforço Extremo",
+      range: `> ${Math.round(fcMax * 0.95)} bpm`,
+      desc: isSimpleMode ? "Força total e fôlego no limite máximo" : ">= 95% da FCmax",
+      purpose: "Força total e fôlego no limite máximo para simulação de competições ou picos de esforço."
     }
   ];
 
   const getZoneColor = (index: number, total: number) => {
-    if (total === 7) {
-      // Power zones colors
-      const colors = [
-        "bg-emerald-50 text-emerald-700 border-emerald-200", // Z1
-        "bg-sky-50 text-sky-700 border-sky-200", // Z2
-        "bg-amber-50 text-amber-700 border-amber-200", // Z3
-        "bg-orange-50 text-orange-700 border-orange-200", // Z4
-        "bg-rose-50 text-rose-700 border-rose-200", // Z5
-        "bg-purple-50 text-purple-700 border-purple-200", // Z6
-        "bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200" // Z7
-      ];
-      return colors[index] || "bg-gray-50 text-gray-700 border-gray-200";
-    } else {
-      // HR zones colors
-      const colors = [
-        "bg-emerald-50 text-emerald-700 border-emerald-200", // Z1
-        "bg-sky-50 text-sky-700 border-sky-200", // Z2
-        "bg-amber-50 text-amber-700 border-amber-200", // Z3
-        "bg-orange-50 text-orange-700 border-orange-200", // Z4
-        "bg-rose-50 text-rose-700 border-rose-200" // Z5
-      ];
-      return colors[index] || "bg-gray-50 text-gray-700 border-gray-200";
-    }
+    return ZONE_COLORS.slice(0, total)[index] || ZONE_COLORS_FALLBACK;
   };
 
   return (
@@ -143,7 +161,7 @@ function ZoneCalculatorInner({ profile, isSimpleMode = false }: ZoneCalculatorPr
             {showGlossary ? "FECHAR GUIA" : "ABRIR GUIA"}
           </span>
         </button>
-        
+
         {showGlossary && (
           <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-slate-200/60 pt-4 text-[11.5px] font-sans text-slate-600 leading-relaxed animate-fadeIn">
             <div className="space-y-3.5">
@@ -199,20 +217,12 @@ function ZoneCalculatorInner({ profile, isSimpleMode = false }: ZoneCalculatorPr
 
           <div id="power-zones-list" className="space-y-3">
             {powerZones.map((zone, idx) => (
-              <div 
-                key={zone.name} 
-                id={`power-zone-${idx + 1}`}
-                className={`p-4 rounded-2xl border text-xs transition-all hover:translate-x-1.5 duration-200 shadow-3xs ${getZoneColor(idx, 7)}`}
-              >
-                <div className="flex justify-between items-center font-black mb-1.5 font-heading">
-                  <span className="text-sm">{zone.name}</span>
-                  <span className="font-mono bg-white/95 px-2.5 py-1 rounded-lg shadow-3xs border border-inherit text-xs font-bold">{zone.range}</span>
-                </div>
-                <div className="flex justify-between text-slate-500 font-bold text-[9px] uppercase tracking-wider mb-2 font-sans">
-                  <span>Porcentagem Alvo: {zone.desc}</span>
-                </div>
-                <p className="text-[11.5px] leading-relaxed text-slate-650 font-sans">{zone.purpose}</p>
-              </div>
+              <ZoneCard
+                zone={zone}
+                idx={idx}
+                idPrefix="power"
+                color={getZoneColor(idx, powerZones.length)}
+              />
             ))}
           </div>
         </div>
@@ -237,20 +247,12 @@ function ZoneCalculatorInner({ profile, isSimpleMode = false }: ZoneCalculatorPr
 
           <div id="hr-zones-list" className="space-y-3">
             {hrZones.map((zone, idx) => (
-              <div 
-                key={zone.name} 
-                id={`hr-zone-${idx + 1}`}
-                className={`p-4 rounded-2xl border text-xs transition-all hover:translate-x-1.5 duration-200 shadow-3xs ${getZoneColor(idx, 5)}`}
-              >
-                <div className="flex justify-between items-center font-black mb-1.5 font-heading">
-                  <span className="text-sm">{zone.name}</span>
-                  <span className="font-mono bg-white/95 px-2.5 py-1 rounded-lg shadow-3xs border border-inherit text-xs font-bold">{zone.range}</span>
-                </div>
-                <div className="flex justify-between text-slate-500 font-bold text-[9px] uppercase tracking-wider mb-2 font-sans">
-                  <span>Porcentagem Alvo: {zone.desc}</span>
-                </div>
-                <p className="text-[11.5px] leading-relaxed text-slate-650 font-sans">{zone.purpose}</p>
-              </div>
+              <ZoneCard
+                zone={zone}
+                idx={idx}
+                idPrefix="hr"
+                color={getZoneColor(idx, hrZones.length)}
+              />
             ))}
           </div>
         </div>

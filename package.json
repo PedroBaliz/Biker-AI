@@ -12,6 +12,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@firebase/firestore": "^4.16.0",
     "@google/genai": "^2.4.0",
     "@tailwindcss/vite": "^4.1.14",
     "@vitejs/plugin-react": "^5.0.4",
@@ -20,6 +21,7 @@
     "express": "^4.21.2",
     "firebase": "^12.15.0",
     "firebase-admin": "12.7.0",
+    "framer-motion": "^12.40.0",
     "jspdf": "^4.2.1",
     "lucide-react": "^0.546.0",
     "motion": "^12.23.24",
