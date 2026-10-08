@@ -194,10 +194,34 @@ export default function App() {
   const [showPseExplanation, setShowPseExplanation] = useState(false);
   const [showSubscriptionCheckout, setShowSubscriptionCheckout] = useState(false);
 
+  const safeReadLocalStorage = <T,>(key: string, fallback: T): T => {
+    if (typeof window === "undefined") return fallback;
+    try {
+      const savedValue = window.localStorage.getItem(key);
+      return savedValue === null ? fallback : (savedValue as T);
+    } catch {
+      return fallback;
+    }
+  };
+
+  const safeWriteLocalStorage = (key: string, value: string) => {
+    if (typeof window === "undefined") return;
+    try {
+      window.localStorage.setItem(key, value);
+    } catch {
+      // Ignore storage failures to avoid crashes in private/incognito browsing.
+    }
+  };
+
   // Simple / Technical display mode for workouts
   const [displayMode, setDisplayMode] = useState<"simples" | "tecnico">(() => {
-    return (localStorage.getItem("biker_ai_display_mode") as "simples" | "tecnico") || "simples";
+    const storedValue = safeReadLocalStorage<string>("biker_ai_display_mode", "simples");
+    return storedValue === "tecnico" ? "tecnico" : "simples";
   });
+
+  useEffect(() => {
+    safeWriteLocalStorage("biker_ai_display_mode", displayMode);
+  }, [displayMode]);
 
   // Feedbacks states
   const [feedbacks, setFeedbacks] = useState<{ id: string; text: string; timestamp: string }[]>([]);

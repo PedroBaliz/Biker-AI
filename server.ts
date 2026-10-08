@@ -290,10 +290,15 @@ async function requireAuth(req: any, res: any, next: any) {
   try {
     const authHeader = req.headers.authorization;
     const adminPassword = req.headers["x-admin-password"] || req.body?.adminPassword;
+    const requestPath = (req.originalUrl || req.path || "").toString();
+    const isAdminRoute = requestPath.startsWith("/api/admin/");
 
     if (adminPassword && verifyAdminSecret(adminPassword)) {
-      req.user = { email: MASTER_ADMIN_EMAIL, isAdmin: true, role: "coach" };
-      return next();
+      if (isAdminRoute || requestPath === "") {
+        req.user = { email: MASTER_ADMIN_EMAIL, isAdmin: true, role: "coach" };
+        return next();
+      }
+      return res.status(403).json({ error: "Credencial administrativa não pode ser usada em rotas de usuário. Use um token de atleta ou a rota administrativa correta." });
     }
 
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
@@ -311,13 +316,13 @@ async function requireAuth(req: any, res: any, next: any) {
     }
 
     const decodedToken = await verifyFirebaseIdToken(token, projectId);
-    const tokenEmail = decodedToken?.email || decodedToken?.firebase?.identities?.email?.[0];
+    const tokenEmail = normalizeEmail(decodedToken?.email || decodedToken?.firebase?.identities?.email?.[0]);
     if (!tokenEmail) {
       return res.status(401).json({ error: "Token não contém uma identidade ou e-mail válido." });
     }
 
     req.user = decodedToken || {};
-    req.user.email = tokenEmail.trim().toLowerCase();
+    req.user.email = tokenEmail;
     return next();
   } catch (err: any) {
     console.warn("[RequireAuth] Falha na validação do token:", err.message);
@@ -325,9 +330,18 @@ async function requireAuth(req: any, res: any, next: any) {
   }
 }
 
+function normalizeEmail(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const normalized = value.trim().toLowerCase();
+  if (!normalized || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)) {
+    return null;
+  }
+  return normalized;
+}
+
 function findUserInDb(db: Record<string, any>, email: string): { key: string; user: any } | null {
   if (!email || !db) return null;
-  const emailKey = email.trim().toLowerCase();
+  const emailKey = normalizeEmail(email) || email.trim().toLowerCase();
   const cleanKey = emailKey.replace(/[^a-z0-9]/g, "_");
 
   if (db[emailKey]) return { key: emailKey, user: db[emailKey] };
@@ -351,14 +365,14 @@ async function verifyUserMatch(req: any, res: any, next: any) {
     return res.status(401).json({ error: "Sessão inválida ou não autenticada." });
   }
 
-  const authEmail = req.user.email.toString().trim().toLowerCase();
+  const authEmail = normalizeEmail(req.user.email) || req.user.email.toString().trim().toLowerCase();
   const requestedEmail = req.body?.email || req.body?.profile?.email || req.query?.email || req.headers["x-user-email"];
 
   if (!requestedEmail) {
     return next();
   }
 
-  const bodyEmail = requestedEmail.toString().trim().toLowerCase();
+  const bodyEmail = normalizeEmail(requestedEmail.toString()) || requestedEmail.toString().trim().toLowerCase();
   const isMasterCoach = authEmail === MASTER_ADMIN_EMAIL;
 
   if (isMasterCoach || authEmail === bodyEmail) {
@@ -395,6 +409,45 @@ function hasActiveAccess(profile: any, userEmail?: string): boolean {
   if (profile.subscriptionStatus === "expired") return false;
   if (profile.subscriptionStatus === "active") return true;
   return isTrialActive(profile);
+}
+
+const PROFILE_FIELD_ALLOWLIST = new Set([
+  "name",
+  "level",
+  "goal",
+  "daysPerWeek",
+  "durationPerSession",
+  "eventDate",
+  "hasPowerMeter",
+  "ftp",
+  "hasHeartRate",
+  "maxHeartRate",
+  "limitations",
+  "recentActivity",
+  "onboardingStep"
+]);
+
+function sanitizeUserProfileInput(incomingProfile: any, existingProfile: any = {}) {
+  const sanitized: Record<string, any> = { ...(existingProfile || {}) };
+  if (!incomingProfile || typeof incomingProfile !== "object") {
+    return sanitized;
+  }
+
+  for (const [key, value] of Object.entries(incomingProfile)) {
+    if (!PROFILE_FIELD_ALLOWLIST.has(key) || value === undefined) continue;
+    sanitized[key] = value;
+  }
+
+  if (sanitized.role !== "coach" && sanitized.role !== "admin") {
+    sanitized.role = existingProfile?.role || "athlete";
+  }
+  sanitized.isCoach = Boolean(existingProfile?.isCoach === true || sanitized.role === "coach");
+  sanitized.subscriptionStatus = existingProfile?.subscriptionStatus || "pending_payment";
+  sanitized.subscriptionPlan = existingProfile?.subscriptionPlan || "Plano Pro";
+  sanitized.subscriptionExpiresAt = existingProfile?.subscriptionExpiresAt || "2026-12-31";
+  sanitized.createdAt = existingProfile?.createdAt || new Date().toISOString();
+
+  return sanitized;
 }
 
 function sanitizePlanForUser(plan: any, profile: any, userEmail?: string) {
@@ -1171,18 +1224,23 @@ app.post("/api/auth/login", async (req, res) => {
 app.post("/api/auth/save-user", requireAuth, verifyUserMatch, async (req: any, res: any) => {
   try {
     const { email, userAccount, password } = req.body;
-    if (!email || !userAccount) {
+    if (!email || !userAccount || typeof userAccount !== "object") {
       return res.status(400).json({ error: "Dados para sincronização inválidos." });
     }
 
+    const normalizedEmail = normalizeEmail(email);
+    if (!normalizedEmail) {
+      return res.status(400).json({ error: "E-mail inválido." });
+    }
+
     const db = await getDatabase();
-    const userFound = findUserInDb(db, email);
+    const userFound = findUserInDb(db, normalizedEmail);
 
     let targetKey: string;
     let existingUser: any;
 
     if (!userFound) {
-      targetKey = email.trim().toLowerCase();
+      targetKey = normalizedEmail;
       const isMaster = targetKey === MASTER_ADMIN_EMAIL;
       existingUser = {
         email: targetKey,
@@ -1204,7 +1262,7 @@ app.post("/api/auth/save-user", requireAuth, verifyUserMatch, async (req: any, r
       existingUser = userFound.user;
     }
 
-    const requesterEmail = (req.user?.email || "").toString().trim().toLowerCase();
+    const requesterEmail = normalizeEmail(req.user?.email || "") || (req.user?.email || "").toString().trim().toLowerCase();
     const adminHeader = req.headers["x-admin-password"];
     const adminSecretStr = typeof adminHeader === "string" ? adminHeader : undefined;
     const isAdminCaller = Boolean(
@@ -1214,38 +1272,17 @@ app.post("/api/auth/save-user", requireAuth, verifyUserMatch, async (req: any, r
 
     const existingCreatedAt = existingUser?.profile?.createdAt || existingUser?.createdAt || new Date().toISOString();
 
-    let sanitizedProfile: any;
-    if (isAdminCaller) {
-      sanitizedProfile = {
-        ...(existingUser.profile || {}),
-        ...(userAccount.profile || {}),
-        createdAt: existingCreatedAt
-      };
-    } else {
-      const incomingProfile = userAccount.profile || {};
-      sanitizedProfile = {
-        ...(existingUser.profile || {}),
-        name: typeof incomingProfile.name === "string" ? incomingProfile.name.trim() : existingUser.profile?.name,
-        level: incomingProfile.level || existingUser.profile?.level,
-        goal: incomingProfile.goal || existingUser.profile?.goal,
-        daysPerWeek: incomingProfile.daysPerWeek ?? existingUser.profile?.daysPerWeek,
-        durationPerSession: incomingProfile.durationPerSession ?? existingUser.profile?.durationPerSession,
-        eventDate: incomingProfile.eventDate ?? existingUser.profile?.eventDate,
-        hasPowerMeter: incomingProfile.hasPowerMeter ?? existingUser.profile?.hasPowerMeter,
-        ftp: incomingProfile.ftp !== undefined ? incomingProfile.ftp : existingUser.profile?.ftp,
-        hasHeartRate: incomingProfile.hasHeartRate ?? existingUser.profile?.hasHeartRate,
-        maxHeartRate: incomingProfile.maxHeartRate !== undefined ? incomingProfile.maxHeartRate : existingUser.profile?.maxHeartRate,
-        limitations: incomingProfile.limitations !== undefined ? incomingProfile.limitations : existingUser.profile?.limitations,
-        recentActivity: incomingProfile.recentActivity !== undefined ? incomingProfile.recentActivity : existingUser.profile?.recentActivity,
-        onboardingStep: incomingProfile.onboardingStep ?? existingUser.profile?.onboardingStep,
-        role: existingUser.profile?.role || "athlete",
-        isCoach: existingUser.profile?.isCoach === true,
-        subscriptionStatus: existingUser.profile?.subscriptionStatus || "pending_payment",
-        subscriptionPlan: existingUser.profile?.subscriptionPlan || "Plano Pro",
-        subscriptionExpiresAt: existingUser.profile?.subscriptionExpiresAt || "2026-12-31",
-        createdAt: existingCreatedAt
-      };
+    const sanitizedProfile = sanitizeUserProfileInput(userAccount.profile || {}, existingUser?.profile || {});
+
+    if (!isAdminCaller) {
+      sanitizedProfile.role = existingUser.profile?.role || "athlete";
+      sanitizedProfile.isCoach = existingUser.profile?.isCoach === true;
+      sanitizedProfile.subscriptionStatus = existingUser.profile?.subscriptionStatus || "pending_payment";
+      sanitizedProfile.subscriptionPlan = existingUser.profile?.subscriptionPlan || "Plano Pro";
+      sanitizedProfile.subscriptionExpiresAt = existingUser.profile?.subscriptionExpiresAt || "2026-12-31";
     }
+
+    sanitizedProfile.createdAt = existingCreatedAt;
 
     let preservedPassword = existingUser?.password;
     if (password && password !== existingUser?.password) {
