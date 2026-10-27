@@ -1844,32 +1844,141 @@ app.get("/api/admin/users", requireAuth, requireAdmin, async (req, res) => {
   }
 });
 
+function getPublicApiUrl(req: any): string {
+  const forwardedHost = req.headers["x-forwarded-host"];
+  const host = (forwardedHost || req.get("host") || "localhost:3000").toString().split(",")[0].trim();
+  const forwardedProto = req.headers["x-forwarded-proto"];
+  const protocol = (forwardedProto || (req.secure ? "https" : "http")).toString().split(",")[0].trim();
+  return `${protocol}://${host}`;
+}
+
+function isValidMercadoPagoSignature(req: any): boolean {
+  const secret = process.env.MERCADO_PAGO_WEBHOOK_SECRET;
+  if (!secret) return process.env.NODE_ENV !== "production";
+
+  const signature = req.headers["x-signature"];
+  const requestId = req.headers["x-request-id"];
+  const dataId = (req.query?.["data.id"] || req.body?.data?.id || req.body?.id || "").toString().toLowerCase();
+  if (typeof signature !== "string" || typeof requestId !== "string" || !dataId) return false;
+
+  const parts = signature.split(",").reduce((result: Record<string, string>, part: string) => {
+    const [key, value] = part.split("=", 2);
+    if (key && value) result[key.trim()] = value.trim();
+    return result;
+  }, {});
+  if (!parts.ts || !parts.v1) return false;
+
+  const manifest = `id:${dataId};request-id:${requestId};ts:${parts.ts};`;
+  const expected = crypto.createHmac("sha256", secret).update(manifest).digest("hex");
+  const received = Buffer.from(parts.v1, "hex");
+  const calculated = Buffer.from(expected, "hex");
+  return received.length === calculated.length && crypto.timingSafeEqual(received, calculated);
+}
+
+async function fetchMercadoPagoResource(resource: string): Promise<any> {
+  const accessToken = process.env.MERCADO_PAGO_ACCESS_TOKEN;
+  if (!accessToken) throw new Error("MERCADO_PAGO_ACCESS_TOKEN não configurado.");
+  const response = await fetch(`https://api.mercadopago.com${resource}`, {
+    headers: { "Authorization": `Bearer ${accessToken}` }
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(`Mercado Pago retornou ${response.status}: ${data?.message || "erro desconhecido"}`);
+  return data;
+}
+
+async function activateUserFromMercadoPago(email: string, paymentId: string, plan = "Plano Pro") {
+  const normalizedEmail = normalizeEmail(email);
+  if (!normalizedEmail) throw new Error("Mercado Pago não retornou um e-mail de pagador válido.");
+  const db = await getDatabase();
+  const userFound = findUserInDb(db, normalizedEmail);
+  if (!userFound) {
+    console.warn(`[Mercado Pago] Pagamento ${paymentId} recebido para usuário inexistente: ${normalizedEmail}`);
+    return false;
+  }
+  const user = userFound.user;
+  if (user.profile?.mercadoPagoPaymentId === paymentId && user.profile?.subscriptionStatus === "active") return true;
+  user.profile = {
+    ...user.profile,
+    subscriptionStatus: "active",
+    subscriptionPlan: plan,
+    subscriptionExpiresAt: new Date(Date.now() + 31 * 24 * 60 * 60 * 1000).toISOString(),
+    mercadoPagoPaymentId: paymentId,
+    mercadoPagoUpdatedAt: new Date().toISOString()
+  };
+  await saveDatabase(db, userFound.key);
+  return true;
+}
+
+async function updateUserSubscriptionByEmail(email: string, status: "active" | "expired", subscriptionId: string) {
+  const normalizedEmail = normalizeEmail(email);
+  if (!normalizedEmail) return false;
+  const db = await getDatabase();
+  const userFound = findUserInDb(db, normalizedEmail);
+  if (!userFound) return false;
+  userFound.user.profile = {
+    ...userFound.user.profile,
+    subscriptionStatus: status,
+    mercadoPagoSubscriptionId: subscriptionId,
+    mercadoPagoUpdatedAt: new Date().toISOString()
+  };
+  await saveDatabase(db, userFound.key);
+  return true;
+}
+
 // Mercado Pago Endpoints padronizados com R$ 16,90
 app.get("/api/mercadopago/config", (req, res) => {
   res.json({
     success: true,
     isReal: !!process.env.MERCADO_PAGO_ACCESS_TOKEN,
-    publicKey: process.env.MERCADO_PAGO_PUBLIC_KEY || "TEST-PublicKey-Simulado",
-    direct_link: "https://mpago.la/24PgikU"
+    publicKey: process.env.MERCADO_PAGO_PUBLIC_KEY || null,
+    recurring: true
   });
+});
+
+app.post("/api/mercadopago/create-subscription", requireAuth, verifyUserMatch, async (req, res) => {
+  try {
+    const email = normalizeEmail(req.body?.email || (req as any).user?.email);
+    const accessToken = process.env.MERCADO_PAGO_ACCESS_TOKEN;
+    if (!email) return res.status(400).json({ error: "E-mail válido é obrigatório." });
+    if (!accessToken) return res.status(503).json({ error: "Mercado Pago não está configurado neste ambiente." });
+
+    const responseMP = await fetch("https://api.mercadopago.com/preapproval", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+        "X-Idempotency-Key": `subscription-${email}-${Date.now()}`
+      },
+      body: JSON.stringify({
+        reason: "Assinatura Mensal Biker AI",
+        payer_email: email,
+        auto_recurring: {
+          frequency: 1,
+          frequency_type: "months",
+          transaction_amount: SUBSCRIPTION_PRICE_BRL,
+          currency_id: "BRL"
+        },
+        back_url: `${getPublicApiUrl(req)}/?status=subscription`,
+        notification_url: `${getPublicApiUrl(req)}/api/mercadopago/webhook`,
+        status: "pending"
+      })
+    });
+    const data = await responseMP.json();
+    if (!responseMP.ok) return res.status(502).json({ error: data?.message || "Falha ao criar assinatura no Mercado Pago." });
+    res.json({ success: true, init_point: data.init_point, subscriptionId: data.id });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 app.post("/api/mercadopago/create-preference", requireAuth, verifyUserMatch, async (req, res) => {
   try {
-    const { email } = req.body;
+    const email = normalizeEmail(req.body?.email || (req as any).user?.email);
     const accessToken = process.env.MERCADO_PAGO_ACCESS_TOKEN;
 
     if (!accessToken) {
-      return res.json({
-        success: true,
-        isSimulated: true,
-        init_point: "https://mpago.la/24PgikU",
-        preferenceId: "simulated-pref-id-123456"
-      });
+      return res.status(503).json({ error: "Mercado Pago não está configurado neste ambiente." });
     }
-
-    const host = req.get("host") || "localhost:3000";
-    const protocol = req.secure || req.headers["x-forwarded-proto"] === "https" ? "https" : "http";
 
     const mpResponse = await fetch("https://api.mercadopago.com/checkout/preferences", {
       method: "POST",
@@ -1885,13 +1994,16 @@ app.post("/api/mercadopago/create-preference", requireAuth, verifyUserMatch, asy
           unit_price: SUBSCRIPTION_PRICE_BRL,
           currency_id: "BRL"
         }],
-        payer: { email: email || "usuario@biker.ai" },
-        back_urls: { success: `${protocol}://${host}/?status=success` }
+        payer: { email },
+        external_reference: email,
+        notification_url: `${getPublicApiUrl(req)}/api/mercadopago/webhook`,
+        back_urls: { success: `${getPublicApiUrl(req)}/?status=success` }
       })
     });
 
     const mpData = await mpResponse.json();
-    res.json({ success: true, init_point: mpData.init_point });
+    if (!mpResponse.ok) return res.status(502).json({ error: mpData?.message || "Falha ao criar preferência." });
+    res.json({ success: true, init_point: mpData.init_point, preferenceId: mpData.id });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
@@ -1899,15 +2011,11 @@ app.post("/api/mercadopago/create-preference", requireAuth, verifyUserMatch, asy
 
 app.post("/api/mercadopago/create-pix", requireAuth, verifyUserMatch, async (req, res) => {
   try {
-    const { email } = req.body;
+    const email = normalizeEmail(req.body?.email || (req as any).user?.email);
     const accessToken = process.env.MERCADO_PAGO_ACCESS_TOKEN;
 
     if (!accessToken) {
-      return res.json({
-        success: true,
-        isSimulated: true,
-        qr_code: `00020101021226870014BR.GOV.BCB.PIX2565bikerai-mp-mercadopago-${SUBSCRIPTION_PRICE_BRL.toFixed(2)}`
-      });
+      return res.status(503).json({ error: "Mercado Pago não está configurado neste ambiente." });
     }
 
     const responseMP = await fetch("https://api.mercadopago.com/v1/payments", {
@@ -1915,17 +2023,18 @@ app.post("/api/mercadopago/create-pix", requireAuth, verifyUserMatch, async (req
       headers: {
         "Authorization": `Bearer ${accessToken}`,
         "Content-Type": "application/json",
-        "X-Idempotency-Key": `pix-${Date.now()}`
+        "X-Idempotency-Key": `pix-${email}-${Date.now()}`
       },
       body: JSON.stringify({
         transaction_amount: SUBSCRIPTION_PRICE_BRL,
         description: "Assinatura Biker AI Premium",
         payment_method_id: "pix",
-        payer: { email: email || "usuario@biker.ai" }
+        payer: { email }
       })
     });
 
     const mpData = await responseMP.json();
+    if (!responseMP.ok) return res.status(502).json({ error: mpData?.message || "Falha ao criar cobrança Pix." });
     res.json({
       success: true,
       qr_code: mpData.point_of_interaction?.transaction_data?.qr_code,
@@ -1933,6 +2042,39 @@ app.post("/api/mercadopago/create-pix", requireAuth, verifyUserMatch, async (req
     });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
+  }
+});
+
+app.post("/api/mercadopago/webhook", async (req, res) => {
+  if (!isValidMercadoPagoSignature(req)) {
+    return res.status(401).json({ error: "Assinatura do webhook inválida." });
+  }
+
+  try {
+    const type = (req.body?.type || req.body?.topic || "").toString();
+    const resourceId = (req.body?.data?.id || req.query?.id || req.query?.["data.id"] || "").toString();
+    if (!resourceId) return res.sendStatus(200);
+
+    if (type === "payment" || type === "payment.updated") {
+      const payment = await fetchMercadoPagoResource(`/v1/payments/${encodeURIComponent(resourceId)}`);
+      if (payment.status === "approved") {
+        await activateUserFromMercadoPago(payment.external_reference || payment.payer?.email, resourceId);
+      }
+      return res.sendStatus(200);
+    }
+
+    if (type === "subscription_preapproval" || type === "subscription_preapproval.updated" || type === "preapproval") {
+      const subscription = await fetchMercadoPagoResource(`/preapproval/${encodeURIComponent(resourceId)}`);
+      await updateUserSubscriptionByEmail(
+        subscription.payer_email,
+        subscription.status === "authorized" ? "active" : "expired",
+        resourceId
+      );
+    }
+    return res.sendStatus(200);
+  } catch (error: any) {
+    console.error("[Mercado Pago] Falha ao processar webhook:", error.message);
+    return res.status(500).json({ error: "Falha temporária ao processar webhook." });
   }
 });
 

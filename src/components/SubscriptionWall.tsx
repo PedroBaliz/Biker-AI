@@ -40,9 +40,6 @@ export default function SubscriptionWall({ userEmail, userName, currentStatus, o
   const [showPrivacy, setShowPrivacy] = useState(false);
   const [showContact, setShowContact] = useState(false);
 
-  // Official Mercado Pago subscription link
-  const MERCADO_PAGO_CHECKOUT_URL = "https://mpago.la/24PgikU";
-
   const handleCheckStatus = async () => {
     setCheckingStatus(true);
     setCheckMessage("");
@@ -73,10 +70,24 @@ export default function SubscriptionWall({ userEmail, userName, currentStatus, o
     }
   };
 
-  const handleProceedToMercadoPago = () => {
+  const handleProceedToMercadoPago = async () => {
     MetaPixelEvents.addPaymentInfo();
     MetaPixelEvents.initiateCheckout(16.90, "BRL");
-    window.open(MERCADO_PAGO_CHECKOUT_URL, "_blank", "noopener,noreferrer");
+    setCheckMessage("");
+    try {
+      const response = await apiFetch("/api/mercadopago/create-subscription", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: userEmail })
+      });
+      const data = await response.json();
+      if (!response.ok || !data.init_point) {
+        throw new Error(data.error || "Não foi possível iniciar o checkout.");
+      }
+      window.location.assign(data.init_point);
+    } catch (error: any) {
+      setCheckMessage(error.message || "Não foi possível iniciar o pagamento. Tente novamente.");
+    }
   };
 
   return (
@@ -392,4 +403,3 @@ export default function SubscriptionWall({ userEmail, userName, currentStatus, o
     </div>
   );
 }
-
