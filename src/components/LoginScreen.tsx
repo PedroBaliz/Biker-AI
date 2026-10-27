@@ -3,7 +3,8 @@ import { UserAccount, UserProfile, ChatMessage } from "../types";
 import { motion, AnimatePresence } from "motion/react";
 import { 
   signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword 
+  createUserWithEmailAndPassword,
+  deleteUser
 } from "firebase/auth";
 import { auth, apiFetch } from "../firebase";
 import { MetaPixelEvents } from "../lib/metaPixel";
@@ -286,6 +287,11 @@ export default function LoginScreen({ onLoginSuccess, onNavigateSlug }: LoginScr
               errMsg = errJson.error || errMsg;
             }
           } catch (e) {}
+          if (fbCredential?.user) {
+            await deleteUser(fbCredential.user).catch((cleanupError) => {
+              console.error("[Cadastro] Falha ao desfazer conta Firebase após erro central:", cleanupError);
+            });
+          }
           throw new Error(errMsg);
         }
 

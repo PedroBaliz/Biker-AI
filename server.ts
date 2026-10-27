@@ -822,12 +822,16 @@ async function fetchFirestoreUser(email: string, idToken?: string): Promise<{ fo
 
 async function saveFirestoreUser(email: string, userData: any, idToken?: string): Promise<void> {
   const emailKey = email.trim().toLowerCase();
+  let lastError: Error | null = null;
 
   if (adminFirestoreDb) {
     try {
       await adminFirestoreDb.collection("users").doc(emailKey).set(userData);
       return;
-    } catch (err: any) {}
+    } catch (err: any) {
+      lastError = err instanceof Error ? err : new Error(String(err));
+      console.error("[Firestore] Falha ao salvar com Admin SDK:", lastError.message);
+    }
   }
 
   if (idToken && firebaseAppletConfig && firebaseAppletConfig.projectId) {
@@ -845,12 +849,21 @@ async function saveFirestoreUser(email: string, userData: any, idToken?: string)
         body: JSON.stringify(payload)
       });
       if (res.ok) return;
-    } catch (restErr: any) {}
+      lastError = new Error(`Firestore REST retornou ${res.status}: ${await res.text()}`);
+    } catch (restErr: any) {
+      lastError = restErr instanceof Error ? restErr : new Error(String(restErr));
+    }
   }
 
-  if (!useFirestore || !firestoreDb) throw new Error("Firestore não está habilitado.");
+  if (!useFirestore || !firestoreDb) {
+    throw lastError || new Error("Firestore não está habilitado.");
+  }
   const docRef = doc(firestoreDb, "users", emailKey);
-  await setDoc(docRef, userData);
+  try {
+    await setDoc(docRef, userData);
+  } catch (err: any) {
+    throw lastError || (err instanceof Error ? err : new Error(String(err)));
+  }
 }
 
 async function deleteFirestoreUser(email: string, idToken?: string): Promise<void> {
@@ -1172,7 +1185,11 @@ app.post("/api/auth/register", async (req, res) => {
 
     res.json({ success: true, user: responseUser });
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    console.error("[Auth/Register] Falha no cadastro central:", error);
+    res.status(500).json({
+      error: "Não foi possível salvar seu cadastro central.",
+      detail: process.env.NODE_ENV === "production" ? undefined : error.message
+    });
   }
 });
 
