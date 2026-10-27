@@ -12,6 +12,7 @@ import { SEO_ARTICLES } from "../data/seoArticlesData";
 import { 
   Dumbbell, ShieldAlert, ShieldCheck, Sparkles, Mail, Lock, User, Eye, EyeOff, Bike, 
   ChevronRight, CheckCircle, Download, Smartphone, Share, X, ExternalLink,
+  ArrowRight,
   Activity, TrendingUp, Zap, Award, MessageSquare, Calendar, Heart, Percent, Star, Check,
   Play, Pause, Sliders, Gauge, Instagram, Loader2, Bot, Clock, Flame, Smile, Compass, Target, MessageSquareCode, BookOpen
 } from "lucide-react";
@@ -79,8 +80,6 @@ export default function LoginScreen({ onLoginSuccess, onNavigateSlug }: LoginScr
       setIsTypingSimulated(false);
     }, 1250);
   };
-
-  const MERCADO_PAGO_CHECKOUT_URL = "https://mpago.la/24PgikU";
 
   const scrollToSection = (id: string, signupMode?: boolean) => {
     if (signupMode === true) {
@@ -1484,15 +1483,14 @@ export default function LoginScreen({ onLoginSuccess, onNavigateSlug }: LoginScr
               </div>
 
               <div className="pt-2 space-y-2">
-                <a
-                  href={MERCADO_PAGO_CHECKOUT_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <button
+                  type="button"
+                  onClick={() => scrollToSection("auth-section", false)}
                   className="w-full inline-flex items-center justify-center gap-2 py-3.5 px-6 bg-lime-400 hover:bg-lime-300 text-slate-950 text-xs font-heading font-black uppercase tracking-wider rounded-2xl transition-all shadow-md cursor-pointer"
                 >
-                  <span>Assinar Pro por R$ 16,90/mês</span>
-                  <ExternalLink className="w-3.5 h-3.5 stroke-[2.5]" />
-                </a>
+                  <span>Criar conta e assinar Pro • R$ 16,90/mês</span>
+                  <ArrowRight className="w-3.5 h-3.5 stroke-[2.5]" />
+                </button>
 
                 {/* Informações Discretas Próximo da Assinatura */}
                 <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[11px] text-slate-400 text-center font-medium pt-1">

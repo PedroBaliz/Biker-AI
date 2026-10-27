@@ -398,5 +398,35 @@
     "workoutLogs": [],
     "createdAt": "2026-10-08T01:06:32.909Z",
     "password": "bb946c71e644949b93286ea7cbbab9d3:24d41ac4eade4636a3f04c1387ac4206f81c1ec32f6c44ee7f0b1566415200dbf26e4f603ce9875d18c4dba91cba4068b4eadc27604eacc4309d26ed88d63167"
+  },
+  "race.athlete.1793144446124@exemplo.com": {
+    "email": "race.athlete.1793144446124@exemplo.com",
+    "profile": {
+      "name": "Atleta Veloz",
+      "email": "race.athlete.1793144446124@exemplo.com",
+      "role": "athlete",
+      "isCoach": false,
+      "subscriptionStatus": "pending_payment",
+      "subscriptionPlan": "Plano Pro",
+      "subscriptionExpiresAt": "2026-12-31",
+      "createdAt": "2026-10-27T23:40:46.134Z",
+      "goal": "melhorar condicionamento",
+      "level": "intermediário",
+      "daysPerWeek": 4,
+      "durationPerSession": 60,
+      "hasPowerMeter": true,
+      "ftp": 200,
+      "hasHeartRate": true,
+      "maxHeartRate": 185,
+      "limitations": "Nenhuma",
+      "recentActivity": "Ciclismo regular",
+      "onboardingStep": 10
+    },
+    "chatHistory": [],
+    "plan": null,
+    "feedbacks": [],
+    "workoutLogs": [],
+    "createdAt": "2026-10-27T23:40:46.134Z",
+    "password": "dc8d7d9fda9733132f9819db24f0dd26:13c538c1a8928bd31a8774baac9b0ce3ea94e2de858ff8c4bb73dbc8c94c9992e8e71b2badca77e8a54f6aa18abd6ba7e28dcc58d1466d03da66c85827cf1fc9"
   }
 }

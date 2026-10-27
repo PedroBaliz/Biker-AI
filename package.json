@@ -14,6 +14,7 @@
   "dependencies": {
     "@firebase/firestore": "^4.16.0",
     "@google/genai": "^2.4.0",
+    "@mercadopago/sdk-js": "^0.0.3",
     "@tailwindcss/vite": "^4.1.14",
     "@vitejs/plugin-react": "^5.0.4",
     "canvas-confetti": "^1.9.4",

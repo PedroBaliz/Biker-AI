@@ -1909,7 +1909,7 @@ async function activateUserFromMercadoPago(email: string, paymentId: string, pla
   return true;
 }
 
-async function updateUserSubscriptionByEmail(email: string, status: "active" | "expired", subscriptionId: string) {
+async function updateUserSubscriptionByEmail(email: string, status: "active" | "expired" | "pending_payment", subscriptionId: string) {
   const normalizedEmail = normalizeEmail(email);
   if (!normalizedEmail) return false;
   const db = await getDatabase();
@@ -1931,16 +1931,55 @@ app.get("/api/mercadopago/config", (req, res) => {
     success: true,
     isReal: !!process.env.MERCADO_PAGO_ACCESS_TOKEN,
     publicKey: process.env.MERCADO_PAGO_PUBLIC_KEY || null,
+    planId: process.env.MERCADO_PAGO_PREAPPROVAL_PLAN_ID || null,
     recurring: true
   });
+});
+
+app.post("/api/admin/mercadopago/create-plan", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const accessToken = process.env.MERCADO_PAGO_ACCESS_TOKEN;
+    if (!accessToken) return res.status(503).json({ error: "Mercado Pago não está configurado neste ambiente." });
+
+    const responseMP = await fetch("https://api.mercadopago.com/preapproval_plan", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${accessToken}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        reason: "Plano Mensal Biker AI",
+        auto_recurring: {
+          frequency: 1,
+          frequency_type: "months",
+          transaction_amount: SUBSCRIPTION_PRICE_BRL,
+          currency_id: "BRL"
+        },
+        back_url: `${getPublicApiUrl(req)}/?status=subscription`
+      })
+    });
+    const data = await responseMP.json();
+    if (!responseMP.ok) return res.status(502).json({ error: data?.message || "Falha ao criar plano." });
+    res.json({
+      success: true,
+      planId: data.id,
+      message: "Salve este ID em MERCADO_PAGO_PREAPPROVAL_PLAN_ID."
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 app.post("/api/mercadopago/create-subscription", requireAuth, verifyUserMatch, async (req, res) => {
   try {
     const email = normalizeEmail(req.body?.email || (req as any).user?.email);
+    const cardTokenId = typeof req.body?.cardTokenId === "string" ? req.body.cardTokenId.trim() : "";
     const accessToken = process.env.MERCADO_PAGO_ACCESS_TOKEN;
+    const planId = process.env.MERCADO_PAGO_PREAPPROVAL_PLAN_ID;
     if (!email) return res.status(400).json({ error: "E-mail válido é obrigatório." });
+    if (!cardTokenId) return res.status(400).json({ error: "Token do cartão é obrigatório." });
     if (!accessToken) return res.status(503).json({ error: "Mercado Pago não está configurado neste ambiente." });
+    if (!planId) return res.status(503).json({ error: "Plano do Mercado Pago não está configurado neste ambiente." });
 
     const responseMP = await fetch("https://api.mercadopago.com/preapproval", {
       method: "POST",
@@ -1950,22 +1989,19 @@ app.post("/api/mercadopago/create-subscription", requireAuth, verifyUserMatch, a
         "X-Idempotency-Key": `subscription-${email}-${Date.now()}`
       },
       body: JSON.stringify({
+        preapproval_plan_id: planId,
         reason: "Assinatura Mensal Biker AI",
+        external_reference: email,
         payer_email: email,
-        auto_recurring: {
-          frequency: 1,
-          frequency_type: "months",
-          transaction_amount: SUBSCRIPTION_PRICE_BRL,
-          currency_id: "BRL"
-        },
+        card_token_id: cardTokenId,
         back_url: `${getPublicApiUrl(req)}/?status=subscription`,
         notification_url: `${getPublicApiUrl(req)}/api/mercadopago/webhook`,
-        status: "pending"
+        status: "authorized"
       })
     });
     const data = await responseMP.json();
     if (!responseMP.ok) return res.status(502).json({ error: data?.message || "Falha ao criar assinatura no Mercado Pago." });
-    res.json({ success: true, init_point: data.init_point, subscriptionId: data.id });
+    res.json({ success: true, subscriptionId: data.id, status: data.status });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
@@ -2065,9 +2101,14 @@ app.post("/api/mercadopago/webhook", async (req, res) => {
 
     if (type === "subscription_preapproval" || type === "subscription_preapproval.updated" || type === "preapproval") {
       const subscription = await fetchMercadoPagoResource(`/preapproval/${encodeURIComponent(resourceId)}`);
+      const subscriptionStatus = subscription.status === "authorized"
+        ? "active"
+        : subscription.status === "pending"
+        ? "pending_payment"
+        : "expired";
       await updateUserSubscriptionByEmail(
-        subscription.payer_email,
-        subscription.status === "authorized" ? "active" : "expired",
+        subscription.external_reference || subscription.payer_email,
+        subscriptionStatus,
         resourceId
       );
     }

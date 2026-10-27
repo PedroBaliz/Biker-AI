@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { loadMercadoPago } from "@mercadopago/sdk-js";
 import { UserProfile } from "../types";
 import { apiFetch } from "../firebase";
 import { MetaPixelEvents } from "../lib/metaPixel";
@@ -23,6 +24,24 @@ import {
   FileText
 } from "lucide-react";
 
+interface MercadoPagoClient {
+  createCardToken(data: {
+    cardNumber: string;
+    cardholderName: string;
+    cardExpirationMonth: string;
+    cardExpirationYear: string;
+    securityCode: string;
+    identificationType: string;
+    identificationNumber: string;
+  }): Promise<{ id: string }>;
+}
+
+declare global {
+  interface Window {
+    MercadoPago?: new (publicKey: string, options?: { locale?: string }) => MercadoPagoClient;
+  }
+}
+
 interface SubscriptionWallProps {
   userEmail: string;
   userName: string;
@@ -34,6 +53,15 @@ export default function SubscriptionWall({ userEmail, userName, currentStatus, o
   // Status check states
   const [checkingStatus, setCheckingStatus] = useState(false);
   const [checkMessage, setCheckMessage] = useState("");
+  const [creatingSubscription, setCreatingSubscription] = useState(false);
+  const [card, setCard] = useState({
+    number: "",
+    name: "",
+    month: "",
+    year: "",
+    cvv: "",
+    cpf: ""
+  });
 
   // Modals for Terms, Privacy, and Contact
   const [showTerms, setShowTerms] = useState(false);
@@ -70,23 +98,55 @@ export default function SubscriptionWall({ userEmail, userName, currentStatus, o
     }
   };
 
-  const handleProceedToMercadoPago = async () => {
+  const updateCard = (field: keyof typeof card, value: string) => {
+    setCard((current) => ({ ...current, [field]: value }));
+  };
+
+  const handleProceedToMercadoPago = async (event: React.FormEvent) => {
+    event.preventDefault();
     MetaPixelEvents.addPaymentInfo();
     MetaPixelEvents.initiateCheckout(16.90, "BRL");
     setCheckMessage("");
+    setCreatingSubscription(true);
     try {
+      const configResponse = await apiFetch("/api/mercadopago/config");
+      const config = await configResponse.json();
+      if (!configResponse.ok || !config.publicKey) {
+        throw new Error("Mercado Pago não está configurado para receber pagamentos.");
+      }
+
+      await loadMercadoPago();
+      if (!window.MercadoPago) throw new Error("Não foi possível carregar o Mercado Pago.");
+      const mercadoPago = new window.MercadoPago(config.publicKey, { locale: "pt-BR" });
+      const token = await mercadoPago.createCardToken({
+        cardNumber: card.number.replace(/\D/g, ""),
+        cardholderName: card.name.trim(),
+        cardExpirationMonth: card.month.trim(),
+        cardExpirationYear: card.year.trim(),
+        securityCode: card.cvv.trim(),
+        identificationType: "CPF",
+        identificationNumber: card.cpf.replace(/\D/g, "")
+      });
+
       const response = await apiFetch("/api/mercadopago/create-subscription", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: userEmail })
+        body: JSON.stringify({ email: userEmail, cardTokenId: token.id })
       });
       const data = await response.json();
-      if (!response.ok || !data.init_point) {
-        throw new Error(data.error || "Não foi possível iniciar o checkout.");
+      if (!response.ok || !data.subscriptionId) {
+        throw new Error(data.error || "Não foi possível criar a assinatura.");
       }
-      window.location.assign(data.init_point);
+      setCheckMessage(
+        data.status === "authorized"
+          ? "Assinatura autorizada. Verificando a liberação do seu acesso..."
+          : "Assinatura criada e aguardando confirmação do Mercado Pago."
+      );
+      await handleCheckStatus();
     } catch (error: any) {
       setCheckMessage(error.message || "Não foi possível iniciar o pagamento. Tente novamente.");
+    } finally {
+      setCreatingSubscription(false);
     }
   };
 
@@ -159,7 +219,7 @@ export default function SubscriptionWall({ userEmail, userName, currentStatus, o
       <div className="w-full">
         <button
           type="button"
-          onClick={handleProceedToMercadoPago}
+          onClick={() => document.getElementById("mercadopago-card-form")?.scrollIntoView({ behavior: "smooth" })}
           className="w-full py-4 px-6 bg-slate-900 hover:bg-slate-800 active:scale-[0.99] text-lime-400 font-heading font-black text-xs sm:text-sm uppercase tracking-wider rounded-2xl shadow-lg hover:shadow-xl transition-all text-center flex items-center justify-center gap-2.5 cursor-pointer group border border-slate-800 ring-2 ring-lime-400/60 hover:ring-lime-400"
         >
           <Zap className="w-4 h-4 sm:w-5 sm:h-5 fill-lime-400 text-lime-400 shrink-0" />
@@ -167,6 +227,24 @@ export default function SubscriptionWall({ userEmail, userName, currentStatus, o
           <ExternalLink className="w-4 h-4 group-hover:translate-x-0.5 transition-transform shrink-0" />
         </button>
       </div>
+
+      <form id="mercadopago-card-form" onSubmit={handleProceedToMercadoPago} className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-left">
+        <div>
+          <h4 className="font-heading text-sm font-black text-slate-800">Dados do cartão</h4>
+          <p className="mt-1 text-[11px] text-slate-500">O cartão é tokenizado pelo Mercado Pago. O Biker AI não armazena seus dados.</p>
+        </div>
+        <input required inputMode="numeric" autoComplete="cc-number" placeholder="Número do cartão" value={card.number} onChange={(e) => updateCard("number", e.target.value)} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm" />
+        <input required autoComplete="cc-name" placeholder="Nome impresso no cartão" value={card.name} onChange={(e) => updateCard("name", e.target.value)} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm" />
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <input required inputMode="numeric" autoComplete="cc-exp-month" placeholder="Mês" maxLength={2} value={card.month} onChange={(e) => updateCard("month", e.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm" />
+          <input required inputMode="numeric" autoComplete="cc-exp-year" placeholder="Ano" maxLength={4} value={card.year} onChange={(e) => updateCard("year", e.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm" />
+          <input required inputMode="numeric" autoComplete="cc-csc" placeholder="CVV" maxLength={4} value={card.cvv} onChange={(e) => updateCard("cvv", e.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm" />
+          <input required inputMode="numeric" autoComplete="off" placeholder="CPF" value={card.cpf} onChange={(e) => updateCard("cpf", e.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm" />
+        </div>
+        <button type="submit" disabled={creatingSubscription} className="w-full rounded-xl bg-slate-900 px-4 py-3 text-xs font-black uppercase tracking-wide text-lime-400 disabled:cursor-not-allowed disabled:opacity-60">
+          {creatingSubscription ? "Processando..." : "Assinar com cartão • R$ 16,90/mês"}
+        </button>
+      </form>
 
       {/* Pricing Card with Full Transparency */}
       <div className="flex justify-center">
@@ -308,7 +386,7 @@ export default function SubscriptionWall({ userEmail, userName, currentStatus, o
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
           <button
             type="button"
-            onClick={handleProceedToMercadoPago}
+            onClick={() => document.getElementById("mercadopago-card-form")?.scrollIntoView({ behavior: "smooth" })}
             className="w-full sm:flex-1 py-4 px-6 bg-slate-900 hover:bg-slate-800 text-lime-400 font-heading font-black text-xs uppercase tracking-wider rounded-2xl shadow-lg hover:shadow-xl transition-all text-center flex items-center justify-center gap-2 cursor-pointer group"
           >
             <span>Aderir ao Plano • Mercado Pago</span>
