@@ -28,6 +28,19 @@ if (fs.existsSync(configPath)) {
   }
 }
 
+if (!firebaseAppletConfig.projectId && process.env.FIREBASE_PROJECT_ID) {
+  firebaseAppletConfig = {
+    projectId: process.env.FIREBASE_PROJECT_ID,
+    apiKey: process.env.FIREBASE_API_KEY || "",
+    authDomain: process.env.FIREBASE_AUTH_DOMAIN || "",
+    appId: process.env.FIREBASE_APP_ID || "",
+    storageBucket: process.env.FIREBASE_STORAGE_BUCKET || "",
+    messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID || "",
+    firestoreDatabaseId: process.env.FIREBASE_FIRESTORE_DATABASE_ID || "(default)"
+  };
+  console.log("[Firebase Config] Carregado pelas variáveis de ambiente.");
+}
+
 let firestoreDb: any = null;
 let useFirestore = false;
 
