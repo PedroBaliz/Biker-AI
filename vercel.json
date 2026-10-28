@@ -1,5 +1,11 @@
 {
   "cleanUrls": true,
+  "buildCommand": "npm run vercel-build",
+  "functions": {
+    "api/index.ts": {
+      "includeFiles": ["dist/server.cjs", "dist/server.cjs.map"]
+    }
+  },
   "rewrites": [
     {
       "source": "/api/(.*)",
