@@ -3,7 +3,7 @@
   "buildCommand": "npm run vercel-build",
   "functions": {
     "api/index.ts": {
-      "includeFiles": ["dist/server.cjs", "dist/server.cjs.map"]
+      "includeFiles": "dist/**"
     }
   },
   "rewrites": [
