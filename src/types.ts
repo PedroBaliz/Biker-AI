@@ -16,6 +16,10 @@ export interface UserProfile {
   subscriptionPlan?: string;
   subscriptionExpiresAt?: string;
   role?: 'athlete' | 'coach';
+  isCoach?: boolean;
+  isDemoAccount?: boolean;
+  demoNotice?: string;
+  photoUrl?: string;
   createdAt?: string; // ISO date of user registration
   trialStatus?: 'active' | 'trial' | 'trial_expired' | 'expired' | 'coach';
   trialDaysRemaining?: number;

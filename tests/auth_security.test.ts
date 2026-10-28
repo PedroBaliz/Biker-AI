@@ -1,5 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, beforeAll, afterAll } from "vitest";
 import request from "supertest";
+import fs from "fs";
+import path from "path";
 import {
   app,
   requireAuth,
@@ -10,6 +12,21 @@ import {
   setTestAuthToken,
   MASTER_ADMIN_EMAIL
 } from "../server";
+
+const USERS_DB_PATH = path.join(process.cwd(), "users_db.json");
+let initialDbBackup: string | null = null;
+
+beforeAll(() => {
+  if (fs.existsSync(USERS_DB_PATH)) {
+    initialDbBackup = fs.readFileSync(USERS_DB_PATH, "utf-8");
+  }
+});
+
+afterAll(() => {
+  if (initialDbBackup !== null) {
+    fs.writeFileSync(USERS_DB_PATH, initialDbBackup, "utf-8");
+  }
+});
 
 function createMockResponse() {
   const res: any = {
@@ -303,6 +320,18 @@ describe("Security & Authentication Real Middleware Tests", () => {
       expect(registerRes.body.success).toBe(true);
       expect(registerRes.body.user).toBeDefined();
       expect(registerRes.body.user.profile.name).toBe("Atleta Veloz");
+
+      // Cleanup test user after execution to avoid polluting database
+      const cleanupAdminToken = "test-cleanup-race-admin";
+      setTestAuthToken(cleanupAdminToken, {
+        email: MASTER_ADMIN_EMAIL,
+        uid: "admin-cleanup-race",
+        sub: "admin-cleanup-race"
+      });
+      await request(app)
+        .post("/api/admin/delete-user")
+        .set("Authorization", `Bearer ${cleanupAdminToken}`)
+        .send({ email: raceUserEmail });
     });
 
     it("should include data source (firestore or local_cache) in /api/admin/users response", async () => {
