@@ -1016,6 +1016,16 @@ async function triggerAutomaticBackup(db: Record<string, any>) {
   } catch (err) {}
 }
 
+async function createDatabaseBackup(db: Record<string, any>, filename?: string): Promise<string> {
+  await fs.promises.mkdir(BACKUPS_DIR, { recursive: true });
+  const backupName = filename || `users_db_backup_${new Date().toISOString().replace(/[:.]/g, "-")}.json`;
+  if (!/^users_db_backup_[A-Za-z0-9_.-]+\.json$/.test(backupName)) {
+    throw new Error("Nome de backup inválido.");
+  }
+  await fs.promises.writeFile(path.join(BACKUPS_DIR, backupName), JSON.stringify(db, null, 2), "utf-8");
+  return backupName;
+}
+
 async function saveDatabase(db: Record<string, any>, targetEmail?: string, idToken?: string) {
   inMemoryDbCache = db;
   inMemoryDbCacheTimestamp = Date.now();
@@ -1027,14 +1037,20 @@ async function saveDatabase(db: Record<string, any>, targetEmail?: string, idTok
     try {
       if (targetEmail) {
         const emailKey = targetEmail.trim().toLowerCase();
-        await saveFirestoreUser(emailKey, db[emailKey], idToken);
+        const target = findUserInDb(db, emailKey);
+        if (!target) throw new Error("Usuário não encontrado para persistência.");
+        await saveFirestoreUser(emailKey, target.user, idToken);
         firestoreSuccess = true;
       } else {
-        const savePromises = Object.keys(db).map(async (email) => {
-          await saveFirestoreUser(email, db[email], idToken).catch(() => {});
-        });
-        await Promise.all(savePromises);
-        firestoreSuccess = true;
+        const results = await Promise.allSettled(
+          Object.keys(db).map((email) => saveFirestoreUser(email, db[email], idToken))
+        );
+        const failed = results.find((result): result is PromiseRejectedResult => result.status === "rejected");
+        if (failed) {
+          firestoreError = failed.reason;
+        } else {
+          firestoreSuccess = true;
+        }
       }
     } catch (err: any) {
       firestoreError = err;
@@ -1848,6 +1864,10 @@ app.get("/api/admin/users", requireAuth, requireAdmin, async (req, res) => {
       return {
         email: user.email,
         createdAt: user.profile?.createdAt || user.createdAt,
+        chatHistoryCount: Array.isArray(user.chatHistory) ? user.chatHistory.length : 0,
+        hasPlan: Boolean(user.plan),
+        planSummary: user.plan?.summary || "",
+        feedbacks: Array.isArray(user.feedbacks) ? user.feedbacks : [],
         profile: {
           ...user.profile,
           subscriptionStatus: user.profile?.subscriptionStatus || (isCoach ? "active" : "pending_payment"),
@@ -1858,6 +1878,145 @@ app.get("/api/admin/users", requireAuth, requireAdmin, async (req, res) => {
     res.json({ success: true, users: userList, source });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
+  }
+});
+
+app.post("/api/admin/update-user-status", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const email = normalizeEmail(req.body?.email);
+    const status = req.body?.subscriptionStatus;
+    const role = req.body?.role;
+    if (!email) return res.status(400).json({ error: "E-mail do usuário é obrigatório." });
+    if (!["active", "expired", "pending_payment"].includes(status)) {
+      return res.status(400).json({ error: "Status de assinatura inválido." });
+    }
+    if (role !== undefined && !["athlete", "coach"].includes(role)) {
+      return res.status(400).json({ error: "Papel de usuário inválido." });
+    }
+
+    const db = await getDatabase(true, getAuthToken(req));
+    const userFound = findUserInDb(db, email);
+    if (!userFound) return res.status(404).json({ error: "Usuário não encontrado." });
+    if (email === MASTER_ADMIN_EMAIL && role === "athlete") {
+      return res.status(403).json({ error: "O treinador principal não pode ser rebaixado." });
+    }
+
+    const profile = userFound.user.profile || {};
+    profile.subscriptionStatus = status;
+    if (typeof req.body?.subscriptionPlan === "string" && req.body.subscriptionPlan.trim()) {
+      profile.subscriptionPlan = req.body.subscriptionPlan.trim().slice(0, 100);
+    }
+    if (typeof req.body?.subscriptionExpiresAt === "string") {
+      profile.subscriptionExpiresAt = req.body.subscriptionExpiresAt.trim().slice(0, 40);
+    }
+    if (role !== undefined) profile.role = role;
+    if (req.body?.createdAt !== undefined) {
+      const createdAt = new Date(req.body.createdAt);
+      if (Number.isNaN(createdAt.getTime())) return res.status(400).json({ error: "Data de criação inválida." });
+      profile.createdAt = createdAt.toISOString();
+    }
+    if (req.body?.ftp !== undefined) {
+      const ftp = req.body.ftp === null || req.body.ftp === "" ? null : Number(req.body.ftp);
+      if (ftp !== null && (!Number.isFinite(ftp) || ftp < 0 || ftp > 2000)) return res.status(400).json({ error: "FTP inválido." });
+      profile.ftp = ftp;
+    }
+    if (req.body?.maxHeartRate !== undefined) {
+      const maxHeartRate = req.body.maxHeartRate === null || req.body.maxHeartRate === "" ? null : Number(req.body.maxHeartRate);
+      if (maxHeartRate !== null && (!Number.isFinite(maxHeartRate) || maxHeartRate < 30 || maxHeartRate > 250)) return res.status(400).json({ error: "Frequência cardíaca máxima inválida." });
+      profile.maxHeartRate = maxHeartRate;
+    }
+    userFound.user.profile = profile;
+    await saveDatabase(db, userFound.key, getAuthToken(req));
+    res.json({ success: true, user: { ...userFound.user, password: undefined } });
+  } catch (error: any) {
+    console.error("[Admin/UpdateUser] Falha:", error);
+    res.status(500).json({ error: "Não foi possível atualizar o usuário." });
+  }
+});
+
+app.post("/api/admin/delete-user", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const email = normalizeEmail(req.body?.email);
+    if (!email) return res.status(400).json({ error: "E-mail do usuário é obrigatório." });
+    if (email === MASTER_ADMIN_EMAIL) return res.status(403).json({ error: "O treinador principal não pode ser excluído." });
+
+    const db = await getDatabase(true, getAuthToken(req));
+    const userFound = findUserInDb(db, email);
+    if (!userFound) return res.status(404).json({ error: "Usuário não encontrado." });
+    delete db[userFound.key];
+    await saveDatabase(db, undefined, getAuthToken(req));
+    await deleteFirestoreUser(email, getAuthToken(req));
+
+    try {
+      const adminApp = getAdminApp();
+      await getAdminAuth(adminApp).getUserByEmail(email).then((record) => getAdminAuth(adminApp).deleteUser(record.uid));
+    } catch (error: any) {
+      console.warn("[Admin/DeleteUser] Não foi possível remover a identidade Firebase:", error.message);
+    }
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error("[Admin/DeleteUser] Falha:", error);
+    res.status(500).json({ error: "Não foi possível excluir o usuário." });
+  }
+});
+
+app.get("/api/admin/backups", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    await fs.promises.mkdir(BACKUPS_DIR, { recursive: true });
+    const entries = await fs.promises.readdir(BACKUPS_DIR, { withFileTypes: true });
+    const backups = await Promise.all(entries
+      .filter((entry) => entry.isFile() && /^users_db_backup_[A-Za-z0-9_.-]+\.json$/.test(entry.name))
+      .map(async (entry) => {
+        const filePath = path.join(BACKUPS_DIR, entry.name);
+        const stat = await fs.promises.stat(filePath);
+        return { filename: entry.name, sizeBytes: stat.size, createdAt: stat.mtime.toISOString() };
+      }));
+    backups.sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+    const mainStat = await fs.promises.stat(USERS_DB_PATH).catch(() => null);
+    res.json({
+      success: true,
+      backups,
+      mainDatabase: mainStat ? { sizeBytes: mainStat.size, lastModified: mainStat.mtime.toISOString() } : null
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: "Não foi possível listar os backups." });
+  }
+});
+
+app.post("/api/admin/backups/create", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const db = await getDatabase(true, getAuthToken(req));
+    const filename = await createDatabaseBackup(db);
+    res.json({ success: true, filename });
+  } catch (error: any) {
+    console.error("[Admin/BackupCreate] Falha:", error);
+    res.status(500).json({ error: "Não foi possível criar o backup." });
+  }
+});
+
+app.post("/api/admin/backups/restore", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const filename = typeof req.body?.filename === "string" ? req.body.filename : "";
+    if (!/^users_db_backup_[A-Za-z0-9_.-]+\.json$/.test(filename)) {
+      return res.status(400).json({ error: "Nome de backup inválido." });
+    }
+    const backupPath = path.join(BACKUPS_DIR, filename);
+    const backupDb = JSON.parse(await fs.promises.readFile(backupPath, "utf-8"));
+    if (!backupDb || Array.isArray(backupDb) || typeof backupDb !== "object") {
+      return res.status(400).json({ error: "Conteúdo de backup inválido." });
+    }
+    const currentDb = await getDatabase(true, getAuthToken(req));
+    await createDatabaseBackup(currentDb);
+    for (const currentEmail of Object.keys(currentDb)) {
+      if (!Object.prototype.hasOwnProperty.call(backupDb, currentEmail)) {
+        await deleteFirestoreUser(currentEmail, getAuthToken(req));
+      }
+    }
+    await saveDatabase(backupDb, undefined, getAuthToken(req));
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error("[Admin/BackupRestore] Falha:", error);
+    res.status(500).json({ error: "Não foi possível restaurar o backup." });
   }
 });
 
