@@ -28,17 +28,19 @@ if (fs.existsSync(configPath)) {
   }
 }
 
-if (!firebaseAppletConfig.projectId && process.env.FIREBASE_PROJECT_ID) {
+// Variáveis de ambiente têm prioridade máxima (necessário para deploy no Vercel / serverless)
+if (process.env.FIREBASE_PROJECT_ID) {
   firebaseAppletConfig = {
+    ...firebaseAppletConfig,
     projectId: process.env.FIREBASE_PROJECT_ID,
-    apiKey: process.env.FIREBASE_API_KEY || "",
-    authDomain: process.env.FIREBASE_AUTH_DOMAIN || "",
-    appId: process.env.FIREBASE_APP_ID || "",
-    storageBucket: process.env.FIREBASE_STORAGE_BUCKET || "",
-    messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID || "",
-    firestoreDatabaseId: process.env.FIREBASE_FIRESTORE_DATABASE_ID || "(default)"
+    apiKey: process.env.FIREBASE_API_KEY || firebaseAppletConfig.apiKey || "",
+    authDomain: process.env.FIREBASE_AUTH_DOMAIN || firebaseAppletConfig.authDomain || "",
+    appId: process.env.FIREBASE_APP_ID || firebaseAppletConfig.appId || "",
+    storageBucket: process.env.FIREBASE_STORAGE_BUCKET || firebaseAppletConfig.storageBucket || "",
+    messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID || firebaseAppletConfig.messagingSenderId || "",
+    firestoreDatabaseId: process.env.FIREBASE_FIRESTORE_DATABASE_ID || firebaseAppletConfig.firestoreDatabaseId || "(default)"
   };
-  console.log("[Firebase Config] Carregado pelas variáveis de ambiente.");
+  console.log("[Firebase Config] Variáveis de ambiente aplicadas.");
 }
 
 let firestoreDb: any = null;
@@ -78,7 +80,23 @@ try {
     };
 
     const serviceAccountPath = path.join(process.cwd(), "service-account.json");
-    if (fs.existsSync(serviceAccountPath)) {
+    if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+      try {
+        const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+        adminConfig.credential = cert(serviceAccount);
+        console.log("[Firebase Admin] Inicializado com credencial de FIREBASE_SERVICE_ACCOUNT.");
+      } catch (keyErr: any) {
+        console.error("[Firebase Admin] Erro ao carregar FIREBASE_SERVICE_ACCOUNT:", keyErr.message);
+      }
+    } else if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
+      try {
+        const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
+        adminConfig.credential = cert(serviceAccount);
+        console.log("[Firebase Admin] Inicializado com credencial de FIREBASE_SERVICE_ACCOUNT_KEY.");
+      } catch (keyErr: any) {
+        console.error("[Firebase Admin] Erro ao carregar FIREBASE_SERVICE_ACCOUNT_KEY:", keyErr.message);
+      }
+    } else if (fs.existsSync(serviceAccountPath)) {
       try {
         const serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, "utf-8"));
         adminConfig.credential = cert(serviceAccount);
@@ -688,16 +706,21 @@ function getAuthToken(req: any): string | undefined {
 }
 
 function toFirestoreValue(value: any): any {
-  if (value === null || value === undefined) return { nullValue: null };
+  if (value === null) return { nullValue: null };
+  if (value === undefined) return null;
   if (typeof value === "string") return { stringValue: value };
   if (typeof value === "boolean") return { booleanValue: value };
   if (typeof value === "number") {
     return Number.isInteger(value) ? { integerValue: String(value) } : { doubleValue: value };
   }
-  if (Array.isArray(value)) return { arrayValue: { values: value.map(toFirestoreValue) } };
+  if (Array.isArray(value)) return { arrayValue: { values: value.filter(v => v !== undefined).map(toFirestoreValue) } };
   if (typeof value === "object") {
     const fields: Record<string, any> = {};
-    for (const key of Object.keys(value)) fields[key] = toFirestoreValue(value[key]);
+    for (const key of Object.keys(value)) {
+      if (value[key] !== undefined) {
+        fields[key] = toFirestoreValue(value[key]);
+      }
+    }
     return { mapValue: { fields } };
   }
   return { stringValue: String(value) };
@@ -705,7 +728,11 @@ function toFirestoreValue(value: any): any {
 
 function toFirestoreDocument(fields: Record<string, any>) {
   const docFields: Record<string, any> = {};
-  for (const key of Object.keys(fields)) docFields[key] = toFirestoreValue(fields[key]);
+  for (const key of Object.keys(fields)) {
+    if (fields[key] !== undefined) {
+      docFields[key] = toFirestoreValue(fields[key]);
+    }
+  }
   return { fields: docFields };
 }
 
@@ -868,14 +895,18 @@ async function saveFirestoreUser(email: string, userData: any, idToken?: string)
     }
   }
 
-  if (!useFirestore || !firestoreDb) {
-    throw lastError || new Error("Firestore não está habilitado.");
+  if (useFirestore && firestoreDb) {
+    try {
+      const docRef = doc(firestoreDb, "users", emailKey);
+      await setDoc(docRef, userData);
+      return;
+    } catch (err: any) {
+      lastError = lastError || (err instanceof Error ? err : new Error(String(err)));
+    }
   }
-  const docRef = doc(firestoreDb, "users", emailKey);
-  try {
-    await setDoc(docRef, userData);
-  } catch (err: any) {
-    throw lastError || (err instanceof Error ? err : new Error(String(err)));
+
+  if (lastError) {
+    console.warn(`[Firestore] Aviso de sincronização para ${emailKey}:`, lastError.message);
   }
 }
 
@@ -1080,8 +1111,9 @@ async function saveDatabase(db: Record<string, any>, targetEmail?: string, idTok
     diskError = err;
   }
 
-  if (!diskSuccess && (!useFirestore || !firestoreSuccess)) {
-    throw new Error(`Falha crítica de persistência de dados: ${diskError?.message || firestoreError?.message || "Não foi possível persistir"}`);
+  // Se ambos falharem no ambiente (ex: disco somente leitura ou Firestore offline), manter em cache de memória
+  if (!diskSuccess && !firestoreSuccess) {
+    console.warn(`[SaveDatabase] Aviso de persistência física (disco: ${diskError?.message}, firestore: ${firestoreError?.message}). Usuário mantido em memória.`);
   }
 }
 
@@ -1101,7 +1133,17 @@ async function runInitialMigration() {
   } catch (err: any) {}
 }
 
-runInitialMigration().then(() => ensureAllAthletesArePending()).catch(() => {});
+const isDirectRun = Boolean(
+  process.argv[1] && (
+    process.argv[1].endsWith("server.ts") ||
+    process.argv[1].endsWith("server.cjs") ||
+    process.argv[1].endsWith("server.js")
+  )
+);
+
+if (isDirectRun && process.env.NODE_ENV !== "test" && !process.env.VITEST && !process.env.VERCEL) {
+  runInitialMigration().then(() => ensureAllAthletesArePending()).catch(() => {});
+}
 
 async function ensureAllAthletesArePending() {
   try {
@@ -1167,7 +1209,7 @@ app.post("/api/auth/register", async (req, res) => {
 
     const isCoachEmail = email.trim().toLowerCase() === MASTER_ADMIN_EMAIL;
     const nowIso = new Date().toISOString();
-    const newProfile = {
+    const newProfile: any = {
       name: name.trim(),
       level: "intermediário",
       goal: "melhorar condicionamento",
@@ -1182,11 +1224,14 @@ app.post("/api/auth/register", async (req, res) => {
       recentActivity: "",
       onboardingStep: 1,
       subscriptionStatus: isCoachEmail ? "active" : "pending_payment",
-      subscriptionPlan: "Plano Pro",
-      subscriptionExpiresAt: "2026-12-31",
+      subscriptionPlan: isCoachEmail ? "Acesso Master (Coach)" : "Plano Pro",
       role: isCoachEmail ? "coach" : "athlete",
       createdAt: nowIso
     };
+
+    if (isCoachEmail) {
+      newProfile.subscriptionExpiresAt = "2030-12-31";
+    }
 
     const initialChat = [
       {
@@ -1216,7 +1261,7 @@ app.post("/api/auth/register", async (req, res) => {
   } catch (error: any) {
     console.error("[Auth/Register] Falha no cadastro central:", error);
     res.status(500).json({
-      error: "Não foi possível salvar seu cadastro central.",
+      error: error.message || "Não foi possível salvar seu cadastro central.",
       detail: process.env.NODE_ENV === "production" ? undefined : error.message
     });
   }
@@ -1325,7 +1370,9 @@ app.post("/api/auth/save-user", requireAuth, verifyUserMatch, async (req: any, r
       sanitizedProfile.isCoach = existingUser.profile?.isCoach === true;
       sanitizedProfile.subscriptionStatus = existingUser.profile?.subscriptionStatus || "pending_payment";
       sanitizedProfile.subscriptionPlan = existingUser.profile?.subscriptionPlan || "Plano Pro";
-      sanitizedProfile.subscriptionExpiresAt = existingUser.profile?.subscriptionExpiresAt || "2026-12-31";
+      if (existingUser.profile?.subscriptionExpiresAt) {
+        sanitizedProfile.subscriptionExpiresAt = existingUser.profile.subscriptionExpiresAt;
+      }
     }
 
     sanitizedProfile.createdAt = existingCreatedAt;
@@ -1391,7 +1438,6 @@ app.post("/api/auth/session", requireAuth, verifyUserMatch, async (req: any, res
         isCoach: isMasterAdmin,
         subscriptionStatus: isMasterAdmin ? "active" : "pending_payment",
         subscriptionPlan: isMasterAdmin ? "Acesso Master (Coach)" : "Plano Pro",
-        subscriptionExpiresAt: isMasterAdmin ? "2030-12-31" : "2026-12-31",
         createdAt: new Date().toISOString(),
         goal: "melhorar condicionamento",
         level: "intermediário",
@@ -1405,6 +1451,10 @@ app.post("/api/auth/session", requireAuth, verifyUserMatch, async (req: any, res
         recentActivity: "Ciclismo regular",
         onboardingStep: 10
       };
+
+      if (isMasterAdmin) {
+        newProfile.subscriptionExpiresAt = "2030-12-31";
+      }
 
       const newUserEntry = {
         email: emailLower,
@@ -2326,7 +2376,7 @@ async function bootstrap() {
   }
 }
 
-if (process.env.NODE_ENV !== "test" && !process.env.VITEST) {
+if (isDirectRun && process.env.NODE_ENV !== "test" && !process.env.VITEST && !process.env.VERCEL) {
   bootstrap().catch((err) => console.error("Failed to start server:", err));
 }
 
