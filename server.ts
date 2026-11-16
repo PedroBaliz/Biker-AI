@@ -363,19 +363,26 @@ async function requireAuth(req: any, res: any, next: any) {
 function normalizeEmail(value: unknown): string | null {
   if (typeof value !== "string") return null;
   const normalized = value.trim().toLowerCase();
-  if (!normalized || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)) {
-    return null;
-  }
+  // Limite de tamanho (RFC 5321) antes de qualquer validação e sem regex com
+  // quantificadores ambíguos, para evitar ReDoS.
+  if (!normalized || normalized.length > 254 || /\s/.test(normalized)) return null;
+  const at = normalized.indexOf("@");
+  if (at <= 0 || at !== normalized.lastIndexOf("@")) return null;
+  const domain = normalized.slice(at + 1);
+  const dot = domain.lastIndexOf(".");
+  if (dot <= 0 || dot === domain.length - 1) return null;
   return normalized;
 }
 
 function findUserInDb(db: Record<string, any>, email: string): { key: string; user: any } | null {
-  if (!email || !db) return null;
+  if (!email || !db || typeof email !== "string") return null;
   const emailKey = normalizeEmail(email) || email.trim().toLowerCase();
   const cleanKey = emailKey.replace(/[^a-z0-9]/g, "_");
+  // Só chaves próprias do objeto: impede que "__proto__"/"constructor" retornem o protótipo.
+  const own = (k: string) => Object.prototype.hasOwnProperty.call(db, k) && db[k];
 
-  if (db[emailKey]) return { key: emailKey, user: db[emailKey] };
-  if (db[cleanKey]) return { key: cleanKey, user: db[cleanKey] };
+  if (own(emailKey)) return { key: emailKey, user: db[emailKey] };
+  if (own(cleanKey)) return { key: cleanKey, user: db[cleanKey] };
 
   const targetKey = Object.keys(db).find((k) => {
     const kLower = k.trim().toLowerCase();
@@ -797,6 +804,12 @@ function fromFirestoreDocument(doc: any): Record<string, any> {
   return res;
 }
 
+function firestoreUserDocUrl(projectId: string, dbId: string, docId: string): string {
+  // O ID do documento vem do e-mail (entrada do usuário): sempre codificado, para não
+  // alterar o caminho da requisição REST (ex.: "../", "?", "#").
+  return `https://firestore.googleapis.com/v1/projects/${encodeURIComponent(projectId)}/databases/${encodeURIComponent(dbId)}/documents/users/${encodeURIComponent(docId)}`;
+}
+
 async function fetchFirestoreUsers(idToken?: string): Promise<Record<string, any>> {
   if (adminFirestoreDb) {
     try {
@@ -860,7 +873,7 @@ async function fetchFirestoreUser(email: string, idToken?: string): Promise<{ fo
     try {
       const projectId = firebaseAppletConfig.projectId;
       const dbId = firebaseAppletConfig.firestoreDatabaseId || "(default)";
-      const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/${dbId}/documents/users/${emailKey}`;
+      const url = firestoreUserDocUrl(projectId, dbId, emailKey);
       const res = await fetch(url, {
         headers: { "Authorization": idToken.startsWith("Bearer ") ? idToken : `Bearer ${idToken}` }
       });
@@ -909,7 +922,7 @@ async function saveFirestoreUser(email: string, userData: any, idToken?: string)
     try {
       const projectId = firebaseAppletConfig.projectId;
       const dbId = firebaseAppletConfig.firestoreDatabaseId || "(default)";
-      const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/${dbId}/documents/users/${emailKey}`;
+      const url = firestoreUserDocUrl(projectId, dbId, emailKey);
       const payload = toFirestoreDocument(userData);
       const res = await fetch(url, {
         method: "PATCH",
@@ -937,7 +950,7 @@ async function saveFirestoreUser(email: string, userData: any, idToken?: string)
   }
 
   if (lastError) {
-    console.warn(`[Firestore] Aviso de sincronização para ${emailKey}:`, lastError.message);
+    console.warn("[Firestore] Aviso de sincronização para %s: %s", emailKey, lastError.message);
   }
 }
 
@@ -970,7 +983,7 @@ async function deleteFirestoreUser(email: string, idToken?: string): Promise<voi
       const projectId = firebaseAppletConfig.projectId;
       const dbId = firebaseAppletConfig.firestoreDatabaseId || "(default)";
       for (const k of keysToDelete) {
-        const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/${dbId}/documents/users/${encodeURIComponent(k)}`;
+        const url = firestoreUserDocUrl(projectId, dbId, k);
         await fetch(url, {
           method: "DELETE",
           headers: idToken ? { "Authorization": idToken.startsWith("Bearer ") ? idToken : `Bearer ${idToken}` } : {}
@@ -1217,14 +1230,15 @@ app.post("/api/auth/register", requireAuth, async (req: any, res) => {
       return res.status(400).json({ error: "Dados inválidos de cadastro." });
     }
 
-    const emailKey = email.trim().toLowerCase();
+    const emailKey = normalizeEmail(email);
+    if (!emailKey) return res.status(400).json({ error: "E-mail inválido." });
     if (normalizeEmail(req.user?.email) !== emailKey) {
       return res.status(403).json({ error: "O e-mail do cadastro não corresponde à sessão autenticada." });
     }
 
     const db = await getDatabase();
 
-    if (db[emailKey]) {
+    if (Object.prototype.hasOwnProperty.call(db, emailKey)) {
       const existing = db[emailKey];
       // Conta criada por /api/auth/session (onAuthStateChanged chega antes do cadastro) ainda sem senha:
       // o próprio dono, autenticado, pode completá-la. Contas que já têm senha nunca são sobrescritas.
@@ -1443,9 +1457,8 @@ app.post("/api/auth/save-user", requireAuth, verifyUserMatch, async (req: any, r
 
 app.post("/api/auth/session", requireAuth, verifyUserMatch, async (req: any, res: any) => {
   try {
-    const { email } = req.body;
-    if (!email) return res.status(400).json({ error: "E-mail é obrigatório." });
-    const emailLower = email.trim().toLowerCase();
+    const emailLower = normalizeEmail(req.body?.email);
+    if (!emailLower) return res.status(400).json({ error: "E-mail é obrigatório." });
     const authToken = getAuthToken(req);
 
     const db = await getDatabase(false, authToken);
@@ -2164,7 +2177,7 @@ async function activateUserFromMercadoPago(email: string, paymentId: string, pla
   const db = await getDatabase();
   const userFound = findUserInDb(db, normalizedEmail);
   if (!userFound) {
-    console.warn(`[Mercado Pago] Pagamento ${paymentId} recebido para usuário inexistente: ${normalizedEmail}`);
+    console.warn("[Mercado Pago] Pagamento %s recebido para usuário inexistente.", paymentId);
     return false;
   }
   const user = userFound.user;

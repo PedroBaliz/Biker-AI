@@ -9,6 +9,7 @@ import {
   verifyPassword,
   hashPassword,
   verifyAdminSecret,
+  findUserInDb,
   setTestAuthToken,
   MASTER_ADMIN_EMAIL
 } from "../server";
@@ -381,6 +382,28 @@ describe("Security & Authentication Real Middleware Tests", () => {
       expect(res.body.success).toBe(true);
       expect(Array.isArray(res.body.users)).toBe(true);
       expect(["firestore", "local_cache"]).toContain(res.body.source);
+    });
+  });
+
+  describe("Alertas do CodeQL", () => {
+    it("findUserInDb não devolve o protótipo para chaves como __proto__", () => {
+      const db = { "atleta@exemplo.com": { email: "atleta@exemplo.com" } };
+      expect(findUserInDb(db, "__proto__")).toBeNull();
+      expect(findUserInDb(db, "constructor")).toBeNull();
+      expect(findUserInDb(db, "atleta@exemplo.com")?.key).toBe("atleta@exemplo.com");
+    });
+
+    it("validação de e-mail não trava com entrada maliciosa longa (ReDoS)", async () => {
+      const token = "test-redos-athlete";
+      setTestAuthToken(token, { email: "redos@exemplo.com", uid: "redos", sub: "redos" });
+      const evil = "!@!." + "!.".repeat(50000);
+      const started = Date.now();
+      const res = await request(app)
+        .post("/api/auth/session")
+        .set("Authorization", `Bearer ${token}`)
+        .send({ email: evil });
+      expect(Date.now() - started).toBeLessThan(2000);
+      expect([400, 403]).toContain(res.status);
     });
   });
 
