@@ -1614,7 +1614,7 @@ app.post("/api/auth/check-status", requireAuth, verifyUserMatch, async (req, res
 
 app.post("/api/user/notify-payment", requireAuth, verifyUserMatch, async (req, res) => {
   try {
-    const { email } = req.body;
+    const email = normalizeEmail(req.body?.email);
     if (!email) return res.status(400).json({ error: "E-mail é obrigatório." });
     // Texto livre exibido no painel admin: limitar tamanho para evitar abuso.
     const method = typeof req.body.method === "string" ? req.body.method.trim().slice(0, 40) : "";
@@ -1624,8 +1624,6 @@ app.post("/api/user/notify-payment", requireAuth, verifyUserMatch, async (req, r
     if (!userFound) return res.status(404).json({ error: "Usuário não encontrado." });
     const user = userFound.user;
 
-    if (!user.feedbacks) user.feedbacks = [];
-
     const paymentFeedback = {
       id: `pay_notify_${Date.now()}`,
       userName: user.profile?.name || "Atleta",
@@ -1634,7 +1632,11 @@ app.post("/api/user/notify-payment", requireAuth, verifyUserMatch, async (req, r
       timestamp: new Date().toISOString()
     };
 
-    user.feedbacks.unshift(paymentFeedback);
+    // Substitui o registro em vez de mutar o objeto encontrado (evita escrita em protótipo).
+    db[userFound.key] = {
+      ...user,
+      feedbacks: [paymentFeedback, ...(Array.isArray(user.feedbacks) ? user.feedbacks : [])]
+    };
     await saveDatabase(db, userFound.key, getAuthToken(req));
 
     res.json({ success: true, message: "Aviso de pagamento registrado para análise do treinador." });
