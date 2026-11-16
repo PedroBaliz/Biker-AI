@@ -81,7 +81,7 @@ Organizado em seções, na ordem do arquivo:
 
 - `vercel.json` reescreve `/api/*`, `robots.txt`, `sitemap.xml` e o HTML de verificação do Google para a função `/api`; o resto vai para `index.html`.
 - Com `VERCEL` definido, o servidor não chama `listen()`: só exporta `app`.
-- ⚠️ Existem `api/index.js` (bundle ESM, versionado) e `api/index.ts` (carrega `dist/server.cjs`) apontando para a mesma rota. Mantenha só um entrypoint para evitar conflito de função na Vercel.
+- ⚠️ `api/index.js` deve ser o **único** arquivo `api/index.*`. Um `api/index.ts` ao lado gera conflito de função e a Vercel falha o deploy antes do build (ocorreu no commit `32c9871`).
 
 ## Variáveis de ambiente
 
