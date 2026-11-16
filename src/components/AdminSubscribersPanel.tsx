@@ -376,9 +376,8 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
   };
 
   // Helper to identify coach / master admin accounts
-  const isCoachUser = (u: AdminUser) => 
-    u.profile?.role === "coach" || 
-    u.email?.trim().toLowerCase() === "pedro.bramos@sempreceub.com";
+  const isCoachUser = (u: AdminUser) =>
+    u.profile?.role === "coach" || (u.profile as any)?.isCoach === true;
 
   // Athletes list (strictly excluding coaches from paying subscriber metrics)
   const athletes = users.filter(u => !isCoachUser(u));

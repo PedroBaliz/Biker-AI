@@ -19,4 +19,4 @@ Allow: /zona-2-ciclismo
 User-agent: Googlebot-Image
 Allow: /
 
-Sitemap: https://ais-pre-ig3xpt2tylya4dpumxckiy-403337948550.us-west2.run.app/sitemap.xml
+Sitemap: https://biker-ai.vercel.app/sitemap.xml

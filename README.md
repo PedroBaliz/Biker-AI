@@ -8,7 +8,7 @@
 
 Acesse a aplicação em produção e teste todas as funcionalidades em tempo real:
 
-**[Acessar Biker AI](https://ais-pre-ig3xpt2tylya4dpumxckiy-403337948550.us-west2.run.app)**
+**[Acessar Biker AI](https://biker-ai.vercel.app)**
 
 > **Credenciais de Demonstração (Seed Demo):**
 > - **Atleta:** `atleta.demo@exemplo.com` (visualização de microciclo, chat do treinador e histórico)
@@ -34,9 +34,9 @@ O **Biker AI** auxilia na estruturação de treinos combinando a capacidade anal
 | :---: | :---: |
 | Visualização clara dos treinos do microciclo, aquecimento, bloco principal, cadência alvo e dicas. | Chat dinâmico em sessão limpa para tirar dúvidas e solicitar ajustes rápidos na planilha. |
 
-| Painel do Treinador (Admin) | Integração com Strava |
+| Painel do Treinador (Admin) | Registro de Treinos Realizados |
 | :---: | :---: |
-| Gestão de assinaturas, auditoria de atletas cadastrados e backups do sistema. | Importação de treinos reais com comparação entre o planejado e o executado. |
+| Gestão de assinaturas, auditoria de atletas cadastrados e backups do sistema. | Registro dos treinos reais com comparação entre o planejado e o executado. |
 
 ---
 
@@ -66,11 +66,11 @@ O **Biker AI** auxilia na estruturação de treinos combinando a capacidade anal
 - Permite solicitar ajustes na planilha diretamente pelo chat (ex: *"Tive um imprevisto na terça, pode reorganizar minha semana?"*).
 - Sessões em tempo real focadas, iniciando limpas a cada abertura para máximo desempenho e privacidade.
 
-### 4. Leitura e Análise de Treinos do Strava
+### 4. Registro e Análise de Treinos Realizados
 
-- Importação direta de dados e links de atividades do Strava.
-- Extração de métricas de desempenho: quilometragem, ganho de elevação, velocidade média, potência e batimentos cardíacos.
-- Avaliação comparativa entre o treino prescrito e a atividade registrada pelo atleta.
+- Registro manual das métricas do pedal: quilometragem, ganho de elevação, velocidade média, potência e batimentos cardíacos.
+- Link da atividade no Strava salvo como referência (a importação automática ainda não existe).
+- Avaliação por IA comparando o treino prescrito com o que o atleta registrou.
 
 ### 5. Exportação em PDF Formatado
 

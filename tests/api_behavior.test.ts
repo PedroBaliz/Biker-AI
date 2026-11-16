@@ -136,6 +136,18 @@ describe("Rotas", () => {
     await deleteUser(email);
   });
 
+  // Mantenha este teste por último no arquivo: ele esgota o limite de /api/auth/login.
+  it("rate limit de autenticação responde 429 com mensagem e retryAfter", async () => {
+    let last: any;
+    for (let i = 0; i < 31; i++) {
+      last = await request(app).post("/api/auth/login").send({});
+    }
+    expect(last.status).toBe(429);
+    expect(last.body.error).toMatch(/aguarde/i);
+    expect(last.body.retryAfter).toBeGreaterThan(0);
+    expect(last.headers["retry-after"]).toBeDefined();
+  });
+
   it("aceita corpo JSON acima de 100 KB (histórico de chat grande)", async () => {
     const email = `historico.${Date.now()}@exemplo.com`;
     const token = `big-${email}`;

@@ -42,8 +42,8 @@ export function getUserAccessInfo(profile: UserProfile | null | undefined, email
     };
   }
 
-  const userEmail = (email || '').trim().toLowerCase();
-  const isCoach = profile.role === 'coach' || userEmail === 'pedro.bramos@sempreceub.com';
+  // O servidor grava role "coach"/isCoach para a conta master; o e-mail do admin não fica no bundle.
+  const isCoach = profile.role === 'coach' || profile.isCoach === true;
 
   // 1. Coach access
   if (isCoach) {

@@ -12,7 +12,7 @@ export interface SeoMetaConfig {
   jsonLd?: Record<string, any> | Array<Record<string, any>>;
 }
 
-const DEFAULT_ORIGIN = "https://ais-pre-ig3xpt2tylya4dpumxckiy-403337948550.us-west2.run.app";
+const DEFAULT_ORIGIN = "https://biker-ai.vercel.app";
 
 export const HOME_SEO_CONFIG: SeoMetaConfig = {
   title: "Biker AI | Treinos de Ciclismo Personalizados com IA",

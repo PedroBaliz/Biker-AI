@@ -7,8 +7,6 @@ import {
 } from "../src/utils/subscriptionUtils";
 import type { UserProfile } from "../src/types";
 
-const COACH_EMAIL = "pedro.bramos@sempreceub.com";
-
 /** Minimal, valid UserProfile factory so tests can override only what matters. */
 function makeProfile(overrides: Partial<UserProfile> = {}): UserProfile {
   return {
@@ -58,25 +56,19 @@ describe("getUserAccessInfo", () => {
       expect(info.isPendingUser).toBe(false);
     });
 
-    it("grants full master access to the hard-coded master coach email regardless of role", () => {
-      const info = getUserAccessInfo(
-        makeProfile({ role: "athlete", subscriptionStatus: "expired" }),
-        COACH_EMAIL
-      );
+    it("grants full master access when the server-set isCoach flag is true", () => {
+      const info = getUserAccessInfo(makeProfile({ role: "athlete", isCoach: true, subscriptionStatus: "expired" }));
       expect(info.isCoach).toBe(true);
       expect(info.hasFullAccess).toBe(true);
       expect(info.accessType).toBe("coach");
     });
 
-    it("matches the master email case-insensitively and with surrounding whitespace", () => {
-      const info = getUserAccessInfo(makeProfile(), "  PEDRO.BRAMOS@SEMPRECEUB.COM  ");
-      expect(info.isCoach).toBe(true);
-      expect(info.hasFullAccess).toBe(true);
-    });
-
-    it("does not grant coach access for a near-miss email", () => {
-      const info = getUserAccessInfo(makeProfile(), "pedro.bramos@sempreceub.com.br");
+    // O e-mail do admin não fica mais no bundle do cliente: o servidor grava role "coach"
+    // para a conta master, e o cliente confia só no perfil.
+    it("does not grant coach access by e-mail alone", () => {
+      const info = getUserAccessInfo(makeProfile({ role: "athlete", subscriptionStatus: "expired" }), "qualquer@exemplo.com");
       expect(info.isCoach).toBe(false);
+      expect(info.hasFullAccess).toBe(false);
     });
   });
 
