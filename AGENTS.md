@@ -44,7 +44,7 @@ Antes de concluir qualquer mudança: `npm run lint && npm test`. O CI ([.github/
 ## Convenções
 
 - TypeScript, ESM (`"type": "module"`). Textos de UI e mensagens de erro em **português do Brasil**.
-- Chamadas ao Gemini passam por `callGeminiWithFallback` (tenta vários modelos com timeout de 45 s) e têm uma função `fallback*` determinística para quando a IA falha — mantenha esse padrão em rotas de IA novas.
+- Chamadas ao Gemini passam por `callGeminiWithFallback` (tenta vários modelos: até 25 s por modelo e 55 s no total, dentro do `maxDuration` de 60 s da Vercel) e têm uma função `fallback*` determinística para quando a IA falha — mantenha esse padrão em rotas de IA novas. Não envolva a chamada em outro timeout. Planilhas usam `PLAN_RESPONSE_SCHEMA` + `normalizeAiPlan`, que cai em `fallbackGeneratePlan` se a IA vier sem treinos.
 - Rotas de IA novas precisam de rate limit (`aiGenerationLimiter`).
 - Persistência sempre via `getDatabase` / `saveDatabase` (Firestore com fallback para arquivo local); não acesse `users_db.json` diretamente.
 - Acesso pago em rotas novas: use `resolveRequesterAccess(req)` (lê o perfil do banco). Nunca decida acesso pelo `profile` enviado no corpo da requisição.

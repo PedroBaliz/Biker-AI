@@ -20,7 +20,6 @@ import {
   Smile,
   ShieldAlert,
   ExternalLink,
-  Loader2,
   Lock,
   XCircle,
   Info
@@ -213,7 +212,6 @@ function WorkoutCardInner({ workout, onUpdate, onDelete, profile, allWorkouts, i
   const [actualStravaLink, setActualStravaLink] = useState<string>(workout.actualStravaLink || "");
   const [athleteNotes, setAthleteNotes] = useState<string>(workout.athleteNotes || "");
   const [isEvaluating, setIsEvaluating] = useState(false);
-  const [isParsingStrava, setIsParsingStrava] = useState(false);
 
   // Check if this card represents a workout block in a past day of the week that wasn't completed
   const getDayNumber = (dayName: string): number => {
@@ -234,46 +232,6 @@ function WorkoutCardInner({ workout, onUpdate, onDelete, profile, allWorkouts, i
   const currentDayInWeek = currentDayNum === 0 ? 7 : currentDayNum;
   const wDayNum = getDayNumber(workout.day);
   const isPastAndUncompleted = !workout.completed && wDayNum > 0 && wDayNum < currentDayInWeek;
-
-  const handleAutoLoadStrava = async () => {
-    if (!actualStravaLink.trim()) return;
-    setIsParsingStrava(true);
-    try {
-      const response = await apiFetch("/api/parse-strava", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          stravaLink: actualStravaLink.trim(),
-          workout: {
-            duration: editDuration || workout.duration,
-            targetZone: editTargetZone || workout.targetZone,
-            type: editType || workout.type,
-            rpe: editRpe || workout.rpe || 5,
-            goal: editGoal || workout.goal
-          },
-          profile
-        })
-      });
-      if (response.ok) {
-        const data = await response.json();
-        if (data) {
-          if (data.actualDuration !== undefined) setActualDuration(data.actualDuration);
-          if (data.actualRpe !== undefined) setActualRpe(data.actualRpe);
-          if (data.actualHr !== undefined) setActualHr(String(data.actualHr));
-          if (data.actualPower !== undefined) setActualPower(String(data.actualPower));
-          if (data.actualAvgSpeed !== undefined) setActualAvgSpeed(String(data.actualAvgSpeed));
-          if (data.actualDistance !== undefined) setActualDistance(String(data.actualDistance));
-          if (data.actualElevation !== undefined) setActualElevation(String(data.actualElevation));
-          if (data.actualCalories !== undefined) setActualCalories(String(data.actualCalories));
-          if (data.athleteNotes !== undefined) setAthleteNotes(data.athleteNotes);
-        }
-      }
-    } catch (err) {
-      console.error("Error auto-loading Strava:", err);
-    } finally {
-      setIsParsingStrava(false);
-    }
-  };
 
   // Determine severity border & shadow based on effort level with high contrast text
   const getRpeStyles = (rpe: number) => {
@@ -782,31 +740,11 @@ function WorkoutCardInner({ workout, onUpdate, onDelete, profile, allWorkouts, i
             </div>
 
             <div className="space-y-1 pt-0.5">
-              <div className="flex justify-between items-center">
-                <label className="block text-[9.5px] font-bold text-slate-500 uppercase tracking-wide">
-                  Link do Pedal no Strava (Opcional)
-                </label>
-                {actualStravaLink.trim() && (
-                  <button
-                    type="button"
-                    onClick={handleAutoLoadStrava}
-                    disabled={isParsingStrava}
-                    className="text-[9.5px] text-sky-600 hover:text-sky-700 font-extrabold uppercase tracking-wide flex items-center gap-1 cursor-pointer transition-colors disabled:opacity-50"
-                  >
-                    {isParsingStrava ? (
-                      <>
-                        <Loader2 className="w-2.5 h-2.5 animate-spin" />
-                        <span>Sincronizando...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="w-2.5 h-2.5 text-sky-500" />
-                        <span>Sincronizar Dados</span>
-                      </>
-                    )}
-                  </button>
-                )}
-              </div>
+              {/* O link é salvo só como referência. Importar métricas exige a API do Strava (OAuth);
+                  a antiga "Sincronizar Dados" chamava uma rota inexistente (/api/parse-strava). */}
+              <label className="block text-[9.5px] font-bold text-slate-500 uppercase tracking-wide">
+                Link do Pedal no Strava (Opcional)
+              </label>
               <input 
                 type="url" 
                 placeholder="https://strava.com/activities/..."
