@@ -46,8 +46,11 @@ if (process.env.FIREBASE_PROJECT_ID) {
 let firestoreDb: any = null;
 let useFirestore = false;
 
+// Testes (Vitest) nunca tocam o Firestore real: usam só o users_db.json local.
+const IS_TEST_RUN = Boolean(process.env.VITEST);
+
 try {
-  if (firebaseAppletConfig && firebaseAppletConfig.projectId && firebaseAppletConfig.apiKey) {
+  if (!IS_TEST_RUN && firebaseAppletConfig && firebaseAppletConfig.projectId && firebaseAppletConfig.apiKey) {
     const firebaseApp = getApps().length === 0 
       ? initializeApp({
           apiKey: firebaseAppletConfig.apiKey,
@@ -74,7 +77,7 @@ try {
 // Inicializar SDK de administração do Firebase (Firebase Admin) para bypass de regras de segurança no servidor
 let adminFirestoreDb: any = null;
 try {
-  if (firebaseAppletConfig && firebaseAppletConfig.projectId) {
+  if (!IS_TEST_RUN && firebaseAppletConfig && firebaseAppletConfig.projectId) {
     const adminConfig: any = {
       projectId: firebaseAppletConfig.projectId
     };
@@ -167,7 +170,10 @@ function verifyPassword(password: string, storedHash: string): boolean {
   if (!storedHash) return false;
   
   if (!storedHash.includes(":")) {
-    return password === storedHash;
+    // Senha legada em texto puro: comparação em tempo constante (migrada para hash no login).
+    const a = Buffer.from(password);
+    const b = Buffer.from(storedHash);
+    return a.length === b.length && crypto.timingSafeEqual(a, b);
   }
   
   const [salt, hash] = storedHash.split(":");
@@ -261,27 +267,20 @@ async function verifyFirebaseIdToken(token: string, projectId: string): Promise<
           payload.aud === projectId &&
           Boolean(payload.sub);
 
-        if (isClaimsValid) {
-          if (header.alg === "RS256") {
-            try {
-              const keys = await fetchGooglePublicKeys();
-              const cert = keys[header.kid];
-              if (cert) {
-                const verifier = crypto.createVerify("SHA256");
-                verifier.update(`${headerB64}.${payloadB64}`);
-                if (verifier.verify(cert, signature)) {
-                  decodedToken = payload;
-                }
-              }
-            } catch (keyErr) {
-              if (process.env.NODE_ENV === "test") {
+        // A assinatura RS256 é sempre obrigatória. Testes usam setTestAuthToken
+        // em vez de aceitar tokens sem assinatura.
+        if (isClaimsValid && header.alg === "RS256") {
+          try {
+            const keys = await fetchGooglePublicKeys();
+            const cert = keys[header.kid];
+            if (cert) {
+              const verifier = crypto.createVerify("SHA256");
+              verifier.update(`${headerB64}.${payloadB64}`);
+              if (verifier.verify(cert, signature)) {
                 decodedToken = payload;
               }
             }
-          }
-          if (!decodedToken && isClaimsValid && process.env.NODE_ENV === "test") {
-            decodedToken = payload;
-          }
+          } catch {}
         }
       }
     } catch (fastErr) {}
@@ -481,10 +480,29 @@ function sanitizeUserProfileInput(incomingProfile: any, existingProfile: any = {
   return sanitized;
 }
 
+/**
+ * Decide o acesso pago a partir do perfil salvo no banco para o usuário autenticado.
+ * Nunca use o `profile` enviado no corpo da requisição para isso: o cliente controla esse dado.
+ * Um coach autenticado tem acesso total (inclusive ao agir em nome de um atleta).
+ */
+async function resolveRequesterAccess(req: any): Promise<boolean> {
+  const email = normalizeEmail(req.user?.email);
+  if (!email) return false;
+  if (email === MASTER_ADMIN_EMAIL) return true;
+  const db = await getDatabase(false, getAuthToken(req));
+  const profile = findUserInDb(db, email)?.user?.profile;
+  if (!profile) return false;
+  if (profile.isCoach === true) return true;
+  return hasActiveAccess({ ...profile, email }, email);
+}
+
 function sanitizePlanForUser(plan: any, profile: any, userEmail?: string) {
+  return sanitizePlanByAccess(plan, hasActiveAccess(profile, userEmail));
+}
+
+function sanitizePlanByAccess(plan: any, isSubscriber: boolean) {
   if (!plan) return null;
-  const isSubscriber = hasActiveAccess(profile, userEmail);
-  
+
   if (isSubscriber) {
     return {
       ...plan,
@@ -685,10 +703,23 @@ const aiGenerationLimiter = createRateLimiter({
   keyPrefix: "api-ai"
 });
 
+// Chat e onboarding são conversacionais: limite próprio, mais alto que o de geração de planilhas,
+// para não esgotar a cota de geração durante uma conversa normal.
+const aiChatLimiter = createRateLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 60,
+  message: "Muitas mensagens enviadas ao treinador em pouco tempo. Por favor, aguarde alguns minutos.",
+  keyPrefix: "api-ai-chat"
+});
+
 app.use("/api/auth/login", authLimiter);
 app.use("/api/auth/register", authLimiter);
 app.use("/api/generate-plan", aiGenerationLimiter);
+app.use("/api/generate-next-week", aiGenerationLimiter);
 app.use("/api/evaluate-workout", aiGenerationLimiter);
+app.use("/api/chat", aiChatLimiter);
+app.use("/api/onboard", aiChatLimiter);
+app.use("/api/admin/diagnostics", aiGenerationLimiter);
 app.use("/api/parse-strava", aiGenerationLimiter);
 app.use("/api", generalApiLimiter);
 
@@ -1177,23 +1208,27 @@ async function ensureAllAthletesArePending() {
 // USER SIGNUP, SIGNIN & CLOUD SYNCHRONIZATION ENDPOINTS
 // -------------------------------------------------------------
 
-app.post("/api/auth/register", async (req, res) => {
+// O cliente cria a conta no Firebase Auth antes de chamar esta rota, então exigimos o ID token:
+// só o dono do e-mail pode cadastrar (ou completar) a conta correspondente.
+app.post("/api/auth/register", requireAuth, async (req: any, res) => {
   try {
     const { email, password, name } = req.body;
-    if (!email || !password || !name) {
+    if (typeof email !== "string" || typeof password !== "string" || typeof name !== "string" || !email || !password || !name.trim()) {
       return res.status(400).json({ error: "Dados inválidos de cadastro." });
     }
 
-    const db = await getDatabase();
     const emailKey = email.trim().toLowerCase();
+    if (normalizeEmail(req.user?.email) !== emailKey) {
+      return res.status(403).json({ error: "O e-mail do cadastro não corresponde à sessão autenticada." });
+    }
+
+    const db = await getDatabase();
 
     if (db[emailKey]) {
       const existing = db[emailKey];
-      const isBootstrappedWithoutPassword = !existing.password;
-      const hasNoPlanOrWorkouts = (!existing.plan || Object.keys(existing.plan).length === 0) &&
-                                  (!existing.workoutLogs || existing.workoutLogs.length === 0);
-
-      if (isBootstrappedWithoutPassword || hasNoPlanOrWorkouts) {
+      // Conta criada por /api/auth/session (onAuthStateChanged chega antes do cadastro) ainda sem senha:
+      // o próprio dono, autenticado, pode completá-la. Contas que já têm senha nunca são sobrescritas.
+      if (!existing.password) {
         existing.password = hashPassword(password);
         if (existing.profile) existing.profile.name = name.trim();
         await saveDatabase(db, emailKey, getAuthToken(req));
@@ -1539,7 +1574,7 @@ app.post("/api/workout/log-completion", requireAuth, verifyUserMatch, async (req
   }
 });
 
-app.post("/api/auth/check-status", async (req, res) => {
+app.post("/api/auth/check-status", requireAuth, verifyUserMatch, async (req, res) => {
   try {
     const { email } = req.body;
     if (!email) return res.status(400).json({ error: "E-mail é obrigatório." });
@@ -1564,10 +1599,13 @@ app.post("/api/auth/check-status", async (req, res) => {
   }
 });
 
-app.post("/api/user/notify-payment", async (req, res) => {
+app.post("/api/user/notify-payment", requireAuth, verifyUserMatch, async (req, res) => {
   try {
-    const { email, method, note } = req.body;
+    const { email } = req.body;
     if (!email) return res.status(400).json({ error: "E-mail é obrigatório." });
+    // Texto livre exibido no painel admin: limitar tamanho para evitar abuso.
+    const method = typeof req.body.method === "string" ? req.body.method.trim().slice(0, 40) : "";
+    const note = typeof req.body.note === "string" ? req.body.note.trim().slice(0, 500) : "";
     const db = await getDatabase();
     const userFound = findUserInDb(db, email);
     if (!userFound) return res.status(404).json({ error: "Usuário não encontrado." });
@@ -1623,10 +1661,10 @@ const getAiClient = (): GoogleGenAI => {
   return aiClient;
 };
 
-app.get("/api/diagnostics", async (req, res) => {
+// Restrito ao admin: faz uma chamada paga ao Gemini e lê a coleção de usuários a cada acesso.
+app.get("/api/admin/diagnostics", requireAuth, requireAdmin, async (req, res) => {
   const responses: any = {
     apiKeyConfigured: !!process.env.GEMINI_API_KEY,
-    apiKeyLength: process.env.GEMINI_API_KEY ? process.env.GEMINI_API_KEY.length : 0,
     nodeEnv: process.env.NODE_ENV,
     modelName: "gemini-2.5-flash",
     useFirestore,
@@ -1800,7 +1838,9 @@ app.post("/api/onboard", requireAuth, verifyUserMatch, async (req, res) => {
 
 app.post("/api/generate-plan", requireAuth, verifyUserMatch, async (req, res) => {
   const { profile } = req.body;
+  let hasAccess = false;
   try {
+    hasAccess = await resolveRequesterAccess(req);
     checkApiKey();
     const response = await withTimeout(
       callGeminiWithFallback((model) =>
@@ -1811,21 +1851,18 @@ app.post("/api/generate-plan", requireAuth, verifyUserMatch, async (req, res) =>
         })
       )
     );
-    const fullPlanData = cleanAndParseJson(response.text);
-    const userEmailKey = (profile?.email || (req as any).user?.email || "").trim().toLowerCase();
-    res.json(sanitizePlanForUser(fullPlanData, profile, userEmailKey));
+    res.json(sanitizePlanByAccess(cleanAndParseJson(response.text), hasAccess));
   } catch (error: any) {
-    const data = fallbackGeneratePlan(profile, 1);
-    const userEmailKey = (profile?.email || (req as any).user?.email || "").trim().toLowerCase();
-    res.json(sanitizePlanForUser(data, profile, userEmailKey));
+    res.json(sanitizePlanByAccess(fallbackGeneratePlan(profile, 1), hasAccess));
   }
 });
 
 app.post("/api/generate-next-week", requireAuth, verifyUserMatch, async (req, res) => {
-  const { profile, currentPlan, nextWeekNumber } = req.body;
+  const { profile, nextWeekNumber } = req.body;
+  let hasAccess = false;
   try {
-    const userEmailKey = (profile?.email || (req as any).user?.email || "").trim().toLowerCase();
-    if (!hasActiveAccess(profile, userEmailKey)) {
+    hasAccess = await resolveRequesterAccess(req);
+    if (!hasAccess) {
       return res.status(403).json({ error: "Acesso bloqueado. Assine o Biker AI.", isBlocked: true });
     }
     checkApiKey();
@@ -1838,19 +1875,16 @@ app.post("/api/generate-next-week", requireAuth, verifyUserMatch, async (req, re
         })
       )
     );
-    res.json(sanitizePlanForUser(cleanAndParseJson(response.text), profile, userEmailKey));
+    res.json(sanitizePlanByAccess(cleanAndParseJson(response.text), hasAccess));
   } catch (error: any) {
-    const data = fallbackGeneratePlan(profile, nextWeekNumber || 2);
-    const userEmailKey = (profile?.email || (req as any).user?.email || "").trim().toLowerCase();
-    res.json(sanitizePlanForUser(data, profile, userEmailKey));
+    res.json(sanitizePlanByAccess(fallbackGeneratePlan(profile, nextWeekNumber || 2), hasAccess));
   }
 });
 
 app.post("/api/evaluate-workout", requireAuth, verifyUserMatch, async (req, res) => {
   const { profile, workout } = req.body;
   try {
-    const userEmailKey = (profile?.email || (req as any).user?.email || "").trim().toLowerCase();
-    if (!hasActiveAccess(profile, userEmailKey)) {
+    if (!(await resolveRequesterAccess(req))) {
       return res.status(403).json({ error: "Acesso bloqueado.", isBlocked: true });
     }
     checkApiKey();
@@ -1872,8 +1906,7 @@ app.post("/api/evaluate-workout", requireAuth, verifyUserMatch, async (req, res)
 app.post("/api/chat", requireAuth, verifyUserMatch, async (req, res) => {
   const { message, profile, currentPlan } = req.body;
   try {
-    const userEmailKey = (profile?.email || (req as any).user?.email || "").trim().toLowerCase();
-    if (currentPlan && !hasActiveAccess(profile, userEmailKey)) {
+    if (currentPlan && !(await resolveRequesterAccess(req))) {
       return res.json({
         reply: `Olá, atleta! Notei que o seu período de teste gratuito de 3 dias expirou (ou sua conta está aguardando ativação). Para continuar recebendo acompanhamento do treinador e planilhas personalizadas, assine o Plano Pro por apenas R$ ${SUBSCRIPTION_PRICE_BRL.toFixed(2).replace(".", ",")}/mês!`,
         isBlocked: true

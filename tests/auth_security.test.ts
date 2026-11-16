@@ -307,9 +307,10 @@ describe("Security & Authentication Real Middleware Tests", () => {
         .send({ email: raceUserEmail });
       expect(sessionRes.status).toBe(200);
 
-      // 2. Client registration request arrives slightly later
+      // 2. Client registration request arrives slightly later (same authenticated owner)
       const registerRes = await request(app)
         .post("/api/auth/register")
+        .set("Authorization", `Bearer ${raceToken}`)
         .send({
           email: raceUserEmail,
           password: "SecureAthletePassword2026!",
@@ -334,6 +335,36 @@ describe("Security & Authentication Real Middleware Tests", () => {
         .send({ email: raceUserEmail });
     });
 
+    it("should never let /api/auth/register overwrite an account that already has a password", async () => {
+      const ownerEmail = `takeover.victim.${Date.now()}@exemplo.com`;
+      const ownerToken = `test-takeover-owner-${Date.now()}`;
+      setTestAuthToken(ownerToken, { email: ownerEmail, uid: "takeover-owner", sub: "takeover-owner" });
+
+      const first = await request(app)
+        .post("/api/auth/register")
+        .set("Authorization", `Bearer ${ownerToken}`)
+        .send({ email: ownerEmail, password: "OriginalPassword2026!", name: "Dono" });
+      expect(first.status).toBe(200);
+
+      const second = await request(app)
+        .post("/api/auth/register")
+        .set("Authorization", `Bearer ${ownerToken}`)
+        .send({ email: ownerEmail, password: "AttackerPassword2026!", name: "Invasor" });
+      expect(second.status).toBe(400);
+
+      const login = await request(app)
+        .post("/api/auth/login")
+        .send({ email: ownerEmail, password: "AttackerPassword2026!" });
+      expect(login.status).toBe(400);
+
+      const cleanupToken = "test-cleanup-takeover-admin";
+      setTestAuthToken(cleanupToken, { email: MASTER_ADMIN_EMAIL, uid: "admin-cleanup-takeover", sub: "admin-cleanup-takeover" });
+      await request(app)
+        .post("/api/admin/delete-user")
+        .set("Authorization", `Bearer ${cleanupToken}`)
+        .send({ email: ownerEmail });
+    });
+
     it("should include data source (firestore or local_cache) in /api/admin/users response", async () => {
       const adminToken = "test-admin-token-source";
       setTestAuthToken(adminToken, {
@@ -350,6 +381,126 @@ describe("Security & Authentication Real Middleware Tests", () => {
       expect(res.body.success).toBe(true);
       expect(Array.isArray(res.body.users)).toBe(true);
       expect(["firestore", "local_cache"]).toContain(res.body.source);
+    });
+  });
+
+  describe("Rotas que antes eram públicas", () => {
+    it("/api/auth/register exige autenticação", async () => {
+      const res = await request(app)
+        .post("/api/auth/register")
+        .send({ email: "sem.token@exemplo.com", password: "Senha2026!", name: "Sem Token" });
+      expect(res.status).toBe(401);
+    });
+
+    it("/api/auth/register rejeita e-mail diferente do token", async () => {
+      const token = "test-register-mismatch";
+      setTestAuthToken(token, { email: "atacante@exemplo.com", uid: "mismatch", sub: "mismatch" });
+      const res = await request(app)
+        .post("/api/auth/register")
+        .set("Authorization", `Bearer ${token}`)
+        .send({ email: "vitima@exemplo.com", password: "Senha2026!", name: "Vítima" });
+      expect(res.status).toBe(403);
+    });
+
+    it("/api/auth/check-status exige autenticação", async () => {
+      const res = await request(app).post("/api/auth/check-status").send({ email: MASTER_ADMIN_EMAIL });
+      expect(res.status).toBe(401);
+    });
+
+    it("/api/auth/check-status bloqueia consulta de outro atleta", async () => {
+      const token = "test-check-status-athlete";
+      setTestAuthToken(token, { email: "curioso@exemplo.com", uid: "curioso", sub: "curioso" });
+      const res = await request(app)
+        .post("/api/auth/check-status")
+        .set("Authorization", `Bearer ${token}`)
+        .send({ email: "outro.atleta@exemplo.com" });
+      expect(res.status).toBe(403);
+    });
+
+    it("/api/user/notify-payment exige autenticação", async () => {
+      const res = await request(app).post("/api/user/notify-payment").send({ email: MASTER_ADMIN_EMAIL, note: "spam" });
+      expect(res.status).toBe(401);
+    });
+
+    it("/api/admin/diagnostics exige admin e a rota antiga deixou de existir", async () => {
+      const token = "test-diagnostics-athlete";
+      setTestAuthToken(token, { email: "atleta.diag@exemplo.com", uid: "diag", sub: "diag" });
+
+      const anon = await request(app).get("/api/admin/diagnostics");
+      expect(anon.status).toBe(401);
+
+      const athlete = await request(app).get("/api/admin/diagnostics").set("Authorization", `Bearer ${token}`);
+      expect(athlete.status).toBe(403);
+
+      const legacy = await request(app).get("/api/diagnostics");
+      expect(legacy.body?.geminiConnection).toBeUndefined();
+    });
+  });
+
+  describe("Paywall decidido pelo banco, não pelo corpo da requisição", () => {
+    const expiredEmail = "trial.expirado@exemplo.com";
+    const expiredToken = "test-expired-athlete-token";
+    let savedGeminiKey: string | undefined;
+
+    beforeAll(async () => {
+      // Sem chave, as rotas de IA caem no fallback determinístico: nada de chamadas pagas nos testes.
+      savedGeminiKey = process.env.GEMINI_API_KEY;
+      process.env.GEMINI_API_KEY = "";
+      setTestAuthToken(expiredToken, { email: expiredEmail, uid: "expired", sub: "expired" });
+      // Cria o atleta e força status expirado via admin
+      await request(app).post("/api/auth/session").set("Authorization", `Bearer ${expiredToken}`).send({ email: expiredEmail });
+      const adminToken = "test-paywall-admin";
+      setTestAuthToken(adminToken, { email: MASTER_ADMIN_EMAIL, uid: "paywall-admin", sub: "paywall-admin" });
+      await request(app)
+        .post("/api/admin/update-user-status")
+        .set("Authorization", `Bearer ${adminToken}`)
+        .send({ email: expiredEmail, subscriptionStatus: "expired" });
+    });
+
+    afterAll(async () => {
+      if (savedGeminiKey !== undefined) process.env.GEMINI_API_KEY = savedGeminiKey;
+      const adminToken = "test-paywall-admin-cleanup";
+      setTestAuthToken(adminToken, { email: MASTER_ADMIN_EMAIL, uid: "paywall-cleanup", sub: "paywall-cleanup" });
+      await request(app)
+        .post("/api/admin/delete-user")
+        .set("Authorization", `Bearer ${adminToken}`)
+        .send({ email: expiredEmail });
+    });
+
+    const forgedProfile = { email: expiredEmail, subscriptionStatus: "active", role: "coach" };
+
+    it("/api/generate-next-week ignora perfil forjado com assinatura ativa", async () => {
+      const res = await request(app)
+        .post("/api/generate-next-week")
+        .set("Authorization", `Bearer ${expiredToken}`)
+        .send({ email: expiredEmail, profile: forgedProfile, nextWeekNumber: 2 });
+      expect(res.status).toBe(403);
+      expect(res.body.isBlocked).toBe(true);
+    });
+
+    it("/api/evaluate-workout ignora perfil forjado com assinatura ativa", async () => {
+      const res = await request(app)
+        .post("/api/evaluate-workout")
+        .set("Authorization", `Bearer ${expiredToken}`)
+        .send({ email: expiredEmail, profile: forgedProfile, workout: { type: "Z2" } });
+      expect(res.status).toBe(403);
+    });
+
+    it("/api/chat bloqueia atleta expirado mesmo com perfil forjado", async () => {
+      const res = await request(app)
+        .post("/api/chat")
+        .set("Authorization", `Bearer ${expiredToken}`)
+        .send({ email: expiredEmail, message: "oi", profile: forgedProfile, currentPlan: { workouts: [] } });
+      expect(res.body.isBlocked).toBe(true);
+    });
+
+    it("/api/generate-plan devolve planilha bloqueada para atleta expirado", async () => {
+      const res = await request(app)
+        .post("/api/generate-plan")
+        .set("Authorization", `Bearer ${expiredToken}`)
+        .send({ email: expiredEmail, profile: forgedProfile });
+      expect(res.status).toBe(200);
+      expect(res.body.isLocked).toBe(true);
     });
   });
 });

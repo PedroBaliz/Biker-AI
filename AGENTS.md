@@ -47,6 +47,8 @@ Antes de concluir qualquer mudança: `npm run lint && npm test`. O CI ([.github/
 - Chamadas ao Gemini passam por `callGeminiWithFallback` (tenta vários modelos com timeout de 45 s) e têm uma função `fallback*` determinística para quando a IA falha — mantenha esse padrão em rotas de IA novas.
 - Rotas de IA novas precisam de rate limit (`aiGenerationLimiter`).
 - Persistência sempre via `getDatabase` / `saveDatabase` (Firestore com fallback para arquivo local); não acesse `users_db.json` diretamente.
+- Acesso pago em rotas novas: use `resolveRequesterAccess(req)` (lê o perfil do banco). Nunca decida acesso pelo `profile` enviado no corpo da requisição.
+- Testes rodam com o Firestore desligado (`VITEST` definido) e usam só o `users_db.json` local; autenticação em testes via `setTestAuthToken`.
 
 ## Fluxo de trabalho
 
