@@ -24,7 +24,7 @@ Um único processo Node serve a API e, fora da Vercel, também os arquivos do fr
 - **React 19 + TypeScript + Tailwind v4 + Motion.** SPA sem roteador; `App.tsx` controla telas (login → onboarding → plano/chat/admin).
 - **Autenticação:** Firebase Auth no cliente. `apiFetch` (em `src/firebase.ts`) anexa `Authorization: Bearer <idToken>` a toda chamada `/api/*`.
 - **Gráficos:** Recharts. **PDF:** jsPDF, gerado no cliente.
-- **SEO:** `SeoContentPage` + `src/data/seoArticlesData.ts`; `robots.txt` e `sitemap.xml` são servidos pela API.
+- **SEO:** `SeoContentPage` + `src/data/seoArticlesData.ts`; `robots.txt` e `sitemap.xml` são estáticos em `public/`.
 - **Analytics:** Meta Pixel (`src/lib/metaPixel.ts`, `VITE_FACEBOOK_PIXEL_ID`).
 
 ### Backend (`server.ts`)
@@ -34,10 +34,10 @@ Organizado em seções, na ordem do arquivo:
 | --- | --- |
 | Init Firebase | SDK cliente (`firestore/lite`) e, se houver service account, `firebase-admin` |
 | Crypto/Auth | PBKDF2 (100k, SHA-256), verificação RS256 do ID token com as chaves públicas do Google, `verifyAdminSecret` |
-| Middlewares | `requireAuth`, `verifyUserMatch`, `requireAdmin`, rate limiters em memória |
+| Middlewares | `requireAuth`, `verifyUserMatch`, `requireAdmin`, rate limiters (`express-rate-limit`, em memória) |
 | Regras de acesso | `isTrialActive` (3 dias), `hasActiveAccess`, `sanitizeUserProfileInput`, `sanitizePlanForUser` (paywall) |
 | Persistência | `getDatabase` / `saveDatabase`, cache em memória com TTL, backups |
-| Rotas auth | `/api/auth/{register,login,save-user,session,check-status,verify-password}` |
+| Rotas auth | `/api/auth/{register,login,save-user,session,check-status}` |
 | Rotas IA | `/api/{onboard,generate-plan,generate-next-week,evaluate-workout,chat}` |
 | Rotas admin | `/api/admin/{users,update-user-status,delete-user,backups*,mercadopago/create-plan}` |
 | Pagamentos | `/api/mercadopago/{config,create-subscription,create-preference,create-pix,webhook}` |
@@ -61,7 +61,7 @@ Organizado em seções, na ordem do arquivo:
 
 ### Geração de planos com IA
 1. Onboarding coleta nível, objetivo, disponibilidade e métricas (FTP / FC máx. / RPE).
-2. `/api/generate-plan` monta o prompt e chama `callGeminiWithFallback` (`gemini-2.5-flash` → `gemini-3.1-flash-lite` → `gemini-2.5-pro`, 45 s por modelo).
+2. `/api/generate-plan` monta o prompt e chama `callGeminiWithFallback` (`gemini-2.5-flash` → `gemini-3.1-flash-lite` → `gemini-2.5-pro`; 25 s por modelo, 55 s no total).
 3. A resposta passa por `cleanAndParseJson`. Se a IA falhar, `fallbackGeneratePlan` devolve um plano determinístico.
 4. O plano é salvo e devolvido via `sanitizePlanForUser`: sem acesso ativo, a estrutura dos treinos vem mascarada.
 5. `/api/workout/log-completion` + `/api/evaluate-workout` registram e avaliam treinos; `/api/generate-next-week` usa esse histórico para a semana seguinte.
@@ -76,12 +76,14 @@ Organizado em seções, na ordem do arquivo:
 | Alvo | Como roda | Artefato |
 | --- | --- | --- |
 | Dev local | `tsx server.ts` (Vite em middleware mode) | — |
-| Node standalone | `node dist/server.cjs` (serve `dist/` estático) | `dist/server.cjs` (esbuild CJS) |
-| **Vercel (produção)** | Função serverless em `/api` + `dist/` estático | `api/index.js` (esbuild ESM) |
+| Node standalone | `npm start` → `node build/server.cjs` (serve `dist/` estático) | `build/server.cjs` (esbuild CJS) |
+| **Vercel (produção)** | Função serverless em `/api` + `dist/` estático | `api/index.js` (stub) → `build/server.mjs` (esbuild ESM) |
 
-- `vercel.json` reescreve `/api/*`, `robots.txt`, `sitemap.xml` e o HTML de verificação do Google para a função `/api`; o resto vai para `index.html`.
+- O código do servidor é gerado em `build/`, **fora de `dist/`**: tudo em `dist/` é público. Até esta mudança, `dist/server.cjs` e o sourcemap ficavam acessíveis em `/server.cjs`.
+- `vercel.json` reescreve `/api/*` para a função `/api` e o resto para `index.html`. A Vercel serve arquivos estáticos antes de aplicar rewrites, então `robots.txt`, `sitemap.xml` e o HTML de verificação do Google vêm de `public/`.
+- `maxDuration: 60` para a função (orçamento das chamadas ao Gemini).
 - Com `VERCEL` definido, o servidor não chama `listen()`: só exporta `app`.
-- ⚠️ `api/index.js` deve ser o **único** arquivo `api/index.*`. Um `api/index.ts` ao lado gera conflito de função e a Vercel falha o deploy antes do build (ocorreu no commit `32c9871`).
+- ⚠️ `api/index.js` é um stub versionado e deve ser o **único** arquivo `api/index.*`. A Vercel detecta funções antes do build, e um `api/index.ts` ao lado gera conflito de função, fazendo o deploy falhar antes do build (ocorreu no commit `32c9871`).
 
 ## Variáveis de ambiente
 
@@ -100,5 +102,5 @@ Ver [.env.example](../.env.example). Resumo:
 
 - `server.ts` monolítico (~2400 linhas). Candidatos a módulos: `auth/`, `db/`, `ai/`, `payments/` e `admin/`.
 - O rate limit e o cache do banco ficam em memória: não são compartilhados entre instâncias serverless.
-- `/api/parse-strava` tem rate limit configurado, mas não há rota implementada (a integração com o Strava citada no README não existe no servidor).
+- Não há integração com o Strava: o link da atividade é salvo apenas como referência.
 - O e-mail do admin master está fixo como padrão em `server.ts` e em `firestore.rules`.

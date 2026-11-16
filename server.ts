@@ -1,4 +1,5 @@
 import express from "express";
+import { rateLimit } from "express-rate-limit";
 import path from "path";
 import dotenv from "dotenv";
 import fs from "fs";
@@ -144,19 +145,6 @@ const USERS_DB_PATH = process.env.VERCEL
   ? path.join(os.tmpdir(), "users_db.json")
   : path.join(process.cwd(), "users_db.json");
 
-// Write startup log to verify server is executing
-try {
-  const bootLogPath = process.env.VERCEL
-    ? path.join(os.tmpdir(), "server_boot.log")
-    : path.join(process.cwd(), "server_boot.log");
-  fs.writeFileSync(
-    bootLogPath,
-    `Server boot started at: ${new Date().toISOString()}\nLocal DB Path: ${USERS_DB_PATH}\n`,
-    "utf-8"
-  );
-} catch (e: any) {
-  console.error("Failed to write startup log:", e);
-}
 
 // --- CRYPTOGRAPHIC HELPERS & SECURITY MIDDLEWARES ---
 
@@ -356,7 +344,7 @@ async function requireAuth(req: any, res: any, next: any) {
     return next();
   } catch (err: any) {
     console.warn("[RequireAuth] Falha na validação do token:", err.message);
-    return res.status(401).json({ error: `Sessão inválida ou expirada: ${err.message}` });
+    return res.status(401).json({ error: "Sessão inválida ou expirada. Entre novamente." });
   }
 }
 
@@ -419,7 +407,7 @@ async function verifyUserMatch(req: any, res: any, next: any) {
   try {
     const db = await getDatabase();
     const userFound = findUserInDb(db, authEmail);
-    if (userFound?.user?.profile && (userFound.user.profile.role === "coach" || userFound.user.profile.role === "admin" || userFound.user.profile.isCoach === true)) {
+    if (userFound?.user?.profile && isCoachProfile(userFound.user.profile, authEmail)) {
       return next();
     }
   } catch (e) {
@@ -427,6 +415,18 @@ async function verifyUserMatch(req: any, res: any, next: any) {
   }
 
   return res.status(403).json({ error: "Acesso negado. Permissão restrita aos próprios dados do atleta ou ao treinador." });
+}
+
+/**
+ * Regra única de "é coach/admin": e-mail master, role "coach"/"admin" ou flag isCoach.
+ * Esses campos são privilegiados (só o servidor grava), então são confiáveis quando lidos do banco.
+ */
+function isCoachProfile(profile: any, email?: string | null): boolean {
+  const e = (email || profile?.email || "").toString().trim().toLowerCase();
+  return e === MASTER_ADMIN_EMAIL ||
+    profile?.role === "coach" ||
+    profile?.role === "admin" ||
+    profile?.isCoach === true;
 }
 
 function isTrialActive(profile: any): boolean {
@@ -441,9 +441,7 @@ function isTrialActive(profile: any): boolean {
 
 function hasActiveAccess(profile: any, userEmail?: string): boolean {
   if (!profile) return false;
-  const emailToCheck = (profile?.email || userEmail || "").trim().toLowerCase();
-  const isCoach = profile?.role === "coach" || profile?.role === "admin" || emailToCheck === MASTER_ADMIN_EMAIL;
-  if (isCoach) return true;
+  if (isCoachProfile(profile, profile?.email || userEmail)) return true;
   if (profile.subscriptionStatus === "expired") return false;
   if (profile.subscriptionStatus === "active") return true;
   return isTrialActive(profile);
@@ -500,7 +498,6 @@ async function resolveRequesterAccess(req: any): Promise<boolean> {
   const db = await getDatabase(false, getAuthToken(req));
   const profile = findUserInDb(db, email)?.user?.profile;
   if (!profile) return false;
-  if (profile.isCoach === true) return true;
   return hasActiveAccess({ ...profile, email }, email);
 }
 
@@ -584,13 +581,7 @@ async function requireAdmin(req: any, res: any, next: any) {
   try {
     const db = await getDatabase();
     const userFound = findUserInDb(db, authEmail);
-    if (
-      userFound &&
-      userFound.user?.profile &&
-      (userFound.user.profile.role === "coach" ||
-       userFound.user.profile.role === "admin" ||
-       userFound.user.profile.isCoach === true)
-    ) {
+    if (userFound?.user?.profile && isCoachProfile(userFound.user.profile, authEmail)) {
       return next();
     }
   } catch (e) {
@@ -600,55 +591,22 @@ async function requireAdmin(req: any, res: any, next: any) {
   return res.status(403).json({ error: "Acesso restrito. Operação exclusiva do treinador/coach." });
 }
 
+/**
+ * Resposta padrão para erro inesperado: a mensagem interna vai só para o log do servidor,
+ * nunca para o cliente (pode conter detalhes de infraestrutura).
+ */
+function sendServerError(res: any, error: unknown) {
+  console.error("[API] Erro interno: %s", (error as any)?.message || error);
+  return res.status(500).json({ error: "Erro interno no servidor. Tente novamente em instantes." });
+}
+
 const app = express();
 // O save-user envia o histórico de chat e a planilha inteiros: o padrão de 100 KB gerava 413
 // para atletas com muito histórico. 1 MB acompanha o limite de um documento do Firestore.
 app.use(express.json({ limit: "1mb" }));
 
-// Google Site Verification & Sitemap
-app.get("/googleef65b720b90cbd44.html", (req, res) => {
-  res.type("text/html").send("google-site-verification: googleef65b720b90cbd44.html");
-});
-
-app.get("/robots.txt", (req, res) => {
-  res.type("text/plain").send(`User-agent: *
-Allow: /
-Allow: /treino-ciclismo-iniciante
-Allow: /planilha-treino-ciclismo
-Allow: /treino-ciclismo-emagrecer
-Allow: /treino-100km
-Allow: /zona-2-ciclismo
-Disallow: /api/
-Disallow: /admin/
-
-User-agent: Googlebot
-Allow: /
-Allow: /treino-ciclismo-iniciante
-Allow: /planilha-treino-ciclismo
-Allow: /treino-ciclismo-emagrecer
-Allow: /treino-100km
-Allow: /zona-2-ciclismo
-
-User-agent: Googlebot-Image
-Allow: /
-
-Sitemap: https://ais-pre-ig3xpt2tylya4dpumxckiy-403337948550.us-west2.run.app/sitemap.xml
-`);
-});
-
-app.get("/sitemap.xml", (req, res) => {
-  res.type("application/xml").send(`<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
-        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1"
-        xmlns:xhtml="http://www.w3.org/1999/xhtml">
-  <url>
-    <loc>https://ais-pre-ig3xpt2tylya4dpumxckiy-403337948550.us-west2.run.app/</loc>
-    <lastmod>2026-09-13</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>1.0</priority>
-  </url>
-</urlset>`);
-});
+// robots.txt, sitemap.xml e o arquivo de verificação do Google são estáticos em public/
+// (a Vercel serve arquivos estáticos antes dos rewrites).
 
 app.use((req, res, next) => {
   if (process.env.VERCEL && !req.url.startsWith("/api")) {
@@ -657,91 +615,60 @@ app.use((req, res, next) => {
   next();
 });
 
+// Log de requisições: só método, rota (sem query string) e status. Nunca IP, headers,
+// tokens ou corpo (invariante 5 do AGENTS.md). Vai para o stdout, que a Vercel já coleta.
 app.use((req, res, next) => {
-  const clientIp = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || req.ip || "unknown";
-  const userAgent = (req.headers["user-agent"] || "").slice(0, 100);
-  const logMsg = `[${new Date().toISOString()}] ${req.method} ${req.url} - IP: ${clientIp} - UA: ${userAgent}\n`;
-  try {
-    const requestsLogPath = process.env.VERCEL
-      ? path.join(os.tmpdir(), "server_requests.log")
-      : path.join(process.cwd(), "server_requests.log");
-    fs.appendFileSync(requestsLogPath, logMsg, "utf-8");
-  } catch (e) {}
+  if (!req.path.startsWith("/api")) return next();
+  const started = Date.now();
+  res.on("finish", () => {
+    if (process.env.VITEST) return;
+    console.log("[HTTP] %s %s %d %dms", req.method, req.path, res.statusCode, Date.now() - started);
+  });
   next();
 });
 
-// RATE LIMITING MIDDLEWARE
-interface RateLimitRecord {
-  count: number;
-  resetTime: number;
-}
+// RATE LIMITING
+// Na Vercel há um proxy na frente: confiar em 1 salto faz o req.ip ser o IP real do cliente
+// (o valor que a borda da Vercel acrescenta), sem aceitar X-Forwarded-For forjado.
+if (process.env.VERCEL) app.set("trust proxy", 1);
 
-const rateLimitStore = new Map<string, RateLimitRecord>();
-
-function createRateLimiter(options: { windowMs: number; max: number; message: string; keyPrefix?: string }) {
-  const { windowMs, max, message, keyPrefix = "global" } = options;
-
-  return (req: express.Request, res: express.Response, next: express.NextFunction) => {
-    const path = req.originalUrl || req.url;
-    if (!path.startsWith("/api")) {
-      return next();
+// Observação: o contador fica em memória, por instância. Em serverless ele limita por instância
+// (melhor que nada); para um limite global seria preciso um store compartilhado (ex.: Redis).
+function createRateLimiter(options: { windowMs: number; max: number; message: string }) {
+  const { windowMs, max, message } = options;
+  return rateLimit({
+    windowMs,
+    limit: max,
+    standardHeaders: "draft-7",
+    legacyHeaders: false,
+    handler: (req, res, _next, opts) => {
+      const resetTime: Date | undefined = (req as any).rateLimit?.resetTime;
+      const retryAfter = resetTime
+        ? Math.max(1, Math.ceil((resetTime.getTime() - Date.now()) / 1000))
+        : Math.ceil(windowMs / 1000);
+      console.warn("[RateLimit] Limite excedido em %s %s", req.method, req.path);
+      res.setHeader("Retry-After", String(retryAfter));
+      res.status(opts.statusCode).json({ error: message, retryAfter });
     }
-
-    const clientIp = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || req.ip || req.socket.remoteAddress || "unknown";
-    const key = `${keyPrefix}:${clientIp}`;
-    const now = Date.now();
-
-    if (rateLimitStore.size > 500) {
-      for (const [k, rec] of rateLimitStore.entries()) {
-        if (rec.resetTime <= now) rateLimitStore.delete(k);
-      }
-    }
-
-    let record = rateLimitStore.get(key);
-
-    if (!record || record.resetTime <= now) {
-      record = { count: 1, resetTime: now + windowMs };
-      rateLimitStore.set(key, record);
-    } else {
-      record.count += 1;
-    }
-
-    const remaining = Math.max(0, max - record.count);
-    const resetSeconds = Math.ceil((record.resetTime - now) / 1000);
-
-    res.setHeader("X-RateLimit-Limit", max);
-    res.setHeader("X-RateLimit-Remaining", remaining);
-    res.setHeader("X-RateLimit-Reset", resetSeconds);
-
-    if (record.count > max) {
-      res.setHeader("Retry-After", resetSeconds);
-      console.warn(`[RateLimit] IP ${clientIp} excedeu o limite na rota ${path} (${record.count}/${max})`);
-      return res.status(429).json({ error: message, retryAfter: resetSeconds });
-    }
-
-    next();
-  };
+  });
 }
 
 const generalApiLimiter = createRateLimiter({
   windowMs: 60 * 1000,
   max: 120,
-  message: "Muitas requisições enviadas em curto intervalo. Por favor, aguarde alguns instantes.",
-  keyPrefix: "api-general"
+  message: "Muitas requisições enviadas em curto intervalo. Por favor, aguarde alguns instantes."
 });
 
 const authLimiter = createRateLimiter({
   windowMs: 15 * 60 * 1000,
   max: 30,
-  message: "Muitas tentativas de login ou registro. Por favor, aguarde 15 minutos para tentar novamente.",
-  keyPrefix: "api-auth"
+  message: "Muitas tentativas de login ou registro. Por favor, aguarde 15 minutos para tentar novamente."
 });
 
 const aiGenerationLimiter = createRateLimiter({
   windowMs: 15 * 60 * 1000,
   max: 25,
-  message: "Limite de solicitações de Inteligência Artificial atingido. Por favor, aguarde alguns minutos antes de gerar novos treinos.",
-  keyPrefix: "api-ai"
+  message: "Limite de solicitações de Inteligência Artificial atingido. Por favor, aguarde alguns minutos antes de gerar novos treinos."
 });
 
 // Chat e onboarding são conversacionais: limite próprio, mais alto que o de geração de planilhas,
@@ -749,8 +676,7 @@ const aiGenerationLimiter = createRateLimiter({
 const aiChatLimiter = createRateLimiter({
   windowMs: 15 * 60 * 1000,
   max: 60,
-  message: "Muitas mensagens enviadas ao treinador em pouco tempo. Por favor, aguarde alguns minutos.",
-  keyPrefix: "api-ai-chat"
+  message: "Muitas mensagens enviadas ao treinador em pouco tempo. Por favor, aguarde alguns minutos."
 });
 
 app.use("/api/auth/login", authLimiter);
@@ -1067,22 +993,7 @@ async function getDatabaseWithSource(forceRefresh = false, idToken?: string): Pr
   if (!findUserInDb(localDb, MASTER_ADMIN_EMAIL)) {
     localDb[MASTER_ADMIN_EMAIL] = {
       email: MASTER_ADMIN_EMAIL,
-      profile: {
-        name: "Pedro Ramos (Treinador Master)",
-        level: "avançado",
-        goal: "provas e alta performance",
-        daysPerWeek: 5,
-        durationPerSession: 90,
-        hasPowerMeter: true,
-        ftp: 310,
-        hasHeartRate: true,
-        maxHeartRate: 190,
-        subscriptionStatus: "active",
-        subscriptionPlan: "Acesso Master (Coach)",
-        role: "coach",
-        isCoach: true,
-        createdAt: "2026-01-01T00:00:00.000Z"
-      },
+      profile: { ...createDefaultProfile(MASTER_ADMIN_EMAIL), createdAt: "2026-01-01T00:00:00.000Z" },
       chatHistory: [],
       plan: null,
       feedbacks: [],
@@ -1230,7 +1141,7 @@ async function ensureAllAthletesArePending() {
     for (const email of Object.keys(db)) {
       const user = db[email];
       if (user && user.profile) {
-        const isCoach = email.trim().toLowerCase() === MASTER_ADMIN_EMAIL || user.profile.role === "coach";
+        const isCoach = isCoachProfile(user.profile, email);
         let changed = false;
         if (!isCoach) {
           if (!user.profile.subscriptionStatus) { user.profile.subscriptionStatus = "pending_payment"; changed = true; }
@@ -1319,10 +1230,7 @@ app.post("/api/auth/register", requireAuth, async (req: any, res) => {
     res.json({ success: true, user: responseUser });
   } catch (error: any) {
     console.error("[Auth/Register] Falha no cadastro central:", error);
-    res.status(500).json({
-      error: error.message || "Não foi possível salvar seu cadastro central.",
-      detail: process.env.NODE_ENV === "production" ? undefined : error.message
-    });
+    res.status(500).json({ error: "Não foi possível salvar seu cadastro central." });
   }
 });
 
@@ -1367,7 +1275,7 @@ app.post("/api/auth/login", async (req, res) => {
 
     res.json({ success: true, user: responseUser });
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    sendServerError(res, error);
   }
 });
 
@@ -1453,7 +1361,7 @@ app.post("/api/auth/save-user", requireAuth, verifyUserMatch, async (req: any, r
     await saveDatabase(db, targetKey, getAuthToken(req));
     res.json({ success: true, user: responseUser });
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    sendServerError(res, error);
   }
 });
 
@@ -1508,7 +1416,7 @@ app.post("/api/auth/session", requireAuth, verifyUserMatch, async (req: any, res
 
     res.json({ success: true, user: responseUser });
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    sendServerError(res, error);
   }
 });
 
@@ -1561,7 +1469,7 @@ app.post("/api/workout/log-completion", requireAuth, verifyUserMatch, async (req
       plan: user.plan
     });
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    sendServerError(res, error);
   }
 });
 
@@ -1575,7 +1483,7 @@ app.post("/api/auth/check-status", requireAuth, verifyUserMatch, async (req, res
     const user = userFound.user;
     const emailKey = email.trim().toLowerCase();
 
-    const isCoach = emailKey === MASTER_ADMIN_EMAIL || user.profile?.role === "coach";
+    const isCoach = isCoachProfile(user.profile, emailKey);
     const status = user.profile?.subscriptionStatus || (isCoach ? "active" : "pending_payment");
 
     res.json({
@@ -1586,7 +1494,7 @@ app.post("/api/auth/check-status", requireAuth, verifyUserMatch, async (req, res
       profile: user.profile
     });
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    sendServerError(res, error);
   }
 });
 
@@ -1619,20 +1527,7 @@ app.post("/api/user/notify-payment", requireAuth, verifyUserMatch, async (req, r
 
     res.json({ success: true, message: "Aviso de pagamento registrado para análise do treinador." });
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-app.post("/api/auth/verify-password", requireAuth, verifyUserMatch, async (req, res) => {
-  try {
-    const { email, password } = req.body;
-    if (!email || !password) return res.status(400).json({ error: "E-mail e senha são obrigatórios para verificação." });
-    const db = await getDatabase();
-    const userFound = findUserInDb(db, email);
-    if (!userFound) return res.status(404).json({ error: "Usuário não encontrado." });
-    res.json({ success: verifyPassword(password, userFound.user.password) });
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    sendServerError(res, error);
   }
 });
 
@@ -2066,13 +1961,13 @@ app.post("/api/admin/verify-access", requireAuth, async (req: any, res: any) => 
 
     const db = await getDatabase();
     const userFound = findUserInDb(db, authEmail);
-    if (userFound?.user?.profile && (userFound.user.profile.role === "coach" || userFound.user.profile.role === "admin")) {
+    if (userFound?.user?.profile && isCoachProfile(userFound.user.profile, authEmail)) {
       return res.json({ success: true, authorized: true });
     }
 
     return res.status(403).json({ error: "Acesso administrativo negado." });
   } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    return sendServerError(res, err);
   }
 });
 
@@ -2081,7 +1976,7 @@ app.get("/api/admin/users", requireAuth, requireAdmin, async (req, res) => {
     const { db, source } = await getDatabaseWithSource(true, getAuthToken(req));
     const userList = Object.keys(db).map((key) => {
       const user = db[key];
-      const isCoach = user.email?.trim().toLowerCase() === MASTER_ADMIN_EMAIL || user.profile?.role === "coach";
+      const isCoach = isCoachProfile(user.profile, user.email);
       return {
         email: user.email,
         createdAt: user.profile?.createdAt || user.createdAt,
@@ -2098,7 +1993,7 @@ app.get("/api/admin/users", requireAuth, requireAdmin, async (req, res) => {
     });
     res.json({ success: true, users: userList, source });
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    sendServerError(res, error);
   }
 });
 
@@ -2363,7 +2258,7 @@ app.post("/api/admin/mercadopago/create-plan", requireAuth, requireAdmin, async 
       message: "Salve este ID em MERCADO_PAGO_PREAPPROVAL_PLAN_ID."
     });
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    sendServerError(res, error);
   }
 });
 
@@ -2400,7 +2295,7 @@ app.post("/api/mercadopago/create-subscription", requireAuth, verifyUserMatch, a
     if (!responseMP.ok) return res.status(502).json({ error: data?.message || "Falha ao criar assinatura no Mercado Pago." });
     res.json({ success: true, subscriptionId: data.id, status: data.status });
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    sendServerError(res, error);
   }
 });
 
@@ -2438,7 +2333,7 @@ app.post("/api/mercadopago/create-preference", requireAuth, verifyUserMatch, asy
     if (!mpResponse.ok) return res.status(502).json({ error: mpData?.message || "Falha ao criar preferência." });
     res.json({ success: true, init_point: mpData.init_point, preferenceId: mpData.id });
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    sendServerError(res, error);
   }
 });
 
@@ -2474,7 +2369,7 @@ app.post("/api/mercadopago/create-pix", requireAuth, verifyUserMatch, async (req
       qr_code_base64: mpData.point_of_interaction?.transaction_data?.qr_code_base64
     });
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    sendServerError(res, error);
   }
 });
 

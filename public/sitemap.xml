@@ -5,12 +5,12 @@
   
   <!-- Página Principal -->
   <url>
-    <loc>https://ais-pre-ig3xpt2tylya4dpumxckiy-403337948550.us-west2.run.app/</loc>
+    <loc>https://biker-ai.vercel.app/</loc>
     <lastmod>2026-09-13</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
     <image:image>
-      <image:loc>https://ais-pre-ig3xpt2tylya4dpumxckiy-403337948550.us-west2.run.app/biker_ai_icon.jpg</image:loc>
+      <image:loc>https://biker-ai.vercel.app/biker_ai_icon.jpg</image:loc>
       <image:title>Biker AI | Treinos de Ciclismo Personalizados com IA</image:title>
       <image:caption>Crie treinos de ciclismo personalizados de acordo com seu objetivo, nível e rotina.</image:caption>
     </image:image>
@@ -18,12 +18,12 @@
 
   <!-- Guia: Treino de Ciclismo para Iniciantes -->
   <url>
-    <loc>https://ais-pre-ig3xpt2tylya4dpumxckiy-403337948550.us-west2.run.app/treino-ciclismo-iniciante</loc>
+    <loc>https://biker-ai.vercel.app/treino-ciclismo-iniciante</loc>
     <lastmod>2026-09-12</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
     <image:image>
-      <image:loc>https://ais-pre-ig3xpt2tylya4dpumxckiy-403337948550.us-west2.run.app/biker_ai_icon.jpg</image:loc>
+      <image:loc>https://biker-ai.vercel.app/biker_ai_icon.jpg</image:loc>
       <image:title>Treino de Ciclismo para Iniciantes - Biker AI</image:title>
       <image:caption>Guia completo do zero ao pedal seguro com dicas de cadência, frequência e esforço.</image:caption>
     </image:image>
@@ -31,12 +31,12 @@
 
   <!-- Guia: Planilha de Treino de Ciclismo -->
   <url>
-    <loc>https://ais-pre-ig3xpt2tylya4dpumxckiy-403337948550.us-west2.run.app/planilha-treino-ciclismo</loc>
+    <loc>https://biker-ai.vercel.app/planilha-treino-ciclismo</loc>
     <lastmod>2026-09-12</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
     <image:image>
-      <image:loc>https://ais-pre-ig3xpt2tylya4dpumxckiy-403337948550.us-west2.run.app/biker_ai_icon.jpg</image:loc>
+      <image:loc>https://biker-ai.vercel.app/biker_ai_icon.jpg</image:loc>
       <image:title>Planilha de Treino de Ciclismo - Biker AI</image:title>
       <image:caption>Como estruturar sua periodização no ciclismo e montar microciclos eficientes.</image:caption>
     </image:image>
@@ -44,12 +44,12 @@
 
   <!-- Guia: Treino de Ciclismo para Emagrecer -->
   <url>
-    <loc>https://ais-pre-ig3xpt2tylya4dpumxckiy-403337948550.us-west2.run.app/treino-ciclismo-emagrecer</loc>
+    <loc>https://biker-ai.vercel.app/treino-ciclismo-emagrecer</loc>
     <lastmod>2026-09-12</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
     <image:image>
-      <image:loc>https://ais-pre-ig3xpt2tylya4dpumxckiy-403337948550.us-west2.run.app/biker_ai_icon.jpg</image:loc>
+      <image:loc>https://biker-ai.vercel.app/biker_ai_icon.jpg</image:loc>
       <image:title>Treino de Ciclismo para Emagrecer - Biker AI</image:title>
       <image:caption>Zonas de oxidação lipídica, frequência de treino e alimentação para perder gordura pedalando.</image:caption>
     </image:image>
@@ -57,12 +57,12 @@
 
   <!-- Guia: Como Treinar para Fazer 100 km de Bike -->
   <url>
-    <loc>https://ais-pre-ig3xpt2tylya4dpumxckiy-403337948550.us-west2.run.app/treino-100km</loc>
+    <loc>https://biker-ai.vercel.app/treino-100km</loc>
     <lastmod>2026-09-12</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
     <image:image>
-      <image:loc>https://ais-pre-ig3xpt2tylya4dpumxckiy-403337948550.us-west2.run.app/biker_ai_icon.jpg</image:loc>
+      <image:loc>https://biker-ai.vercel.app/biker_ai_icon.jpg</image:loc>
       <image:title>Como Treinar para Fazer 100 km de Bike - Biker AI</image:title>
       <image:caption>Preparação progressiva, pacing, hidratação e estratégia de nutrição para Gran Fondo.</image:caption>
     </image:image>
@@ -70,12 +70,12 @@
 
   <!-- Guia: Zona 2 no Ciclismo -->
   <url>
-    <loc>https://ais-pre-ig3xpt2tylya4dpumxckiy-403337948550.us-west2.run.app/zona-2-ciclismo</loc>
+    <loc>https://biker-ai.vercel.app/zona-2-ciclismo</loc>
     <lastmod>2026-09-12</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
     <image:image>
-      <image:loc>https://ais-pre-ig3xpt2tylya4dpumxckiy-403337948550.us-west2.run.app/biker_ai_icon.jpg</image:loc>
+      <image:loc>https://biker-ai.vercel.app/biker_ai_icon.jpg</image:loc>
       <image:title>Zona 2 no Ciclismo - Biker AI</image:title>
       <image:caption>O guia definitivo de biogênese mitocondrial, cálculo de potência e zonas de esforço.</image:caption>
     </image:image>

@@ -25,8 +25,9 @@ Antes de concluir qualquer mudança: `npm run lint && npm test`. O CI ([.github/
 
 ## Arquivos gerados — não editar à mão
 
-- `api/index.js` — bundle ESM do `server.ts` gerado pelo esbuild no build (usado pela Vercel). Edite `server.ts` e rode `npm run build`.
-- `dist/` — saída do Vite + `dist/server.cjs`.
+- `build/` — `server.mjs` (usado pela Vercel) e `server.cjs` (para `npm start`), gerados pelo esbuild a partir do `server.ts`. Fica **fora do git e fora de `dist/`**: tudo em `dist/` é público.
+- `dist/` — saída do Vite (site estático). Nunca gere código de servidor aqui.
+- `api/index.js` **não** é gerado: é um stub fixo e versionado que reexporta `build/server.mjs`. A Vercel detecta funções antes do build, por isso ele precisa existir no repositório. Não crie um `api/index.ts` ao lado.
 - `users_db.json` — banco local de desenvolvimento, **fora do git**. Use [users_db.example.json](users_db.example.json) como modelo. Nunca commite dados de usuários ou hashes de senha.
 
 ## Invariantes de segurança (não quebrar)
@@ -45,7 +46,9 @@ Antes de concluir qualquer mudança: `npm run lint && npm test`. O CI ([.github/
 
 - TypeScript, ESM (`"type": "module"`). Textos de UI e mensagens de erro em **português do Brasil**.
 - Chamadas ao Gemini passam por `callGeminiWithFallback` (tenta vários modelos: até 25 s por modelo e 55 s no total, dentro do `maxDuration` de 60 s da Vercel) e têm uma função `fallback*` determinística para quando a IA falha — mantenha esse padrão em rotas de IA novas. Não envolva a chamada em outro timeout. Planilhas usam `PLAN_RESPONSE_SCHEMA` + `normalizeAiPlan`, que cai em `fallbackGeneratePlan` se a IA vier sem treinos.
-- Rotas de IA novas precisam de rate limit (`aiGenerationLimiter`).
+- Rotas de IA novas precisam de rate limit (`aiGenerationLimiter`, ou `aiChatLimiter` para rotas conversacionais). Os limitadores usam `express-rate-limit` via `createRateLimiter`; não volte para um limitador caseiro (o CodeQL só reconhece bibliotecas conhecidas).
+- Erros inesperados em rotas: `sendServerError(res, error)`. Nunca devolva `error.message` ao cliente.
+- `robots.txt`, `sitemap.xml` e a verificação do Google ficam em `public/` (servidos como estáticos). Domínio de produção: `https://biker-ai.vercel.app`.
 - Persistência sempre via `getDatabase` / `saveDatabase` (Firestore com fallback para arquivo local); não acesse `users_db.json` diretamente.
 - Acesso pago em rotas novas: use `resolveRequesterAccess(req)` (lê o perfil do banco). Nunca decida acesso pelo `profile` enviado no corpo da requisição.
 - Testes rodam com o Firestore desligado (`VITEST` definido) e usam só o `users_db.json` local; autenticação em testes via `setTestAuthToken`.

@@ -48,7 +48,7 @@ export const SeoContentPage: React.FC<SeoContentPageProps> = ({
   useEffect(() => {
     window.scrollTo(0, 0);
 
-    const canonicalUrl = `https://ais-pre-ig3xpt2tylya4dpumxckiy-403337948550.us-west2.run.app/${article.slug}`;
+    const canonicalUrl = `https://biker-ai.vercel.app/${article.slug}`;
 
     const jsonLdData = [
       {
@@ -56,20 +56,20 @@ export const SeoContentPage: React.FC<SeoContentPageProps> = ({
         "@type": "Article",
         "headline": article.h1,
         "description": article.metaDescription,
-        "image": "https://ais-pre-ig3xpt2tylya4dpumxckiy-403337948550.us-west2.run.app/biker_ai_icon.jpg",
+        "image": "https://biker-ai.vercel.app/biker_ai_icon.jpg",
         "datePublished": article.publishedDate,
         "dateModified": article.updatedDate,
         "author": {
           "@type": "Organization",
           "name": "Biker AI - Treinador Inteligente de Ciclismo",
-          "url": "https://ais-pre-ig3xpt2tylya4dpumxckiy-403337948550.us-west2.run.app/"
+          "url": "https://biker-ai.vercel.app/"
         },
         "publisher": {
           "@type": "Organization",
           "name": "Biker AI",
           "logo": {
             "@type": "ImageObject",
-            "url": "https://ais-pre-ig3xpt2tylya4dpumxckiy-403337948550.us-west2.run.app/biker_ai_icon.jpg"
+            "url": "https://biker-ai.vercel.app/biker_ai_icon.jpg"
           }
         },
         "mainEntityOfPage": {
@@ -85,13 +85,13 @@ export const SeoContentPage: React.FC<SeoContentPageProps> = ({
             "@type": "ListItem",
             "position": 1,
             "name": "Início",
-            "item": "https://ais-pre-ig3xpt2tylya4dpumxckiy-403337948550.us-west2.run.app/"
+            "item": "https://biker-ai.vercel.app/"
           },
           {
             "@type": "ListItem",
             "position": 2,
             "name": "Guias de Ciclismo",
-            "item": "https://ais-pre-ig3xpt2tylya4dpumxckiy-403337948550.us-west2.run.app/"
+            "item": "https://biker-ai.vercel.app/"
           },
           {
             "@type": "ListItem",

@@ -14,3 +14,7 @@ users_db.json
 
 # Credencial do Firebase Admin lida por server.ts — nunca versionar
 service-account*.json
+
+# Arquivos de trava/estado gerados por ferramentas externas
+state/
+
