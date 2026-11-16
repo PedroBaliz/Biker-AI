@@ -8,3 +8,6 @@ server_requests.log
 db_backups/
 .env*
 !.env.example
+
+# Banco local com dados reais/hashes de senha — nunca versionar
+users_db.json
