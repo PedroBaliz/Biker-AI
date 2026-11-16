@@ -46,8 +46,11 @@ if (process.env.FIREBASE_PROJECT_ID) {
 let firestoreDb: any = null;
 let useFirestore = false;
 
+// Testes (Vitest) nunca tocam o Firestore real: usam só o users_db.json local.
+const IS_TEST_RUN = Boolean(process.env.VITEST);
+
 try {
-  if (firebaseAppletConfig && firebaseAppletConfig.projectId && firebaseAppletConfig.apiKey) {
+  if (!IS_TEST_RUN && firebaseAppletConfig && firebaseAppletConfig.projectId && firebaseAppletConfig.apiKey) {
     const firebaseApp = getApps().length === 0 
       ? initializeApp({
           apiKey: firebaseAppletConfig.apiKey,
@@ -74,7 +77,7 @@ try {
 // Inicializar SDK de administração do Firebase (Firebase Admin) para bypass de regras de segurança no servidor
 let adminFirestoreDb: any = null;
 try {
-  if (firebaseAppletConfig && firebaseAppletConfig.projectId) {
+  if (!IS_TEST_RUN && firebaseAppletConfig && firebaseAppletConfig.projectId) {
     const adminConfig: any = {
       projectId: firebaseAppletConfig.projectId
     };
@@ -167,7 +170,10 @@ function verifyPassword(password: string, storedHash: string): boolean {
   if (!storedHash) return false;
   
   if (!storedHash.includes(":")) {
-    return password === storedHash;
+    // Senha legada em texto puro: comparação em tempo constante (migrada para hash no login).
+    const a = Buffer.from(password);
+    const b = Buffer.from(storedHash);
+    return a.length === b.length && crypto.timingSafeEqual(a, b);
   }
   
   const [salt, hash] = storedHash.split(":");
@@ -261,27 +267,20 @@ async function verifyFirebaseIdToken(token: string, projectId: string): Promise<
           payload.aud === projectId &&
           Boolean(payload.sub);
 
-        if (isClaimsValid) {
-          if (header.alg === "RS256") {
-            try {
-              const keys = await fetchGooglePublicKeys();
-              const cert = keys[header.kid];
-              if (cert) {
-                const verifier = crypto.createVerify("SHA256");
-                verifier.update(`${headerB64}.${payloadB64}`);
-                if (verifier.verify(cert, signature)) {
-                  decodedToken = payload;
-                }
-              }
-            } catch (keyErr) {
-              if (process.env.NODE_ENV === "test") {
+        // A assinatura RS256 é sempre obrigatória. Testes usam setTestAuthToken
+        // em vez de aceitar tokens sem assinatura.
+        if (isClaimsValid && header.alg === "RS256") {
+          try {
+            const keys = await fetchGooglePublicKeys();
+            const cert = keys[header.kid];
+            if (cert) {
+              const verifier = crypto.createVerify("SHA256");
+              verifier.update(`${headerB64}.${payloadB64}`);
+              if (verifier.verify(cert, signature)) {
                 decodedToken = payload;
               }
             }
-          }
-          if (!decodedToken && isClaimsValid && process.env.NODE_ENV === "test") {
-            decodedToken = payload;
-          }
+          } catch {}
         }
       }
     } catch (fastErr) {}
@@ -364,19 +363,26 @@ async function requireAuth(req: any, res: any, next: any) {
 function normalizeEmail(value: unknown): string | null {
   if (typeof value !== "string") return null;
   const normalized = value.trim().toLowerCase();
-  if (!normalized || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)) {
-    return null;
-  }
+  // Limite de tamanho (RFC 5321) antes de qualquer validação e sem regex com
+  // quantificadores ambíguos, para evitar ReDoS.
+  if (!normalized || normalized.length > 254 || /\s/.test(normalized)) return null;
+  const at = normalized.indexOf("@");
+  if (at <= 0 || at !== normalized.lastIndexOf("@")) return null;
+  const domain = normalized.slice(at + 1);
+  const dot = domain.lastIndexOf(".");
+  if (dot <= 0 || dot === domain.length - 1) return null;
   return normalized;
 }
 
 function findUserInDb(db: Record<string, any>, email: string): { key: string; user: any } | null {
-  if (!email || !db) return null;
+  if (!email || !db || typeof email !== "string") return null;
   const emailKey = normalizeEmail(email) || email.trim().toLowerCase();
   const cleanKey = emailKey.replace(/[^a-z0-9]/g, "_");
+  // Só chaves próprias do objeto: impede que "__proto__"/"constructor" retornem o protótipo.
+  const own = (k: string) => Object.prototype.hasOwnProperty.call(db, k) && db[k];
 
-  if (db[emailKey]) return { key: emailKey, user: db[emailKey] };
-  if (db[cleanKey]) return { key: cleanKey, user: db[cleanKey] };
+  if (own(emailKey)) return { key: emailKey, user: db[emailKey] };
+  if (own(cleanKey)) return { key: cleanKey, user: db[cleanKey] };
 
   const targetKey = Object.keys(db).find((k) => {
     const kLower = k.trim().toLowerCase();
@@ -481,10 +487,29 @@ function sanitizeUserProfileInput(incomingProfile: any, existingProfile: any = {
   return sanitized;
 }
 
+/**
+ * Decide o acesso pago a partir do perfil salvo no banco para o usuário autenticado.
+ * Nunca use o `profile` enviado no corpo da requisição para isso: o cliente controla esse dado.
+ * Um coach autenticado tem acesso total (inclusive ao agir em nome de um atleta).
+ */
+async function resolveRequesterAccess(req: any): Promise<boolean> {
+  const email = normalizeEmail(req.user?.email);
+  if (!email) return false;
+  if (email === MASTER_ADMIN_EMAIL) return true;
+  const db = await getDatabase(false, getAuthToken(req));
+  const profile = findUserInDb(db, email)?.user?.profile;
+  if (!profile) return false;
+  if (profile.isCoach === true) return true;
+  return hasActiveAccess({ ...profile, email }, email);
+}
+
 function sanitizePlanForUser(plan: any, profile: any, userEmail?: string) {
+  return sanitizePlanByAccess(plan, hasActiveAccess(profile, userEmail));
+}
+
+function sanitizePlanByAccess(plan: any, isSubscriber: boolean) {
   if (!plan) return null;
-  const isSubscriber = hasActiveAccess(profile, userEmail);
-  
+
   if (isSubscriber) {
     return {
       ...plan,
@@ -685,10 +710,23 @@ const aiGenerationLimiter = createRateLimiter({
   keyPrefix: "api-ai"
 });
 
+// Chat e onboarding são conversacionais: limite próprio, mais alto que o de geração de planilhas,
+// para não esgotar a cota de geração durante uma conversa normal.
+const aiChatLimiter = createRateLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 60,
+  message: "Muitas mensagens enviadas ao treinador em pouco tempo. Por favor, aguarde alguns minutos.",
+  keyPrefix: "api-ai-chat"
+});
+
 app.use("/api/auth/login", authLimiter);
 app.use("/api/auth/register", authLimiter);
 app.use("/api/generate-plan", aiGenerationLimiter);
+app.use("/api/generate-next-week", aiGenerationLimiter);
 app.use("/api/evaluate-workout", aiGenerationLimiter);
+app.use("/api/chat", aiChatLimiter);
+app.use("/api/onboard", aiChatLimiter);
+app.use("/api/admin/diagnostics", aiGenerationLimiter);
 app.use("/api/parse-strava", aiGenerationLimiter);
 app.use("/api", generalApiLimiter);
 
@@ -766,6 +804,12 @@ function fromFirestoreDocument(doc: any): Record<string, any> {
   return res;
 }
 
+function firestoreUserDocUrl(projectId: string, dbId: string, docId: string): string {
+  // O ID do documento vem do e-mail (entrada do usuário): sempre codificado, para não
+  // alterar o caminho da requisição REST (ex.: "../", "?", "#").
+  return `https://firestore.googleapis.com/v1/projects/${encodeURIComponent(projectId)}/databases/${encodeURIComponent(dbId)}/documents/users/${encodeURIComponent(docId)}`;
+}
+
 async function fetchFirestoreUsers(idToken?: string): Promise<Record<string, any>> {
   if (adminFirestoreDb) {
     try {
@@ -829,7 +873,7 @@ async function fetchFirestoreUser(email: string, idToken?: string): Promise<{ fo
     try {
       const projectId = firebaseAppletConfig.projectId;
       const dbId = firebaseAppletConfig.firestoreDatabaseId || "(default)";
-      const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/${dbId}/documents/users/${emailKey}`;
+      const url = firestoreUserDocUrl(projectId, dbId, emailKey);
       const res = await fetch(url, {
         headers: { "Authorization": idToken.startsWith("Bearer ") ? idToken : `Bearer ${idToken}` }
       });
@@ -878,7 +922,7 @@ async function saveFirestoreUser(email: string, userData: any, idToken?: string)
     try {
       const projectId = firebaseAppletConfig.projectId;
       const dbId = firebaseAppletConfig.firestoreDatabaseId || "(default)";
-      const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/${dbId}/documents/users/${emailKey}`;
+      const url = firestoreUserDocUrl(projectId, dbId, emailKey);
       const payload = toFirestoreDocument(userData);
       const res = await fetch(url, {
         method: "PATCH",
@@ -906,7 +950,7 @@ async function saveFirestoreUser(email: string, userData: any, idToken?: string)
   }
 
   if (lastError) {
-    console.warn(`[Firestore] Aviso de sincronização para ${emailKey}:`, lastError.message);
+    console.warn("[Firestore] Aviso de sincronização para %s: %s", emailKey, lastError.message);
   }
 }
 
@@ -939,7 +983,7 @@ async function deleteFirestoreUser(email: string, idToken?: string): Promise<voi
       const projectId = firebaseAppletConfig.projectId;
       const dbId = firebaseAppletConfig.firestoreDatabaseId || "(default)";
       for (const k of keysToDelete) {
-        const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/${dbId}/documents/users/${encodeURIComponent(k)}`;
+        const url = firestoreUserDocUrl(projectId, dbId, k);
         await fetch(url, {
           method: "DELETE",
           headers: idToken ? { "Authorization": idToken.startsWith("Bearer ") ? idToken : `Bearer ${idToken}` } : {}
@@ -1177,23 +1221,28 @@ async function ensureAllAthletesArePending() {
 // USER SIGNUP, SIGNIN & CLOUD SYNCHRONIZATION ENDPOINTS
 // -------------------------------------------------------------
 
-app.post("/api/auth/register", async (req, res) => {
+// O cliente cria a conta no Firebase Auth antes de chamar esta rota, então exigimos o ID token:
+// só o dono do e-mail pode cadastrar (ou completar) a conta correspondente.
+app.post("/api/auth/register", requireAuth, async (req: any, res) => {
   try {
     const { email, password, name } = req.body;
-    if (!email || !password || !name) {
+    if (typeof email !== "string" || typeof password !== "string" || typeof name !== "string" || !email || !password || !name.trim()) {
       return res.status(400).json({ error: "Dados inválidos de cadastro." });
     }
 
+    const emailKey = normalizeEmail(email);
+    if (!emailKey) return res.status(400).json({ error: "E-mail inválido." });
+    if (normalizeEmail(req.user?.email) !== emailKey) {
+      return res.status(403).json({ error: "O e-mail do cadastro não corresponde à sessão autenticada." });
+    }
+
     const db = await getDatabase();
-    const emailKey = email.trim().toLowerCase();
 
-    if (db[emailKey]) {
+    if (Object.prototype.hasOwnProperty.call(db, emailKey)) {
       const existing = db[emailKey];
-      const isBootstrappedWithoutPassword = !existing.password;
-      const hasNoPlanOrWorkouts = (!existing.plan || Object.keys(existing.plan).length === 0) &&
-                                  (!existing.workoutLogs || existing.workoutLogs.length === 0);
-
-      if (isBootstrappedWithoutPassword || hasNoPlanOrWorkouts) {
+      // Conta criada por /api/auth/session (onAuthStateChanged chega antes do cadastro) ainda sem senha:
+      // o próprio dono, autenticado, pode completá-la. Contas que já têm senha nunca são sobrescritas.
+      if (!existing.password) {
         existing.password = hashPassword(password);
         if (existing.profile) existing.profile.name = name.trim();
         await saveDatabase(db, emailKey, getAuthToken(req));
@@ -1408,9 +1457,8 @@ app.post("/api/auth/save-user", requireAuth, verifyUserMatch, async (req: any, r
 
 app.post("/api/auth/session", requireAuth, verifyUserMatch, async (req: any, res: any) => {
   try {
-    const { email } = req.body;
-    if (!email) return res.status(400).json({ error: "E-mail é obrigatório." });
-    const emailLower = email.trim().toLowerCase();
+    const emailLower = normalizeEmail(req.body?.email);
+    if (!emailLower) return res.status(400).json({ error: "E-mail é obrigatório." });
     const authToken = getAuthToken(req);
 
     const db = await getDatabase(false, authToken);
@@ -1539,7 +1587,7 @@ app.post("/api/workout/log-completion", requireAuth, verifyUserMatch, async (req
   }
 });
 
-app.post("/api/auth/check-status", async (req, res) => {
+app.post("/api/auth/check-status", requireAuth, verifyUserMatch, async (req, res) => {
   try {
     const { email } = req.body;
     if (!email) return res.status(400).json({ error: "E-mail é obrigatório." });
@@ -1564,16 +1612,17 @@ app.post("/api/auth/check-status", async (req, res) => {
   }
 });
 
-app.post("/api/user/notify-payment", async (req, res) => {
+app.post("/api/user/notify-payment", requireAuth, verifyUserMatch, async (req, res) => {
   try {
-    const { email, method, note } = req.body;
+    const email = normalizeEmail(req.body?.email);
     if (!email) return res.status(400).json({ error: "E-mail é obrigatório." });
+    // Texto livre exibido no painel admin: limitar tamanho para evitar abuso.
+    const method = typeof req.body.method === "string" ? req.body.method.trim().slice(0, 40) : "";
+    const note = typeof req.body.note === "string" ? req.body.note.trim().slice(0, 500) : "";
     const db = await getDatabase();
     const userFound = findUserInDb(db, email);
     if (!userFound) return res.status(404).json({ error: "Usuário não encontrado." });
     const user = userFound.user;
-
-    if (!user.feedbacks) user.feedbacks = [];
 
     const paymentFeedback = {
       id: `pay_notify_${Date.now()}`,
@@ -1583,7 +1632,11 @@ app.post("/api/user/notify-payment", async (req, res) => {
       timestamp: new Date().toISOString()
     };
 
-    user.feedbacks.unshift(paymentFeedback);
+    // Substitui o registro em vez de mutar o objeto encontrado (evita escrita em protótipo).
+    db[userFound.key] = {
+      ...user,
+      feedbacks: [paymentFeedback, ...(Array.isArray(user.feedbacks) ? user.feedbacks : [])]
+    };
     await saveDatabase(db, userFound.key, getAuthToken(req));
 
     res.json({ success: true, message: "Aviso de pagamento registrado para análise do treinador." });
@@ -1623,10 +1676,10 @@ const getAiClient = (): GoogleGenAI => {
   return aiClient;
 };
 
-app.get("/api/diagnostics", async (req, res) => {
+// Restrito ao admin: faz uma chamada paga ao Gemini e lê a coleção de usuários a cada acesso.
+app.get("/api/admin/diagnostics", requireAuth, requireAdmin, async (req, res) => {
   const responses: any = {
     apiKeyConfigured: !!process.env.GEMINI_API_KEY,
-    apiKeyLength: process.env.GEMINI_API_KEY ? process.env.GEMINI_API_KEY.length : 0,
     nodeEnv: process.env.NODE_ENV,
     modelName: "gemini-2.5-flash",
     useFirestore,
@@ -1800,7 +1853,9 @@ app.post("/api/onboard", requireAuth, verifyUserMatch, async (req, res) => {
 
 app.post("/api/generate-plan", requireAuth, verifyUserMatch, async (req, res) => {
   const { profile } = req.body;
+  let hasAccess = false;
   try {
+    hasAccess = await resolveRequesterAccess(req);
     checkApiKey();
     const response = await withTimeout(
       callGeminiWithFallback((model) =>
@@ -1811,21 +1866,18 @@ app.post("/api/generate-plan", requireAuth, verifyUserMatch, async (req, res) =>
         })
       )
     );
-    const fullPlanData = cleanAndParseJson(response.text);
-    const userEmailKey = (profile?.email || (req as any).user?.email || "").trim().toLowerCase();
-    res.json(sanitizePlanForUser(fullPlanData, profile, userEmailKey));
+    res.json(sanitizePlanByAccess(cleanAndParseJson(response.text), hasAccess));
   } catch (error: any) {
-    const data = fallbackGeneratePlan(profile, 1);
-    const userEmailKey = (profile?.email || (req as any).user?.email || "").trim().toLowerCase();
-    res.json(sanitizePlanForUser(data, profile, userEmailKey));
+    res.json(sanitizePlanByAccess(fallbackGeneratePlan(profile, 1), hasAccess));
   }
 });
 
 app.post("/api/generate-next-week", requireAuth, verifyUserMatch, async (req, res) => {
-  const { profile, currentPlan, nextWeekNumber } = req.body;
+  const { profile, nextWeekNumber } = req.body;
+  let hasAccess = false;
   try {
-    const userEmailKey = (profile?.email || (req as any).user?.email || "").trim().toLowerCase();
-    if (!hasActiveAccess(profile, userEmailKey)) {
+    hasAccess = await resolveRequesterAccess(req);
+    if (!hasAccess) {
       return res.status(403).json({ error: "Acesso bloqueado. Assine o Biker AI.", isBlocked: true });
     }
     checkApiKey();
@@ -1838,19 +1890,16 @@ app.post("/api/generate-next-week", requireAuth, verifyUserMatch, async (req, re
         })
       )
     );
-    res.json(sanitizePlanForUser(cleanAndParseJson(response.text), profile, userEmailKey));
+    res.json(sanitizePlanByAccess(cleanAndParseJson(response.text), hasAccess));
   } catch (error: any) {
-    const data = fallbackGeneratePlan(profile, nextWeekNumber || 2);
-    const userEmailKey = (profile?.email || (req as any).user?.email || "").trim().toLowerCase();
-    res.json(sanitizePlanForUser(data, profile, userEmailKey));
+    res.json(sanitizePlanByAccess(fallbackGeneratePlan(profile, nextWeekNumber || 2), hasAccess));
   }
 });
 
 app.post("/api/evaluate-workout", requireAuth, verifyUserMatch, async (req, res) => {
   const { profile, workout } = req.body;
   try {
-    const userEmailKey = (profile?.email || (req as any).user?.email || "").trim().toLowerCase();
-    if (!hasActiveAccess(profile, userEmailKey)) {
+    if (!(await resolveRequesterAccess(req))) {
       return res.status(403).json({ error: "Acesso bloqueado.", isBlocked: true });
     }
     checkApiKey();
@@ -1872,8 +1921,7 @@ app.post("/api/evaluate-workout", requireAuth, verifyUserMatch, async (req, res)
 app.post("/api/chat", requireAuth, verifyUserMatch, async (req, res) => {
   const { message, profile, currentPlan } = req.body;
   try {
-    const userEmailKey = (profile?.email || (req as any).user?.email || "").trim().toLowerCase();
-    if (currentPlan && !hasActiveAccess(profile, userEmailKey)) {
+    if (currentPlan && !(await resolveRequesterAccess(req))) {
       return res.json({
         reply: `Olá, atleta! Notei que o seu período de teste gratuito de 3 dias expirou (ou sua conta está aguardando ativação). Para continuar recebendo acompanhamento do treinador e planilhas personalizadas, assine o Plano Pro por apenas R$ ${SUBSCRIPTION_PRICE_BRL.toFixed(2).replace(".", ",")}/mês!`,
         isBlocked: true
@@ -2131,7 +2179,7 @@ async function activateUserFromMercadoPago(email: string, paymentId: string, pla
   const db = await getDatabase();
   const userFound = findUserInDb(db, normalizedEmail);
   if (!userFound) {
-    console.warn(`[Mercado Pago] Pagamento ${paymentId} recebido para usuário inexistente: ${normalizedEmail}`);
+    console.warn("[Mercado Pago] Pagamento %s recebido para usuário inexistente.", paymentId);
     return false;
   }
   const user = userFound.user;

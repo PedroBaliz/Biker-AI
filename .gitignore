@@ -11,3 +11,6 @@ db_backups/
 
 # Banco local com dados reais/hashes de senha — nunca versionar
 users_db.json
+
+# Credencial do Firebase Admin lida por server.ts — nunca versionar
+service-account*.json
