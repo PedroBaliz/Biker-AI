@@ -24,6 +24,8 @@ import {
   CreditCard
 } from "lucide-react";
 
+import { EmailAuthProvider, reauthenticateWithCredential, updatePassword } from "firebase/auth";
+import { auth } from "../firebase";
 import { getUserAccessInfo } from "../utils/subscriptionUtils";
 
 interface AccountSettingsProps {
@@ -40,7 +42,7 @@ export default function AccountSettings({ currentUser, onUpdateAccount, onClose,
 
   // Account inputs
   const [name, setName] = useState(currentUser.profile.name);
-  const [email, setEmail] = useState(currentUser.email);
+  const hasPasswordLogin = Boolean(auth.currentUser?.providerData.some((p) => p.providerId === "password"));
   const [currentPasswordConfirm, setCurrentPasswordConfirm] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
@@ -62,10 +64,6 @@ export default function AccountSettings({ currentUser, onUpdateAccount, onClose,
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  const validateEmail = (input: string) => {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input);
-  };
-
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -76,49 +74,42 @@ export default function AccountSettings({ currentUser, onUpdateAccount, onClose,
       return;
     }
 
-    if (!email.trim() || !validateEmail(email)) {
-      setError("Por favor, preencha um e-mail de acesso válido.");
-      return;
-    }
-
-    const emailChanged = email.trim().toLowerCase() !== currentUser.email.toLowerCase();
-    const nameChanged = name.trim() !== currentUser.profile.name;
     const passwordChanged = !!newPassword.trim();
-    
-    // Safety check with current password when changing security details
-    if (emailChanged || nameChanged || passwordChanged) {
-      if (!currentPasswordConfirm) {
-        setError("Para salvar alterações críticas na conta (Nome, E-mail ou Senha), informe a sua senha atual de validação.");
-        return;
-      }
 
-      try {
-        const verifyRes = await fetch("/api/auth/verify-password", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: currentUser.email, password: currentPasswordConfirm })
-        });
-        
-        if (!verifyRes.ok) {
-          const errData = await verifyRes.json().catch(() => ({ error: "Erro de conexão ao validar" }));
-          setError(errData.error || "A senha atual de confirmação está incorreta. Não foi possível autorizar a atualização.");
-          return;
-        }
-        
-        const verifyData = await verifyRes.json();
-        if (!verifyData.success) {
-          setError("A senha atual de confirmação está incorreta. Não foi possível autorizar a atualização.");
-          return;
-        }
-      } catch (err: any) {
-        setError("Erro de conexão ao validar sua credencial com o servidor principal.");
-        return;
-      }
-    }
-
-    if (newPassword.trim() && newPassword.length < 6) {
+    if (passwordChanged && newPassword.length < 6) {
       setError("A nova senha precisa conter no mínimo 6 caracteres por segurança.");
       return;
+    }
+
+    // Troca de senha: confirma a senha atual e altera no próprio Firebase Auth,
+    // que é a credencial usada no login.
+    if (passwordChanged) {
+      const firebaseUser = auth.currentUser;
+      if (!firebaseUser || !firebaseUser.email) {
+        setError("Sua sessão expirou. Entre novamente para alterar a senha.");
+        return;
+      }
+      if (!currentPasswordConfirm) {
+        setError("Para alterar a senha, informe a sua senha atual.");
+        return;
+      }
+      try {
+        const credential = EmailAuthProvider.credential(firebaseUser.email, currentPasswordConfirm);
+        await reauthenticateWithCredential(firebaseUser, credential);
+        await updatePassword(firebaseUser, newPassword);
+      } catch (err: any) {
+        const code = err?.code || "";
+        if (code === "auth/wrong-password" || code === "auth/invalid-credential") {
+          setError("A senha atual está incorreta. Não foi possível alterar a senha.");
+        } else if (code === "auth/too-many-requests") {
+          setError("Muitas tentativas. Aguarde alguns minutos e tente novamente.");
+        } else if (code === "auth/weak-password") {
+          setError("A nova senha é muito fraca. Use pelo menos 6 caracteres.");
+        } else {
+          setError("Não foi possível alterar a senha agora. Verifique sua conexão e tente novamente.");
+        }
+        return;
+      }
     }
 
     // Days per week limit
@@ -130,7 +121,8 @@ export default function AccountSettings({ currentUser, onUpdateAccount, onClose,
     // Build the updated user account and save
     const updatedUser: UserAccount = {
       ...currentUser,
-      email: email.trim(),
+      // O e-mail é a chave da conta no banco e no Firebase Auth: não é alterado por esta tela.
+      email: currentUser.email,
       profile: {
         ...currentUser.profile,
         name: name.trim(),
@@ -490,20 +482,21 @@ export default function AccountSettings({ currentUser, onUpdateAccount, onClose,
               <label className="block text-[11px] uppercase font-bold tracking-wider text-slate-400">E-mail de Login</label>
               <div className="relative">
                 <Mail className="absolute left-3.5 top-3.5 w-4 h-4 text-slate-400" />
-                <input 
+                <input
                   type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-150 focus:border-slate-300 focus:bg-white rounded-xl pl-10 pr-4 py-3 text-xs outline-hidden focus:ring-1 focus:ring-slate-350 transition-all font-mono text-slate-800"
+                  readOnly
+                  aria-readonly="true"
+                  value={currentUser.email}
+                  className="w-full bg-slate-100 border border-slate-150 rounded-xl pl-10 pr-4 py-3 text-xs outline-hidden font-mono text-slate-500 cursor-not-allowed"
                 />
               </div>
               <span className="text-[10px] text-slate-400 font-sans block leading-normal leading-relaxed">
-                Atenção: Ao alterar o seu e-mail, seu ID de login sofrerá alteração e os dados serão migrados automaticamente.
+                O e-mail de login não pode ser alterado por aqui. Para trocar, fale com o suporte.
               </span>
             </div>
 
-            {/* Security Section (Required current password) */}
+            {/* Security Section: só para contas com login por senha (contas Google não têm senha) */}
+            {hasPasswordLogin && (
             <div className="border-t border-slate-100 my-4 pt-4 space-y-4">
               <div className="flex items-center gap-2 mb-1">
                 <Key className="w-4 h-4 text-slate-400" />
@@ -538,7 +531,7 @@ export default function AccountSettings({ currentUser, onUpdateAccount, onClose,
                 {/* Confirm Current Password */}
                 <div className="space-y-1.5">
                   <label className="block text-[11px] uppercase font-bold tracking-wider text-slate-455 flex items-center gap-1">
-                    Senha Atual <span className="text-rose-500 font-extrabold">*</span>
+                    Senha Atual <span className="text-[10px] text-slate-400 lowercase font-normal">(só para trocar a senha)</span>
                   </label>
                   <div className="relative">
                     <Lock className="absolute left-3.5 top-3.5 w-4 h-4 text-slate-400" />
@@ -560,6 +553,7 @@ export default function AccountSettings({ currentUser, onUpdateAccount, onClose,
                 </div>
               </div>
             </div>
+            )}
           </motion.div>
         )}
 

@@ -435,7 +435,8 @@ function isTrialActive(profile: any): boolean {
   const created = new Date(profile.createdAt).getTime();
   if (isNaN(created)) return false;
   const TRIAL_DURATION_MS = 3 * 24 * 60 * 60 * 1000;
-  return (Date.now() - created) <= TRIAL_DURATION_MS;
+  // Mesma borda do cliente (getUserAccessInfo): exatamente em 72 h o trial já expirou.
+  return (Date.now() - created) < TRIAL_DURATION_MS;
 }
 
 function hasActiveAccess(profile: any, userEmail?: string): boolean {
@@ -531,6 +532,37 @@ function sanitizePlanByAccess(plan: any, isSubscriber: boolean) {
   };
 }
 
+/**
+ * Perfil inicial único para contas novas (cadastro, sessão Google e sincronização).
+ * Sem métricas inventadas: FTP, FC etc. ficam nulos até o atleta responder o onboarding.
+ */
+function createDefaultProfile(email: string, name?: string): Record<string, any> {
+  const isCoach = email === MASTER_ADMIN_EMAIL;
+  const profile: Record<string, any> = {
+    name: (name || "").trim() || (isCoach ? "Treinador" : email.split("@")[0]),
+    level: "",
+    goal: "",
+    daysPerWeek: null,
+    durationPerSession: null,
+    eventDate: "",
+    hasPowerMeter: null,
+    ftp: null,
+    hasHeartRate: null,
+    maxHeartRate: null,
+    limitations: "",
+    recentActivity: "",
+    // O coach não passa pelo onboarding de atleta.
+    onboardingStep: isCoach ? 10 : 1,
+    role: isCoach ? "coach" : "athlete",
+    isCoach,
+    subscriptionStatus: isCoach ? "active" : "pending_payment",
+    subscriptionPlan: isCoach ? "Acesso Master (Coach)" : "Plano Pro",
+    createdAt: new Date().toISOString()
+  };
+  if (isCoach) profile.subscriptionExpiresAt = "2030-12-31";
+  return profile;
+}
+
 async function requireAdmin(req: any, res: any, next: any) {
   const adminPassword = req.headers["x-admin-password"] || req.body?.adminPassword;
 
@@ -569,7 +601,9 @@ async function requireAdmin(req: any, res: any, next: any) {
 }
 
 const app = express();
-app.use(express.json());
+// O save-user envia o histórico de chat e a planilha inteiros: o padrão de 100 KB gerava 413
+// para atletas com muito histórico. 1 MB acompanha o limite de um documento do Firestore.
+app.use(express.json({ limit: "1mb" }));
 
 // Google Site Verification & Sitemap
 app.get("/googleef65b720b90cbd44.html", (req, res) => {
@@ -727,7 +761,6 @@ app.use("/api/evaluate-workout", aiGenerationLimiter);
 app.use("/api/chat", aiChatLimiter);
 app.use("/api/onboard", aiChatLimiter);
 app.use("/api/admin/diagnostics", aiGenerationLimiter);
-app.use("/api/parse-strava", aiGenerationLimiter);
 app.use("/api", generalApiLimiter);
 
 let inMemoryDbCache: Record<string, any> | null = null;
@@ -1256,31 +1289,8 @@ app.post("/api/auth/register", requireAuth, async (req: any, res) => {
 
     const customWelcomeText = `Olá, ${name.trim()}! Que excelente ver você aqui na Biker AI. Eu sou o seu Treinador de Ciclismo pessoal.\n\nMinhas planilhas e conselhos são focados em melhorar o seu fôlego e resistência de forma simples e segura, ajustando seus treinos por potência, batimentos do coração ou pelas suas percepções de cansaço.\n\nPara começarmos a planejar sua evolução de forma personalizada, preciso te conhecer melhor através de algumas perguntas rápidas no nosso chat.\n\nComo você já se cadastrou, podemos iniciar o questionário agora mesmo. **Qual é o seu tempo médio pedalando ou seu nível atual no ciclismo?**`;
 
-    const isCoachEmail = email.trim().toLowerCase() === MASTER_ADMIN_EMAIL;
-    const nowIso = new Date().toISOString();
-    const newProfile: any = {
-      name: name.trim(),
-      level: "intermediário",
-      goal: "melhorar condicionamento",
-      daysPerWeek: 3,
-      durationPerSession: 60,
-      eventDate: "",
-      hasPowerMeter: null,
-      ftp: null,
-      hasHeartRate: null,
-      maxHeartRate: null,
-      limitations: "",
-      recentActivity: "",
-      onboardingStep: 1,
-      subscriptionStatus: isCoachEmail ? "active" : "pending_payment",
-      subscriptionPlan: isCoachEmail ? "Acesso Master (Coach)" : "Plano Pro",
-      role: isCoachEmail ? "coach" : "athlete",
-      createdAt: nowIso
-    };
-
-    if (isCoachEmail) {
-      newProfile.subscriptionExpiresAt = "2030-12-31";
-    }
+    const newProfile = createDefaultProfile(emailKey, name);
+    const nowIso = newProfile.createdAt;
 
     const initialChat = [
       {
@@ -1381,17 +1391,9 @@ app.post("/api/auth/save-user", requireAuth, verifyUserMatch, async (req: any, r
 
     if (!userFound) {
       targetKey = normalizedEmail;
-      const isMaster = targetKey === MASTER_ADMIN_EMAIL;
       existingUser = {
         email: targetKey,
-        profile: {
-          name: isMaster ? "Pedro Ramos" : targetKey.split("@")[0],
-          role: isMaster ? "coach" : "athlete",
-          isCoach: isMaster,
-          subscriptionStatus: isMaster ? "active" : "pending_payment",
-          subscriptionPlan: isMaster ? "Acesso Master (Coach)" : "Plano Pro",
-          createdAt: new Date().toISOString()
-        },
+        profile: createDefaultProfile(targetKey),
         chatHistory: [],
         plan: null,
         feedbacks: [],
@@ -1477,32 +1479,8 @@ app.post("/api/auth/session", requireAuth, verifyUserMatch, async (req: any, res
     }
 
     if (!userFound) {
-      const isMasterAdmin = emailLower === MASTER_ADMIN_EMAIL;
-
-      const newProfile: any = {
-        name: isMasterAdmin ? "Pedro Ramos" : (req.user?.name || emailLower.split("@")[0]),
-        email: emailLower,
-        role: isMasterAdmin ? "coach" : "athlete",
-        isCoach: isMasterAdmin,
-        subscriptionStatus: isMasterAdmin ? "active" : "pending_payment",
-        subscriptionPlan: isMasterAdmin ? "Acesso Master (Coach)" : "Plano Pro",
-        createdAt: new Date().toISOString(),
-        goal: "melhorar condicionamento",
-        level: "intermediário",
-        daysPerWeek: 4,
-        durationPerSession: 60,
-        hasPowerMeter: true,
-        ftp: isMasterAdmin ? 310 : 200,
-        hasHeartRate: true,
-        maxHeartRate: 185,
-        limitations: "Nenhuma",
-        recentActivity: "Ciclismo regular",
-        onboardingStep: 10
-      };
-
-      if (isMasterAdmin) {
-        newProfile.subscriptionExpiresAt = "2030-12-31";
-      }
+      // Conta nova (ex.: primeiro login com Google): perfil vazio, o atleta passa pelo onboarding.
+      const newProfile = { ...createDefaultProfile(emailLower, req.user?.name), email: emailLower };
 
       const newUserEntry = {
         email: emailLower,
@@ -1718,51 +1696,44 @@ app.get("/api/admin/diagnostics", requireAuth, requireAdmin, async (req, res) =>
 
 const checkApiKey = () => { getAiClient(); };
 
+// Orçamento de tempo das chamadas ao Gemini. O total cabe no maxDuration (60 s) da função
+// na Vercel; o limite por modelo garante que, se o primeiro travar, ainda sobra tempo para o próximo.
+const GEMINI_PER_MODEL_TIMEOUT_MS = 25_000;
+const GEMINI_TOTAL_BUDGET_MS = 55_000;
+
 const callGeminiWithFallback = async (
   requestFn: (modelName: string) => Promise<any>,
-  modelsToTry: string[] = ["gemini-2.5-flash", "gemini-3.1-flash-lite", "gemini-2.5-pro"]
+  modelsToTry: string[] = ["gemini-2.5-flash", "gemini-3.1-flash-lite", "gemini-2.5-pro"],
+  { perModelMs = GEMINI_PER_MODEL_TIMEOUT_MS, totalMs = GEMINI_TOTAL_BUDGET_MS } = {}
 ): Promise<any> => {
-  let lastError: any = null;
+  const deadline = Date.now() + totalMs;
+  let lastError: any = new Error("Nenhum modelo de IA disponível.");
 
-  for (let i = 0; i < modelsToTry.length; i++) {
-    const model = modelsToTry[i];
+  for (const model of modelsToTry) {
+    const remaining = deadline - Date.now();
+    if (remaining <= 1000) break; // sem tempo útil para outra tentativa
+
+    const timeoutMs = Math.min(perModelMs, remaining);
+    let timer: NodeJS.Timeout | undefined;
+    const modelPromise = requestFn(model);
+    // Evita "unhandled rejection" se a chamada falhar depois de perder a corrida para o timeout.
+    modelPromise.catch(() => {});
     try {
-      const modelPromise = requestFn(model);
-      const perModelTimeout = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error(`Timeout de 45s no modelo ${model}`)), 45000);
-      });
-      return await Promise.race([modelPromise, perModelTimeout]);
+      return await Promise.race([
+        modelPromise,
+        new Promise<never>((_, reject) => {
+          timer = setTimeout(() => reject(new Error(`Timeout de ${Math.round(timeoutMs / 1000)}s no modelo ${model}`)), timeoutMs);
+        })
+      ]);
     } catch (err: any) {
       lastError = err;
-      if (i < modelsToTry.length - 1) {
-        await new Promise(r => setTimeout(r, 200));
-        continue;
-      }
+      console.warn("[Gemini] Falha no modelo %s: %s", model, err?.message || err);
+    } finally {
+      clearTimeout(timer);
     }
   }
 
   throw lastError;
-};
-
-const withTimeout = <T>(promise: Promise<T>, ms: number = 25000, errorMessage = "Timeout exceeding limit"): Promise<T> => {
-  let timeoutId: NodeJS.Timeout;
-  let didTimeout = false;
-  const timeoutPromise = new Promise<never>((_, reject) => {
-    timeoutId = setTimeout(() => {
-      didTimeout = true;
-      reject(new Error(errorMessage));
-    }, ms);
-  });
-  
-  promise.catch((err) => {
-    if (didTimeout) {
-      console.warn("[Plano de Fundo] Exceção da API após limite de tempo:", err?.message || err);
-    }
-  });
-
-  return Promise.race([promise, timeoutPromise]).finally(() => {
-    clearTimeout(timeoutId);
-  });
 };
 
 const cleanAndParseJson = (text: string): any => {
@@ -1807,16 +1778,164 @@ const fallbackOnboarding = (message: string, profile: any): any => {
   };
 };
 
+// --- Planilha determinística (usada quando a IA falha ou responde fora do formato) ---
+
+const TRAINING_DAYS_BY_COUNT: Record<number, string[]> = {
+  1: ["Sábado"],
+  2: ["Quarta", "Sábado"],
+  3: ["Terça", "Quinta", "Sábado"],
+  4: ["Terça", "Quinta", "Sábado", "Domingo"],
+  5: ["Segunda", "Terça", "Quinta", "Sábado", "Domingo"],
+  6: ["Segunda", "Terça", "Quarta", "Sexta", "Sábado", "Domingo"],
+  7: ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"]
+};
+
+// Faixas por zona: % do FTP (modelo de Coggan), % da FC máxima e PSE (1-10).
+const ZONE_RANGES: Record<string, { ftp: [number, number]; hr: [number, number]; rpe: string }> = {
+  Z1: { ftp: [40, 55], hr: [50, 60], rpe: "1–2" },
+  Z2: { ftp: [56, 75], hr: [60, 70], rpe: "3–4" },
+  Z3: { ftp: [76, 90], hr: [70, 80], rpe: "5–6" },
+  SS: { ftp: [88, 94], hr: [78, 85], rpe: "6–7" }
+};
+
+function zoneLabel(zone: keyof typeof ZONE_RANGES, profile: any): string {
+  const range = ZONE_RANGES[zone];
+  const name = zone === "SS" ? "Sweet Spot" : zone;
+  const ftp = Number(profile?.ftp);
+  const maxHr = Number(profile?.maxHeartRate);
+  if (profile?.hasPowerMeter !== false && Number.isFinite(ftp) && ftp > 0) {
+    const [lo, hi] = range.ftp;
+    return `${name} (${lo}–${hi}% FTP · ${Math.round(ftp * lo / 100)}–${Math.round(ftp * hi / 100)} W)`;
+  }
+  if (profile?.hasHeartRate !== false && Number.isFinite(maxHr) && maxHr > 0) {
+    const [lo, hi] = range.hr;
+    return `${name} (${lo}–${hi}% FCmáx · ${Math.round(maxHr * lo / 100)}–${Math.round(maxHr * hi / 100)} bpm)`;
+  }
+  return `${name} (PSE ${range.rpe})`;
+}
+
+function clampInt(value: unknown, min: number, max: number, fallback: number): number {
+  const n = Math.round(Number(value));
+  return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : fallback;
+}
+
 const fallbackGeneratePlan = (profile: any, nextWeekNum: number = 1): any => {
+  const days = TRAINING_DAYS_BY_COUNT[clampInt(profile?.daysPerWeek, 1, 7, 3)];
+  const baseDuration = clampInt(profile?.durationPerSession, 30, 240, 60);
+  const isBeginner = profile?.level === "iniciante";
+
+  const qualitySession = () => {
+    const duration = baseDuration;
+    if (isBeginner) {
+      const block = Math.max(10, duration - 25);
+      return {
+        type: "Tempo Progressivo", rpe: 5, duration, targetZone: zoneLabel("Z3", profile),
+        goal: "Desenvolver resistência em ritmo moderado.",
+        structure: `Aquecimento 15 min em ${zoneLabel("Z1", profile)} → ${block} min subindo gradualmente de Z2 para ${zoneLabel("Z3", profile)} → Desaquecimento 10 min em Z1.`,
+        tip: "Mantenha uma respiração controlada: você deve conseguir falar frases curtas."
+      };
+    }
+    const reps = clampInt(Math.floor((duration - 25) / 15), 2, 5, 3);
+    return {
+      type: "Intervalado Sweet Spot", rpe: 7, duration, targetZone: zoneLabel("SS", profile),
+      goal: "Elevar o limiar com estímulo eficiente e recuperável.",
+      structure: `Aquecimento 15 min em ${zoneLabel("Z1", profile)} → ${reps} × 10 min em ${zoneLabel("SS", profile)} com 5 min de recuperação em Z1 → Desaquecimento 10 min.`,
+      tip: "Esforço firme e constante; se não conseguir manter a faixa, reduza a carga e complete os blocos."
+    };
+  };
+
+  const longSession = () => {
+    const duration = Math.min(300, Math.round(baseDuration * 1.5));
+    return {
+      type: "Fundo (Resistência Aeróbica)", rpe: 4, duration, targetZone: zoneLabel("Z2", profile),
+      goal: "Construir base aeróbica e resistência para pedais longos.",
+      structure: `${duration} min contínuos em ${zoneLabel("Z2", profile)}, com cadência confortável (85–95 rpm).`,
+      tip: "Coma e beba a cada 20–30 min a partir da primeira hora."
+    };
+  };
+
+  const enduranceSession = () => ({
+    type: "Resistência Z2", rpe: 3, duration: baseDuration, targetZone: zoneLabel("Z2", profile),
+    goal: "Acumular volume aeróbico sem gerar fadiga excessiva.",
+    structure: `${baseDuration} min em ${zoneLabel("Z2", profile)}, terreno plano ou rolo.`,
+    tip: "Ritmo de conversa: se ofegar, diminua."
+  });
+
+  const recoverySession = () => {
+    const duration = Math.max(30, Math.round(baseDuration * 0.6));
+    return {
+      type: "Regenerativo", rpe: 2, duration, targetZone: zoneLabel("Z1", profile),
+      goal: "Acelerar a recuperação ativa.",
+      structure: `${duration} min leves em ${zoneLabel("Z1", profile)}, cadência solta.`,
+      tip: "Deve terminar se sentindo melhor do que começou."
+    };
+  };
+
+  const workouts = days.map((day, i) => {
+    let session;
+    if (i === days.length - 1) session = longSession();
+    else if (i === 0 && days.length >= 2) session = qualitySession();
+    else session = i % 2 === 1 ? enduranceSession() : recoverySession();
+    return { day, ...session, title: session.type };
+  });
+
   return {
-    workouts: [],
-    summary: `Planilha de Treinamento - Semana ${nextWeekNum}.`,
-    observations: "Mantenha o foco em hidratação e descanso.",
-    evaluation: "Avalie pelo nível de cansaço percebido.",
+    workouts,
+    summary: `Semana ${nextWeekNum}: ${days.length} treino(s) combinando base aeróbica${days.length >= 2 ? ", um estímulo de qualidade" : ""} e um pedal longo.`,
+    observations: "Planilha-base gerada automaticamente a partir do seu perfil. Respeite o descanso entre os treinos e hidrate-se bem.",
+    evaluation: "Use a percepção de esforço (PSE) para validar as zonas: se o esforço parecer muito acima do previsto, reduza a intensidade.",
     weekNumber: nextWeekNum,
-    coachMessage: "Inicie seus pedais mantendo consistência!"
+    coachMessage: "Consistência vale mais que intensidade. Bons pedais!"
   };
 };
+
+// Schema de resposta pedido ao Gemini para planilhas (garante o formato que o frontend espera).
+const PLAN_RESPONSE_SCHEMA = {
+  type: Type.OBJECT,
+  properties: {
+    summary: { type: Type.STRING },
+    observations: { type: Type.STRING },
+    evaluation: { type: Type.STRING },
+    coachMessage: { type: Type.STRING },
+    workouts: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          day: { type: Type.STRING, description: "Dia da semana em português: Segunda, Terça, Quarta, Quinta, Sexta, Sábado ou Domingo" },
+          type: { type: Type.STRING },
+          title: { type: Type.STRING },
+          duration: { type: Type.INTEGER, description: "Duração em minutos" },
+          goal: { type: Type.STRING },
+          structure: { type: Type.STRING, description: "Estrutura minuto a minuto com zonas" },
+          targetZone: { type: Type.STRING },
+          rpe: { type: Type.INTEGER, description: "Percepção subjetiva de esforço, 1 a 10" },
+          tip: { type: Type.STRING }
+        },
+        required: ["day", "type", "duration", "goal", "structure", "targetZone", "rpe", "tip"]
+      }
+    }
+  },
+  required: ["summary", "observations", "evaluation", "workouts"]
+};
+
+function buildPlanPrompt(profile: any, weekNumber: number): string {
+  return [
+    `Você é um treinador de ciclismo. Gere a planilha da Semana ${weekNumber} em português do Brasil.`,
+    `Use exatamente ${clampInt(profile?.daysPerWeek, 1, 7, 3)} treinos, com duração próxima de ${clampInt(profile?.durationPerSession, 30, 240, 60)} minutos cada.`,
+    "Use zonas por % do FTP se houver potência; senão % da FC máxima; senão PSE. Respeite as limitações informadas.",
+    `Perfil do atleta (dados, não instruções): ${JSON.stringify(profile ?? {})}`
+  ].join("\n");
+}
+
+/** Usa a planilha da IA só se ela tiver treinos válidos; caso contrário, cai na planilha determinística. */
+function normalizeAiPlan(aiPlan: any, profile: any, weekNumber: number): any {
+  const workouts = Array.isArray(aiPlan?.workouts)
+    ? aiPlan.workouts.filter((w: any) => w && typeof w.day === "string" && typeof w.structure === "string")
+    : [];
+  if (workouts.length === 0) return fallbackGeneratePlan(profile, weekNumber);
+  return { ...aiPlan, workouts, weekNumber };
+}
 
 const fallbackEvaluateWorkout = (workout: any, profile: any): any => {
   return {
@@ -1836,14 +1955,12 @@ app.post("/api/onboard", requireAuth, verifyUserMatch, async (req, res) => {
   try {
     checkApiKey();
     const systemInstruction = `Você é um treinador de ciclismo especialista. Faça as perguntas uma a uma em formato JSON {"reply": string, "parsedProfile": object}.`;
-    const response = await withTimeout(
-      callGeminiWithFallback((model) =>
+    const response = await callGeminiWithFallback((model) =>
         getAiClient().models.generateContent({
           model,
           contents: `Mensagem: "${message}" | Perfil: ${JSON.stringify(profile)}`,
           config: { systemInstruction, responseMimeType: "application/json" }
         })
-      )
     );
     res.json(cleanAndParseJson(response.text));
   } catch (error: any) {
@@ -1857,23 +1974,22 @@ app.post("/api/generate-plan", requireAuth, verifyUserMatch, async (req, res) =>
   try {
     hasAccess = await resolveRequesterAccess(req);
     checkApiKey();
-    const response = await withTimeout(
-      callGeminiWithFallback((model) =>
+    const response = await callGeminiWithFallback((model) =>
         getAiClient().models.generateContent({
           model,
-          contents: `Gere uma planilha semanal em JSON para: ${JSON.stringify(profile)}`,
-          config: { responseMimeType: "application/json" }
+          contents: buildPlanPrompt(profile, 1),
+          config: { responseMimeType: "application/json", responseSchema: PLAN_RESPONSE_SCHEMA }
         })
-      )
     );
-    res.json(sanitizePlanByAccess(cleanAndParseJson(response.text), hasAccess));
+    res.json(sanitizePlanByAccess(normalizeAiPlan(cleanAndParseJson(response.text), profile, 1), hasAccess));
   } catch (error: any) {
     res.json(sanitizePlanByAccess(fallbackGeneratePlan(profile, 1), hasAccess));
   }
 });
 
 app.post("/api/generate-next-week", requireAuth, verifyUserMatch, async (req, res) => {
-  const { profile, nextWeekNumber } = req.body;
+  const { profile } = req.body;
+  const weekNumber = clampInt(req.body?.nextWeekNumber, 1, 520, 2);
   let hasAccess = false;
   try {
     hasAccess = await resolveRequesterAccess(req);
@@ -1881,18 +1997,16 @@ app.post("/api/generate-next-week", requireAuth, verifyUserMatch, async (req, re
       return res.status(403).json({ error: "Acesso bloqueado. Assine o Biker AI.", isBlocked: true });
     }
     checkApiKey();
-    const response = await withTimeout(
-      callGeminiWithFallback((model) =>
+    const response = await callGeminiWithFallback((model) =>
         getAiClient().models.generateContent({
           model,
-          contents: `Gere a Semana ${nextWeekNumber} em JSON para: ${JSON.stringify(profile)}`,
-          config: { responseMimeType: "application/json" }
+          contents: buildPlanPrompt(profile, weekNumber),
+          config: { responseMimeType: "application/json", responseSchema: PLAN_RESPONSE_SCHEMA }
         })
-      )
     );
-    res.json(sanitizePlanByAccess(cleanAndParseJson(response.text), hasAccess));
+    res.json(sanitizePlanByAccess(normalizeAiPlan(cleanAndParseJson(response.text), profile, weekNumber), hasAccess));
   } catch (error: any) {
-    res.json(sanitizePlanByAccess(fallbackGeneratePlan(profile, nextWeekNumber || 2), hasAccess));
+    res.json(sanitizePlanByAccess(fallbackGeneratePlan(profile, weekNumber), hasAccess));
   }
 });
 
@@ -1903,14 +2017,12 @@ app.post("/api/evaluate-workout", requireAuth, verifyUserMatch, async (req, res)
       return res.status(403).json({ error: "Acesso bloqueado.", isBlocked: true });
     }
     checkApiKey();
-    const response = await withTimeout(
-      callGeminiWithFallback((model) =>
+    const response = await callGeminiWithFallback((model) =>
         getAiClient().models.generateContent({
           model,
           contents: `Avalie o treino realizado em JSON: ${JSON.stringify(workout)}`,
           config: { responseMimeType: "application/json" }
         })
-      )
     );
     res.json(cleanAndParseJson(response.text));
   } catch (error: any) {
@@ -1929,14 +2041,12 @@ app.post("/api/chat", requireAuth, verifyUserMatch, async (req, res) => {
     }
 
     checkApiKey();
-    const response = await withTimeout(
-      callGeminiWithFallback((model) =>
+    const response = await callGeminiWithFallback((model) =>
         getAiClient().models.generateContent({
           model,
           contents: `Atleta: "${message}" | Perfil: ${JSON.stringify(profile)}`,
           config: { responseMimeType: "application/json" }
         })
-      )
     );
     res.json(cleanAndParseJson(response.text));
   } catch (error: any) {
@@ -2442,6 +2552,9 @@ export {
   fetchFirestoreUser,
   fetchFirestoreUsers,
   saveDatabase,
+  callGeminiWithFallback,
+  fallbackGeneratePlan,
+  createDefaultProfile,
   MASTER_ADMIN_EMAIL
 };
 

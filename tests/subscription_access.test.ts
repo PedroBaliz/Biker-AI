@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import {
   getUserAccessInfo,
   formatTrialBannerText,
@@ -113,6 +113,16 @@ describe("getUserAccessInfo", () => {
   });
 
   describe("trial window", () => {
+    // Relógio congelado: os testes de borda (±1 ms) não podem depender do tempo
+    // que passa entre montar o createdAt e a função ler Date.now().
+    beforeEach(() => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-06-01T12:00:00.000Z"));
+    });
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
     it("grants full access inside the trial and reports days/hours remaining", () => {
       const createdAt = new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(); // 1 day ago
       const info = getUserAccessInfo(makeProfile({ createdAt }));
