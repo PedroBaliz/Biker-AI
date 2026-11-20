@@ -19,9 +19,15 @@ Estado atual do projeto. Leia no início de cada sessão e atualize no fim (ver 
 - Alinhamento com o guia de desenvolvimento com IA: criados `docs/decisions.md` (ADR-001 a 005), `docs/progress.md` e `CHANGELOG.md`.
 - Adicionado o "Protocolo de sessão" ao `AGENTS.md`.
 - Backlog movido para GitHub Issues: #6 (pagamentos), #7 (`server.ts`), #8 (`App.tsx`), #9 (rate limit/cache entre instâncias), #10 (Strava), #11 (e-mail do admin fixo).
+- PR #12: esta estrutura de memória (decisions, progress, changelog, protocolo de sessão).
+- PR #13: `express` 4.22.2 → 4.22.3, levando o `qs` para 6.16.2 (corrige os alertas Dependabot #44 e #20).
+
+### Pendente
+- [#14](https://github.com/PedroBaliz/Biker-AI/issues/14): alertas restantes do Dependabot, todos via Firebase. O `uuid` (#1) exige `firebase-admin` 13 (major). O `grpc-js` (#25, #23) não tem correção do Firebase e parece não rodar em runtime: falta confirmar no bundle do servidor.
 
 ### Decisões tomadas
 - Backlog nas GitHub Issues, sem `tasks/*.md`: o fluxo já é por PR.
+- Não forçar o `grpc-js` com `overrides`: a faixa `~1.9.0` é uma trava do próprio `@firebase/firestore`.
 
 ## Sessão 2026-11-16
 
