@@ -26,7 +26,7 @@ Formato: ID sequencial, status (`aceita` | `substituída por ADR-NNN` | `rejeita
 
 **Decisão:** manter um único `api/index.js` fixo e versionado, que só reexporta `build/server.mjs`.
 
-**Consequências:** não crie `api/index.ts` nem outro `api/index.*`. A lógica fica toda em `server.ts`.
+**Consequências:** não crie `api/index.ts` nem outro `api/index.*`. A lógica fica em `server.ts` e `backend/`, empacotados juntos pelo esbuild. Nunca coloque módulos em `api/`: a Vercel transformaria cada arquivo numa função.
 
 ---
 
@@ -86,3 +86,21 @@ Formato: ID sequencial, status (`aceita` | `substituída por ADR-NNN` | `rejeita
 - Sem `ADMIN_EMAIL`, o modo master fica desligado. Coaches por `role` e o `ADMIN_PASSWORD` continuam funcionando.
 - `ADMIN_EMAIL` é obrigatório na Vercel.
 - Antes de publicar as regras, crie `admins/<UID>` no Firestore para cada admin. Sem o Admin SDK, o servidor lê o Firestore com o token do usuário, e o painel admin depende dessa regra.
+
+---
+
+## ADR-007: API dividida em módulos em `backend/`, com `server.ts` só como entrada
+
+**Status:** aceita · **Data:** 2026-11-20 · **Issue:** [#7](https://github.com/PedroBaliz/Biker-AI/issues/7)
+
+**Contexto:** o `server.ts` tinha ~2.500 linhas, com toda a API num arquivo só. Isso dificultava a revisão e fazia o agente ler trechos grandes para achar o contexto certo. Duas PRs que mexiam no mesmo arquivo conflitavam com facilidade.
+
+**Decisão:**
+- Dividir a API em módulos dentro de `backend/`: `config`, `util`, `auth`, `access`, `db`, `ai`, `rateLimit` e `routes/{users,ai,admin,payments}`.
+- O `server.ts` continua como ponto de entrada e reexporta o que os testes e o `api/index.js` usam.
+- A pasta se chama `backend/`, e não `server/`, para não colidir com `import "../server"` nos testes; também não é `api/`, por causa da ADR-002.
+- Estado mutável compartilhado só muda por funções do módulo dono (`disableAdminFirestore`, `setDatabaseCache`), porque um import ESM não pode ser reatribuído.
+
+**Consequências:**
+- Rota nova vai no módulo da área. O `server.ts` não volta a crescer.
+- A divisão foi mecânica, sem mudança de comportamento: as mesmas 35 rotas com os mesmos middlewares, os mesmos 61 testes e o mesmo bundle (`build/`).

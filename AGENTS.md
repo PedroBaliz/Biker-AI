@@ -17,15 +17,26 @@ Antes de concluir qualquer mudança: `npm run lint && npm test`. O CI ([.github/
 
 ## Mapa rápido
 
-- [server.ts](server.ts) — **toda** a API (auth, IA, admin, Mercado Pago, SEO). ~2400 linhas. Use `grep -n "app\.(get|post)"` para achar rotas em vez de ler inteiro.
+- [server.ts](server.ts) — ponto de entrada da API (~110 linhas): cria o app, aplica middlewares e limitadores, registra as rotas e reexporta o que os testes usam.
+- [backend/](backend/) — a API em módulos:
+  - `config.ts` — env, Firebase, conta master;
+  - `util.ts` — funções puras;
+  - `auth.ts` — token e middlewares;
+  - `access.ts` — trial, paywall, campos editáveis;
+  - `db.ts` — cache, Firestore, backups;
+  - `ai.ts` — Gemini e fallbacks;
+  - `rateLimit.ts` — limitadores;
+  - `routes/` — `users`, `ai`, `admin` e `payments`; cada um exporta `register*Routes(app)`.
+
+  Rota nova vai no módulo da área, nunca de volta no `server.ts`.
 - [src/App.tsx](src/App.tsx) — orquestração do frontend; componentes em [src/components/](src/components/).
 - [src/firebase.ts](src/firebase.ts) — cliente Firebase e `apiFetch`, que anexa o ID token às chamadas `/api/*`. Use sempre `apiFetch`, nunca `fetch` cru, para rotas autenticadas.
 - [firestore.rules](firestore.rules) — regras RBAC do Firestore.
-- [tests/](tests/) — testes de segurança e de acesso por assinatura; importam `app` e middlewares de `server.ts`.
+- [tests/](tests/) — testes de segurança e de acesso por assinatura; importam `app` e middlewares de `server.ts`, que os reexporta de `backend/`.
 
 ## Arquivos gerados — não editar à mão
 
-- `build/` — `server.mjs` (usado pela Vercel) e `server.cjs` (para `npm start`), gerados pelo esbuild a partir do `server.ts`. Fica **fora do git e fora de `dist/`**: tudo em `dist/` é público.
+- `build/` — `server.mjs` (usado pela Vercel) e `server.cjs` (para `npm start`), gerados pelo esbuild a partir do `server.ts` (que inclui `backend/` no bundle). Fica **fora do git e fora de `dist/`**: tudo em `dist/` é público.
 - `dist/` — saída do Vite (site estático). Nunca gere código de servidor aqui.
 - `api/index.js` **não** é gerado: é um stub fixo e versionado que reexporta `build/server.mjs`. A Vercel detecta funções antes do build, por isso ele precisa existir no repositório. Não crie um `api/index.ts` ao lado.
 - `users_db.json` — banco local de desenvolvimento, **fora do git**. Use [users_db.example.json](users_db.example.json) como modelo. Nunca commite dados de usuários ou hashes de senha.
@@ -33,7 +44,7 @@ Antes de concluir qualquer mudança: `npm run lint && npm test`. O CI ([.github/
 ## Invariantes de segurança (não quebrar)
 
 1. **Campos privilegiados** (`role`, `isCoach`, `subscriptionStatus`, `subscriptionPlan`, `subscriptionExpiresAt`, `createdAt`) nunca são graváveis pelo cliente:
-   - servidor: `PROFILE_FIELD_ALLOWLIST` + `sanitizeUserProfileInput` em `server.ts`;
+   - servidor: `PROFILE_FIELD_ALLOWLIST` + `sanitizeUserProfileInput` em `backend/access.ts`;
    - Firestore: `allowedProfileKeys()` + `diff().affectedKeys().hasOnly(...)` em `firestore.rules`.
    Ao adicionar um campo de perfil editável, atualize **os dois** lugares e os testes.
 2. **Rotas de atleta** usam `requireAuth, verifyUserMatch` (o atleta só acessa os próprios dados). **Rotas admin** (`/api/admin/*`) usam `requireAuth, requireAdmin`. Rota nova sem middleware = bug.
