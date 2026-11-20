@@ -4,7 +4,7 @@ Estado atual do projeto. Leia no início de cada sessão e atualize no fim (ver 
 
 **Status atual:** manutenção. Produção em https://biker-ai.vercel.app.
 
-**Próximo passo:** escolher o meio de pagamento e então resolver a [#6](https://github.com/PedroBaliz/Biker-AI/issues/6) ([ADR-005](decisions.md#adr-005-trabalho-de-pagamentos-em-espera)). Até lá, a melhor candidata é a [#7](https://github.com/PedroBaliz/Biker-AI/issues/7): quebrar `server.ts` em módulos.
+**Próximo passo:** continuar a [#8](https://github.com/PedroBaliz/Biker-AI/issues/8): extrair a navbar e as abas do corpo principal do `App.tsx`. Exige validar no navegador com login, porque não há teste de interface. As decisões #6 (pagamento) e #10 (Strava) e o Redis da #9 dependem do dono do projeto.
 
 **Backlog:** [GitHub Issues](https://github.com/PedroBaliz/Biker-AI/issues). Pendências novas viram issue, não lista neste arquivo.
 
@@ -22,6 +22,21 @@ Estado atual do projeto. Leia no início de cada sessão e atualize no fim (ver 
 | Tempo | duração da sessão, em minutos |
 
 ---
+
+## Sessão 2026-11-20 (continuação) — issues #7 e #8
+
+### Feito
+- [PR #20](https://github.com/PedroBaliz/Biker-AI/pull/20) (fecha #7): `server.ts` dividido em `backend/` (ADR-007). Rotas e middlewares idênticos; bundle de produção e modo Vercel testados subindo o servidor. De quebra, fechou 4 alertas antigos do CodeQL (prototype pollution e path injection) e criou um teste de regressão.
+- #8, 1º incremento: `exportPlanPdf` foi para `src/lib/`, e o banner de erro, o rodapé e 4 modais viraram componentes. O `App.tsx` foi de 3.010 para ~2.400 linhas. Testes: render dos 6 componentes e geração do PDF.
+
+### Pendente
+- #8: navbar (~180 linhas) e corpo principal (~1.080 linhas, por aba). Validar no navegador com login.
+- Continuam valendo as pendências pós-merge de #16/#17 da sessão abaixo (`ADMIN_EMAIL`, `admins/<UID>`, validar a #17 em produção).
+
+### Medição
+| Tokens | Reorientação | Reexplicações | Bugs pegos na revisão | Tempo |
+|---|---|---|---|---|
+| (pendente: `/cost`) | 0 (mesma sessão, sem retomada) | 0 | 4 alertas do CodeQL + 2 erros do script de divisão (spread e imports por regex), pegos pelo lint e pela revisão | ~1h |
 
 ## Sessão 2026-11-20
 
