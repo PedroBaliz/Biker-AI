@@ -54,7 +54,7 @@ Organizado em seções, na ordem do arquivo:
 ### Persistência de dados
 - Modelo: documento por usuário (chave = e-mail) com `profile`, `plan`, `chatHistory`, `feedbacks` e `workoutLogs`.
 - **Leitura:** cache em memória → Firestore (Admin SDK, REST com o token do usuário, ou SDK lite) → `users_db.json` como fallback.
-- **Escrita:** `saveDatabase` grava no disco e no Firestore. Se ambos falham, o dado fica só em memória (com aviso no log).
+- **Escrita:** rotas que alteram um usuário leem o banco com `getDatabaseForUpdate(email)`, que relê do Firestore o registro daquele usuário (o cache de 30 s não é compartilhado entre instâncias e causaria *lost update*). `saveDatabase(db, email)` grava no disco e no Firestore só o usuário alterado. Se ambos falham, o dado fica só em memória (com aviso no log). `saveDatabase` sem e-mail regrava todos os usuários: só para restauração de backup.
 - Na Vercel o arquivo local fica em `os.tmpdir()` (efêmero) → **em produção o Firestore é a única fonte durável.**
 - Em execução local direta, `runInitialMigration` copia `users_db.json` para o Firestore se a coleção estiver vazia.
 - Regras do Firestore (`firestore.rules`): negar por padrão; dono lê e escreve só os campos permitidos; admin tem acesso total.
@@ -101,6 +101,6 @@ Ver [.env.example](../.env.example). Resumo:
 ## Dívidas técnicas conhecidas
 
 - `server.ts` monolítico (~2400 linhas). Candidatos a módulos: `auth/`, `db/`, `ai/`, `payments/` e `admin/`.
-- O rate limit e o cache do banco ficam em memória: não são compartilhados entre instâncias serverless.
+- O rate limit fica em memória, por instância serverless: o limite efetivo é multiplicado pelo número de instâncias. Corrigir exige um store compartilhado, como o Redis ([#9](https://github.com/PedroBaliz/Biker-AI/issues/9)). As leituras de painel ainda podem ver dados com até 30 s de atraso, mas as gravações releem o usuário.
 - Não há integração com o Strava: o link da atividade é salvo apenas como referência.
 - O e-mail do admin master está fixo como padrão em `server.ts` e em `firestore.rules`.

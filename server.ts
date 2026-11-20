@@ -1013,6 +1013,25 @@ async function getDatabase(forceRefresh = false, idToken?: string): Promise<Reco
   return result.db;
 }
 
+/**
+ * Banco para ler, alterar e gravar UM usuário. O cache em memória vale por até DB_CACHE_TTL_MS
+ * e não é compartilhado entre instâncias serverless: alterar o registro a partir dele e gravar
+ * desfaria o que outra instância gravou nesse intervalo (lost update). Por isso o registro do
+ * usuário é relido do Firestore antes da alteração; o restante do banco segue do cache.
+ */
+async function getDatabaseForUpdate(email: unknown, idToken?: string): Promise<Record<string, any>> {
+  const db = await getDatabase(false, idToken);
+  const emailKey = normalizeEmail(email);
+  if (!emailKey || !useFirestore) return db;
+
+  const fresh = await fetchFirestoreUser(emailKey, idToken);
+  if (fresh.found && fresh.data) {
+    const existing = findUserInDb(db, emailKey);
+    db[existing?.key || emailKey] = fresh.data;
+  }
+  return db;
+}
+
 const BACKUPS_DIR = process.env.VERCEL
   ? path.join(os.tmpdir(), "db_backups")
   : path.join(process.cwd(), "db_backups");
@@ -1058,14 +1077,20 @@ async function createDatabaseBackup(db: Record<string, any>, filename?: string):
   return backupName;
 }
 
-async function saveDatabase(db: Record<string, any>, targetEmail?: string, idToken?: string) {
+/**
+ * Grava o banco no cache, no disco e no Firestore. Com `targetEmail`, só aquele usuário vai para
+ * o Firestore; sem ele, TODOS os usuários do `db` são regravados (use apenas para restauração de
+ * backup). `localOnly` atualiza cache e disco sem tocar no Firestore — para quando a nuvem já foi
+ * alterada por outra chamada (ex.: deleteFirestoreUser).
+ */
+async function saveDatabase(db: Record<string, any>, targetEmail?: string, idToken?: string, options: { localOnly?: boolean } = {}) {
   inMemoryDbCache = db;
   inMemoryDbCacheTimestamp = Date.now();
 
   let firestoreSuccess = false;
   let firestoreError: any = null;
 
-  if (useFirestore) {
+  if (useFirestore && !options.localOnly) {
     try {
       if (targetEmail) {
         const emailKey = targetEmail.trim().toLowerCase();
@@ -1180,7 +1205,7 @@ app.post("/api/auth/register", requireAuth, async (req: any, res) => {
       return res.status(403).json({ error: "O e-mail do cadastro não corresponde à sessão autenticada." });
     }
 
-    const db = await getDatabase();
+    const db = await getDatabaseForUpdate(emailKey, getAuthToken(req));
 
     if (Object.prototype.hasOwnProperty.call(db, emailKey)) {
       const existing = db[emailKey];
@@ -1241,7 +1266,7 @@ app.post("/api/auth/login", async (req, res) => {
       return res.status(400).json({ error: "E-mail e senha são obrigatórios." });
     }
 
-    const db = await getDatabase();
+    const db = await getDatabaseForUpdate(email, getAuthToken(req));
     const userFound = findUserInDb(db, email);
 
     if (!userFound) {
@@ -1291,7 +1316,7 @@ app.post("/api/auth/save-user", requireAuth, verifyUserMatch, async (req: any, r
       return res.status(400).json({ error: "E-mail inválido." });
     }
 
-    const db = await getDatabase();
+    const db = await getDatabaseForUpdate(normalizedEmail, getAuthToken(req));
     const userFound = findUserInDb(db, normalizedEmail);
 
     let targetKey: string;
@@ -1371,7 +1396,7 @@ app.post("/api/auth/session", requireAuth, verifyUserMatch, async (req: any, res
     if (!emailLower) return res.status(400).json({ error: "E-mail é obrigatório." });
     const authToken = getAuthToken(req);
 
-    const db = await getDatabase(false, authToken);
+    const db = await getDatabaseForUpdate(emailLower, authToken);
     let userFound = findUserInDb(db, emailLower);
 
     if (!userFound && useFirestore) {
@@ -1427,7 +1452,7 @@ app.post("/api/workout/log-completion", requireAuth, verifyUserMatch, async (req
       return res.status(400).json({ error: "E-mail e dados do treino são obrigatórios." });
     }
 
-    const db = await getDatabase();
+    const db = await getDatabaseForUpdate(email, getAuthToken(req));
     const userFound = findUserInDb(db, email);
     if (!userFound) {
       return res.status(404).json({ error: "Usuário não encontrado." });
@@ -1505,7 +1530,7 @@ app.post("/api/user/notify-payment", requireAuth, verifyUserMatch, async (req, r
     // Texto livre exibido no painel admin: limitar tamanho para evitar abuso.
     const method = typeof req.body.method === "string" ? req.body.method.trim().slice(0, 40) : "";
     const note = typeof req.body.note === "string" ? req.body.note.trim().slice(0, 500) : "";
-    const db = await getDatabase();
+    const db = await getDatabaseForUpdate(email, getAuthToken(req));
     const userFound = findUserInDb(db, email);
     if (!userFound) return res.status(404).json({ error: "Usuário não encontrado." });
     const user = userFound.user;
@@ -2060,8 +2085,10 @@ app.post("/api/admin/delete-user", requireAuth, requireAdmin, async (req, res) =
     const userFound = findUserInDb(db, email);
     if (!userFound) return res.status(404).json({ error: "Usuário não encontrado." });
     delete db[userFound.key];
-    await saveDatabase(db, undefined, getAuthToken(req));
+    // Só o documento do usuário sai do Firestore; regravar o banco inteiro a partir deste
+    // instante sobrescreveria gravações feitas em paralelo por outras instâncias.
     await deleteFirestoreUser(email, getAuthToken(req));
+    await saveDatabase(db, undefined, getAuthToken(req), { localOnly: true });
 
     try {
       const adminApp = getAdminApp();
@@ -2181,7 +2208,7 @@ async function fetchMercadoPagoResource(resource: string): Promise<any> {
 async function activateUserFromMercadoPago(email: string, paymentId: string, plan = "Plano Pro") {
   const normalizedEmail = normalizeEmail(email);
   if (!normalizedEmail) throw new Error("Mercado Pago não retornou um e-mail de pagador válido.");
-  const db = await getDatabase();
+  const db = await getDatabaseForUpdate(normalizedEmail);
   const userFound = findUserInDb(db, normalizedEmail);
   if (!userFound) {
     console.warn("[Mercado Pago] Pagamento %s recebido para usuário inexistente.", paymentId);
@@ -2204,7 +2231,7 @@ async function activateUserFromMercadoPago(email: string, paymentId: string, pla
 async function updateUserSubscriptionByEmail(email: string, status: "active" | "expired" | "pending_payment", subscriptionId: string) {
   const normalizedEmail = normalizeEmail(email);
   if (!normalizedEmail) return false;
-  const db = await getDatabase();
+  const db = await getDatabaseForUpdate(normalizedEmail);
   const userFound = findUserInDb(db, normalizedEmail);
   if (!userFound) return false;
   userFound.user.profile = {
