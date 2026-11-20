@@ -1,9 +1,16 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
-import { jsPDF } from "jspdf";
 import confetti from "canvas-confetti";
-// @ts-ignore
-import cyclingActionImg from "./assets/images/cycling_action_1780860242304.png";
-import { UserProfile, ChatMessage, TrainingPlan, UserAccount, Workout, isRestDay, formatGoal, formatLevel, WorkoutCompletionLog } from "./types";
+import {
+  UserProfile,
+  ChatMessage,
+  TrainingPlan,
+  UserAccount,
+  Workout,
+  isRestDay,
+  formatGoal,
+  formatLevel,
+  WorkoutCompletionLog
+} from "./types";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { auth, apiFetch } from "./firebase";
 import WorkoutCard from "./components/WorkoutCard";
@@ -12,7 +19,6 @@ import { getSimplifiedText } from "./utils/translation";
 import LoginScreen from "./components/LoginScreen";
 import AccountSettings from "./components/AccountSettings";
 import AdminSubscribersPanel from "./components/AdminSubscribersPanel";
-import SubscriptionWall from "./components/SubscriptionWall";
 import WorkoutPlanPreview from "./components/WorkoutPlanPreview";
 import VolumeEvolutionChart from "./components/VolumeEvolutionChart";
 import WeeklyCalorieChart from "./components/WeeklyCalorieChart";
@@ -25,29 +31,35 @@ import TermsOfUseModal from "./components/TermsOfUseModal";
 import PrivacyPolicyModal from "./components/PrivacyPolicyModal";
 import ContactModal from "./components/ContactModal";
 import { MetaPixelEvents } from "./lib/metaPixel";
+import { exportPlanPdf } from "./lib/exportPlanPdf";
 import { getUserAccessInfo } from "./utils/subscriptionUtils";
 import { motion, AnimatePresence } from "motion/react";
 import { SEO_ARTICLES } from "./data/seoArticlesData";
 import { SeoContentPage } from "./components/SeoContentPage";
+import AdminPasswordModal from "./components/AdminPasswordModal";
+import ApiErrorBanner from "./components/ApiErrorBanner";
+import AppFooter from "./components/AppFooter";
+import FeedbackModal from "./components/FeedbackModal";
+import InstallGuideModal from "./components/InstallGuideModal";
+import SubscriptionCheckoutModal from "./components/SubscriptionCheckoutModal";
 import { updateSeoMeta, HOME_SEO_CONFIG } from "./utils/seoHead";
-import { 
+import {
   ShieldCheck,
-  Dumbbell, 
+  Dumbbell,
   Bike,
-  Sparkles, 
-  Calendar, 
-  Send, 
-  User, 
-  Activity, 
-  CheckCircle2, 
-  RotateCcw, 
-  Heart, 
-  ShieldAlert, 
-  RefreshCw, 
-  TrendingUp, 
-  Clock, 
-  ClipboardList, 
-  Sliders, 
+  Sparkles,
+  Calendar,
+  User,
+  Activity,
+  CheckCircle2,
+  RotateCcw,
+  Heart,
+  ShieldAlert,
+  RefreshCw,
+  TrendingUp,
+  Clock,
+  ClipboardList,
+  Sliders,
   HelpCircle,
   LogOut,
   Trophy,
@@ -56,9 +68,6 @@ import {
   Download,
   Lock,
   Mail,
-  Smartphone,
-  Share,
-  X,
   AlertTriangle,
   TrendingDown,
   MessageSquare,
@@ -420,230 +429,7 @@ export default function App() {
       return;
     }
     
-    const doc = new jsPDF({
-      orientation: "portrait",
-      unit: "mm",
-      format: "a4"
-    });
-
-    const athleteName = profile.name || "Atleta";
-    const levelStr = profile.level ? profile.level.charAt(0).toUpperCase() + profile.level.slice(1) : "Não especificado";
-    const ftpStr = profile.ftp ? `${profile.ftp} W` : "Não configurado";
-    const weekNum = plan.weekNumber || 1;
-
-    // --- Elegant Color Scheme ---
-    const primaryColor = [15, 23, 42]; // Slate-900 / Deep charcoal
-    const secondaryColor = [101, 163, 13]; // Lime-600
-    const accentColor = [225, 29, 72]; // Rose-600 (Health accent)
-    const textColor = [51, 65, 85]; // Slate-700
-    const lightBg = [248, 250, 252]; // Slate-50
-    const borderSlate = [226, 232, 240]; // Slate-200
-
-    // Simple helpers for layout
-    let y = 15;
-    const margin = 15;
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const contentWidth = pageWidth - (margin * 2);
-
-    const checkPageBreak = (neededHeight: number) => {
-      if (y + neededHeight > 280) {
-        doc.addPage();
-        y = 15;
-        drawFooter();
-      }
-    };
-
-    const drawHeader = () => {
-      // Top bar design
-      doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-      doc.rect(0, 0, pageWidth, 25, "F");
-
-      doc.setTextColor(255, 255, 255);
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(14);
-      doc.text("BIKER AI - SEU TREINADOR DE CICLISMO INTELIGENTE", margin, 11);
-
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(8.5);
-      doc.setTextColor(190, 242, 100); // Light lime text
-      doc.text("PLANILHA DE TREINAMENTO INDIVIDUALIZADA & SEGURA", margin, 18);
-
-      y = 35;
-    };
-
-    const drawFooter = () => {
-      const pageCount = doc.internal.pages.length - 1;
-      doc.setFont("helvetica", "italic");
-      doc.setFontSize(8);
-      doc.setTextColor(148, 163, 184);
-      doc.text("Lembre-se sempre: sua saúde é o mais importante!", margin, 287);
-      doc.text(`Página ${pageCount}`, pageWidth - margin - 15, 287);
-    };
-
-    // Draw initial header
-    drawHeader();
-
-    // 1. Athlete Information Box
-    doc.setFillColor(lightBg[0], lightBg[1], lightBg[2]);
-    doc.setDrawColor(borderSlate[0], borderSlate[1], borderSlate[2]);
-    doc.roundedRect(margin, y, contentWidth, 24, 3, 3, "FD");
-
-    doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(10);
-    doc.text(`ATLETA: ${athleteName.toUpperCase()}`, margin + 5, y + 6);
-    doc.setFont("helvetica", "normal");
-    doc.text(`Nível: ${levelStr}`, margin + 5, y + 13);
-    doc.text(`FTP Estimado: ${ftpStr}`, margin + 5, y + 19);
-
-    doc.setFont("helvetica", "bold");
-    doc.text(`PLANILHA: SEMANA ${weekNum}`, margin + 110, y + 6);
-    doc.setFont("helvetica", "normal");
-    const todayStr = new Date().toLocaleDateString("pt-BR");
-    doc.text(`Data de Exportação: ${todayStr}`, margin + 110, y + 13);
-    doc.text(`Status: Saúde em Primeiro Lugar`, margin + 110, y + 19);
-
-    y += 32;
-
-    // 2. Health & Safety Banner
-    doc.setFillColor(255, 241, 242); // Rose-50 light background
-    doc.setDrawColor(accentColor[0], accentColor[1], accentColor[2]);
-    doc.setLineWidth(0.3);
-    doc.roundedRect(margin, y, contentWidth, 18, 2, 2, "FD");
-
-    doc.setTextColor(accentColor[0], accentColor[1], accentColor[2]);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(9);
-    doc.text("SAÚDE EM PRIMEIRO LUGAR", margin + 5, y + 6);
-
-    doc.setTextColor(textColor[0], textColor[1], textColor[2]);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(8);
-    const safetyMsg = "Lembre-se: a sua saúde é o mais importante! Caso sinta dores fora do comum, tonturas ou cansaço excessivo, interrompa o esforço imediatamente para se preservar.";
-    const splitSafety = doc.splitTextToSize(safetyMsg, contentWidth - 10);
-    doc.text(splitSafety, margin + 5, y + 11);
-
-    y += 24;
-
-    // 3. General Coach Messages / Observations (if exists)
-    if (plan.coachMessage || plan.observations || plan.summary) {
-      checkPageBreak(35);
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(11);
-      doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-      doc.text("Mensagem do Treinador", margin, y);
-      y += 5;
-
-      // Draw a line
-      doc.setDrawColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
-      doc.setLineWidth(0.5);
-      doc.line(margin, y, margin + 25, y);
-      y += 5;
-
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(8.5);
-      doc.setTextColor(textColor[0], textColor[1], textColor[2]);
-      
-      const message = plan.coachMessage || plan.observations || plan.summary || "Bons treinos para esta semana! Mantenha a constância e respeite as zonas de intensidade.";
-      const splitMsg = doc.splitTextToSize(message, contentWidth);
-      doc.text(splitMsg, margin, y);
-      y += (splitMsg.length * 4) + 6;
-    }
-
-    // 4. Workout Sessions List
-    checkPageBreak(30);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(11);
-    doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-    doc.text("Programação de Atividades", margin, y);
-    y += 5;
-
-    // Draw secondary line
-    doc.setDrawColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
-    doc.setLineWidth(0.5);
-    doc.line(margin, y, margin + 25, y);
-    y += 7;
-
-    const listWorkouts = plan.workouts || [];
-
-    listWorkouts.forEach((workout) => {
-      // Calculate height needed for this workout record
-      const descLines = doc.splitTextToSize(`Estrutura: ${workout.structure || workout.goal || ""}`, contentWidth - 20);
-      const tipLines = workout.tip ? doc.splitTextToSize(`Dica: ${workout.tip}`, contentWidth - 20) : [];
-      const recordHeight = 22 + (descLines.length * 4) + (tipLines.length > 0 ? (tipLines.length * 4) + 2 : 0) + 4;
-
-      checkPageBreak(recordHeight);
-
-      // Card Container for Workout
-      doc.setFillColor(lightBg[0], lightBg[1], lightBg[2]);
-      doc.setDrawColor(borderSlate[0], borderSlate[1], borderSlate[2]);
-      doc.roundedRect(margin, y, contentWidth, recordHeight - 4, 2, 2, "FD");
-
-      // Set vertical pointer for inside the card content
-      let insideY = y + 6;
-
-      // Header of card (e.g. Segunda-Feira | Treino Regenerativo)
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(9.5);
-      doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-      doc.text(`${workout.day.toUpperCase()} | ${workout.type}`, margin + 5, insideY);
-
-      // Duration badge / Zone Badge
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(8.5);
-      doc.text(`Duração: ${workout.duration} min`, margin + 110, insideY);
-      doc.text(`Zona Alvo: ${workout.targetZone || "Livre"}`, margin + 145, insideY);
-
-      insideY += 6;
-
-      // Draw a thin separator inside card
-      doc.setDrawColor(241, 245, 249);
-      doc.line(margin + 4, insideY, margin + contentWidth - 4, insideY);
-      insideY += 5;
-
-      // Goal & Structure Text
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(8);
-      doc.setTextColor(textColor[0], textColor[1], textColor[2]);
-      doc.text("Objetivo:", margin + 5, insideY);
-      doc.setFont("helvetica", "normal");
-      doc.text(workout.goal || "Desenvolvimento de fôlego e técnica.", margin + 18, insideY);
-      insideY += 5;
-
-      // Structure
-      doc.setFont("helvetica", "bold");
-      doc.text("Estrutura:", margin + 5, insideY);
-      doc.setFont("helvetica", "normal");
-      doc.text(descLines, margin + 18, insideY);
-      insideY += (descLines.length * 4) + 1;
-
-      // Extra Coach TIP if exists
-      if (workout.tip) {
-        insideY += 2;
-        doc.setFont("helvetica", "italic");
-        doc.setTextColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
-        doc.text(tipLines, margin + 5, insideY);
-        insideY += (tipLines.length * 4);
-      }
-
-      // Check if Completed to display a cute checked badge
-      if (workout.completed) {
-        doc.setFont("helvetica", "bold");
-        doc.setTextColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
-        doc.text("[ CONCLUÍDO ]", margin + 148, y + 11);
-      }
-
-      y += recordHeight;
-    });
-
-    // Draw footers on all pages
-    const totalPages = doc.internal.pages.length - 1;
-    for (let i = 1; i <= totalPages; i++) {
-      doc.setPage(i);
-      drawFooter();
-    }
-
-    doc.save(`Planilha_Ciclismo_Semana_${weekNum}_${athleteName.replace(/\s+/g, "_")}.pdf`);
+    exportPlanPdf(plan, profile);
   }, [plan, profile, isPendingUser]);
 
   // Weekly Evolution States
@@ -1465,63 +1251,7 @@ export default function App() {
       )}
 
       {/* Global Error Banner */}
-      {globalError && (
-        <div id="api-error-alert" className="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 mt-4 animate-fadeInUp">
-          <div className="bg-rose-50 border border-rose-200 rounded-2xl p-4 sm:p-5 shadow-lg text-slate-900 relative">
-            <div className="flex gap-4 items-start">
-              <div className="p-2.5 bg-rose-500 text-white rounded-xl shadow-md shrink-0">
-                <ShieldAlert className="w-5 h-5 shrink-0" />
-              </div>
-              <div className="flex-1 space-y-1.5">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <h3 className="font-heading font-extrabold text-sm sm:text-base text-rose-900 flex items-center gap-2">
-                    Erro de API Detectado (Código {globalError.status || "Conexão"})
-                  </h3>
-                  <span className="text-[10px] font-mono uppercase tracking-widest bg-rose-100 text-rose-800 px-2.5 py-1 rounded border border-rose-200 font-bold self-start sm:self-center">
-                    {globalError.method} {globalError.url.split('?')[0]}
-                  </span>
-                </div>
-                
-                <p className="text-xs text-rose-800 font-sans font-semibold">
-                  {globalError.message}
-                </p>
-
-                {/* Diagnostics and helpful tips based on status code */}
-                <div className="mt-3 pt-3 border-t border-rose-200/50 space-y-1 text-slate-700 text-xs font-sans">
-                  <div className="font-semibold text-rose-900 mb-1">Guia de Diagnóstico:</div>
-                  {globalError.status === 404 ? (
-                    <p className="text-rose-800 leading-relaxed">
-                      O endpoint chamado não foi encontrado (404). Isso normalmente ocorre por uma configuração incorreta de rotas no servidor ou falta de redirecionamento no <code className="font-mono bg-rose-100/80 px-1 py-0.5 rounded text-[11px] text-rose-900">vercel.json</code>. Certifique-se de que o backend está respondendo nas rotas correspondentes e que o proxy de reescrita está apontando corretamente.
-                    </p>
-                  ) : globalError.status === 500 ? (
-                    <div className="text-rose-800 space-y-1 leading-relaxed">
-                      <p>O servidor backend falhou internamente ao processar o seu pedido (500). Causas comuns mais prováveis:</p>
-                      <ul className="list-disc pl-5 space-y-1">
-                        <li>Falta da chave de acesso da inteligência artificial (<code className="font-mono bg-rose-100/80 px-1 py-0.5 rounded text-[11px] text-rose-900">GEMINI_API_KEY</code>) ou valor inválido/expirado nas variáveis de ambiente.</li>
-                        <li>Verifique se o seu arquivo local de produção ou desenvolvimento <code className="font-mono bg-rose-100/80 px-1 py-0.5 rounded text-[11px] text-rose-900">.env</code> possui a variável declarada exatamente na raiz.</li>
-                        <li>Configuração de rede ou problemas transitórios de banco de dados e arquivos locais.</li>
-                      </ul>
-                    </div>
-                  ) : (
-                    <p className="text-rose-800 leading-relaxed">
-                      Não foi possível estabelecer contato com o servidor (Status 0). Verifique se o servidor de desenvolvimento backend está devidamente iniciado e rodando, ou se há bloqueios de CORS por conta de acessos via iframes.
-                    </p>
-                  )}
-                </div>
-
-                <div className="pt-2 flex justify-end">
-                  <button
-                    onClick={() => setGlobalError(null)}
-                    className="px-4 py-2 bg-rose-900/10 hover:bg-rose-900/20 text-rose-950 font-heading text-xs font-extrabold uppercase tracking-wider rounded-xl transition-all cursor-pointer"
-                  >
-                    Fechar Alerta
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <ApiErrorBanner globalError={globalError} setGlobalError={setGlobalError} />
 
       {/* Main Body */}
       {currentPath && SEO_ARTICLES[currentPath] ? (
@@ -2609,369 +2339,19 @@ export default function App() {
       )}
 
       {/* Footer */}
-      <footer className="bg-slate-950 text-slate-400 text-xs font-sans border-t border-slate-900 py-8 px-4 sm:px-6 lg:px-8 mt-12 pb-24 sm:pb-12 shrink-0 space-y-6">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4 text-center md:text-left">
-          <div className="flex items-center gap-2">
-            <div className="p-1.5 bg-slate-900 rounded-lg text-lime-400 border border-slate-800">
-              <Bike className="w-4 h-4" />
-            </div>
-            <div>
-              <span className="font-extrabold text-white text-xs">&copy; 2026 Biker AI. Todos os direitos reservados.</span>
-              <p className="text-[10px] text-slate-500 font-mono">Planilhas e Periodização Inteligente</p>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap justify-center items-center gap-x-3 gap-y-1.5 text-[11px] text-slate-400">
-            <span>Treino Equilibrado</span>
-            <span className="text-slate-800">•</span>
-            <span>Controle de Esforço</span>
-            <span className="text-slate-800">•</span>
-            <span>Zonas de Intensidade</span>
-          </div>
-
-          <button 
-            type="button"
-            onClick={() => setShowContact(true)}
-            className="inline-flex items-center gap-2 px-3 py-1.5 bg-slate-900 hover:bg-slate-850 text-lime-400 border border-slate-800 rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer"
-          >
-            <Mail className="w-3.5 h-3.5 text-lime-400 shrink-0" />
-            <span>Fale Conosco / Suporte</span>
-          </button>
-        </div>
-
-        {/* Links Institucionais: Termos de Uso, Política de Privacidade, Contato & Selos de Confiança */}
-        <div className="max-w-7xl mx-auto pt-4 border-t border-slate-900 flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
-          <div className="flex flex-wrap items-center justify-center sm:justify-start gap-x-4 gap-y-1.5 text-xs font-medium">
-            <button
-              type="button"
-              onClick={() => setShowTerms(true)}
-              className="text-slate-400 hover:text-lime-400 transition-colors cursor-pointer underline-offset-4 hover:underline"
-            >
-              Termos de Uso
-            </button>
-            <span className="text-slate-800">•</span>
-            <button
-              type="button"
-              onClick={() => setShowPrivacy(true)}
-              className="text-slate-400 hover:text-lime-400 transition-colors cursor-pointer underline-offset-4 hover:underline"
-            >
-              Política de Privacidade
-            </button>
-            <span className="text-slate-800">•</span>
-            <button
-              type="button"
-              onClick={() => setShowContact(true)}
-              className="text-slate-400 hover:text-lime-400 transition-colors cursor-pointer underline-offset-4 hover:underline"
-            >
-              Contato
-            </button>
-          </div>
-
-          <div className="flex items-center gap-3 text-[11px] text-slate-500">
-            <span className="flex items-center gap-1 text-slate-400">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-              Pagamento seguro
-            </span>
-            <span>•</span>
-            <span className="flex items-center gap-1 text-slate-400">
-              <CheckCircle2 className="w-3.5 h-3.5 text-lime-400" />
-              Cancele quando quiser
-            </span>
-            <span>•</span>
-            <span className="flex items-center gap-1 text-slate-400">
-              <Lock className="w-3.5 h-3.5 text-sky-400" />
-              Seus dados protegidos
-            </span>
-          </div>
-        </div>
-      </footer>
+      <AppFooter setShowContact={setShowContact} setShowPrivacy={setShowPrivacy} setShowTerms={setShowTerms} />
 
       {/* Install Instruction Guide Overlay Modal for main screen */}
-      <AnimatePresence>
-        {showInstallGuide && (
-          <div id="main-install-guide-modal-backdrop" className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md text-white font-sans">
-            <motion.div
-              id="main-install-guide-modal-content"
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl p-6 relative text-left"
-            >
-              <button
-                type="button"
-                onClick={() => setShowInstallGuide(false)}
-                className="absolute right-4 top-4 text-slate-400 hover:text-white p-1 rounded-lg bg-slate-950/40 hover:bg-slate-850 transition-colors cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-
-              <div className="flex items-center gap-3 pb-3 border-b border-slate-800">
-                <div className="p-2.5 bg-lime-500/15 border border-lime-500/30 rounded-2xl text-lime-400">
-                  <Smartphone className="w-5 h-5 animate-bounce" />
-                </div>
-                <div>
-                  <h3 className="font-heading font-black text-sm uppercase tracking-wide">
-                    Como Instalar o Biker AI
-                  </h3>
-                  <p className="text-[10px] text-slate-400 mt-0.5 font-mono">
-                    Adicione à tela inicial como um aplicativo nativo
-                  </p>
-                </div>
-              </div>
-
-              <div className="py-4 space-y-4">
-                
-                {/* iOS Instructions */}
-                <div className="bg-slate-950/50 p-3.5 rounded-2xl border border-slate-850/80 space-y-2">
-                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-sky-500/10 text-sky-400 rounded-md text-[9px] font-bold tracking-wider uppercase font-heading">
-                    No iPhone (Safari / iOS)
-                  </span>
-                  <ol className="list-decimal list-inside text-xs text-slate-300 space-y-1.5 leading-relaxed pl-1 font-medium">
-                    <li>
-                      Toque no botão de <span className="inline-flex items-center gap-1 px-1 py-0.5 bg-slate-850 rounded text-slate-300 text-[10px]"><Share className="w-3 h-3 text-slate-300 inline" /> Compartilhar</span> na barra inferior do Safari.
-                    </li>
-                    <li>
-                      Role a lista de opções para baixo e toque em <strong className="text-white">"Adicionar à Tela de Início"</strong>.
-                    </li>
-                    <li>
-                      Confirme clicando em <strong className="text-lime-400">"Adicionar"</strong> no canto superior direito. Pronto!
-                    </li>
-                  </ol>
-                </div>
-
-                {/* Android / Desktop Instructions */}
-                <div className="bg-slate-950/50 p-3.5 rounded-2xl border border-slate-850/80 space-y-2">
-                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-amber-500/10 text-amber-400 rounded-md text-[9px] font-bold tracking-wider uppercase font-heading">
-                    No Android (Chrome) ou Computador
-                  </span>
-                  <ol className="list-decimal list-inside text-xs text-slate-300 space-y-1.5 leading-relaxed pl-1 font-medium">
-                    <li>
-                      Toque nos <strong className="text-white">três pontinhos (⋮)</strong> no canto superior direito do navegador.
-                    </li>
-                    <li>
-                      Selecione a opção <strong className="text-white">"Adicionar à tela inicial"</strong> ou <strong className="text-white">"Instalar aplicativo"</strong>.
-                    </li>
-                    <li>
-                      Confirme a instalação e o ícone do Biker AI aparecerá na sua tela de aplicativos.
-                    </li>
-                  </ol>
-                </div>
-
-                <div className="bg-lime-500/5 p-3 rounded-xl border border-lime-500/10 text-[11px] text-lime-400 flex items-start gap-2">
-                  <Lightbulb className="w-4 h-4 text-lime-400 shrink-0 mt-0.5" />
-                  <span className="font-extrabold select-none">VANTAGENS:</span>
-                  <span className="leading-relaxed">Instalar o aplicativo garante carregamento instantâneo, menos consumo de internet, suporte offline e navegação livre de barras do navegador!</span>
-                </div>
-
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setShowInstallGuide(false)}
-                className="w-full bg-slate-800 hover:bg-slate-750 text-white font-bold font-heading py-2.5 rounded-xl text-xs uppercase tracking-wider transition-colors cursor-pointer"
-              >
-                Entendi, fechar instrução
-              </button>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+      <InstallGuideModal setShowInstallGuide={setShowInstallGuide} showInstallGuide={showInstallGuide} />
 
       {/* Sleek Password Challenge for Coach Access */}
-      <AnimatePresence>
-        {showAdminPasswordPrompt && (
-          <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 15 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 15 }}
-              className="bg-slate-900 border border-slate-805 rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-2xl relative"
-            >
-              <div className="text-center space-y-1.5">
-                <div className="w-10 h-10 bg-lime-400/10 text-lime-400 rounded-full flex items-center justify-center mx-auto border border-lime-400/20">
-                  <ShieldCheck className="w-5 h-5" />
-                </div>
-                <h3 className="text-sm uppercase font-black tracking-widest text-white font-heading">
-                  Acesso Reservado
-                </h3>
-                <p className="text-xs text-slate-400">
-                  Insira a Credencial do Treinador para abrir o painel administrativo.
-                </p>
-              </div>
-
-              <form 
-                onSubmit={async (e) => {
-                  e.preventDefault();
-                  try {
-                    const res = await apiFetch("/api/admin/verify-access", {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ password: adminPasswordInput })
-                    });
-                    if (res.ok) {
-                      setShowAdminPanel(true);
-                      setShowAdminPasswordPrompt(false);
-                      setAdminPasswordInput("");
-                      setAdminPasswordError("");
-                    } else {
-                      setAdminPasswordError("Chave de acesso ou permissão inválida");
-                    }
-                  } catch (err) {
-                    setAdminPasswordError("Erro ao validar acesso administrativo");
-                  }
-                }}
-                className="space-y-3"
-              >
-                <div className="space-y-1">
-                  <input
-                    type="password"
-                    placeholder="Chave de Acesso"
-                    autoFocus
-                    value={adminPasswordInput}
-                    onChange={(e) => {
-                      setAdminPasswordInput(e.target.value);
-                      if (adminPasswordError) setAdminPasswordError("");
-                    }}
-                    className={`w-full bg-slate-950 border text-center text-sm px-4 py-3 rounded-xl font-mono text-lime-400 placeholder:text-slate-600 outline-hidden transition-all ${
-                      adminPasswordError 
-                        ? "border-rose-500/50 focus:border-rose-500 shadow-[0_0_15px_rgba(239,68,68,0.1)]" 
-                        : "border-slate-800 focus:border-lime-500/50 focus:shadow-[0_0_15px_rgba(132,204,22,0.1)]"
-                    }`}
-                  />
-                  {adminPasswordError && (
-                    <span className="block text-[10px] text-center text-rose-450 font-bold uppercase tracking-wider font-sans mt-1">
-                      {adminPasswordError}
-                    </span>
-                  )}
-                </div>
-
-                <div className="flex gap-2.5 pt-1">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowAdminPasswordPrompt(false);
-                      setAdminPasswordInput("");
-                      setAdminPasswordError("");
-                    }}
-                    className="flex-1 py-2.5 bg-slate-850 hover:bg-slate-800 text-slate-300 font-bold rounded-xl text-[10px] sm:text-xs uppercase tracking-wider transition-all cursor-pointer"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    type="submit"
-                    className="flex-1 py-2.5 bg-lime-400 hover:bg-lime-350 text-slate-950 font-black rounded-xl text-[10px] sm:text-xs uppercase tracking-wider transition-all cursor-pointer shadow-md"
-                  >
-                    Confirmar
-                  </button>
-                </div>
-              </form>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+      <AdminPasswordModal adminPasswordError={adminPasswordError} adminPasswordInput={adminPasswordInput} setAdminPasswordError={setAdminPasswordError} setAdminPasswordInput={setAdminPasswordInput} setShowAdminPanel={setShowAdminPanel} setShowAdminPasswordPrompt={setShowAdminPasswordPrompt} showAdminPasswordPrompt={showAdminPasswordPrompt} />
 
       {/* Premium Feedback Modal for Athletes */}
-      <AnimatePresence>
-        {showFeedbackModal && (
-          <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 15 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 15 }}
-              className="bg-white border border-slate-100 rounded-3xl p-6 max-w-md w-full space-y-4 shadow-2xl relative text-left"
-            >
-              <div className="text-center space-y-1.5">
-                <div className="w-10 h-10 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto border border-emerald-200">
-                  <MessageSquare className="w-5 h-5" />
-                </div>
-                <h3 className="text-base font-heading font-black text-slate-800">
-                  Enviar Feedback ao Treinador
-                </h3>
-                <p className="text-xs text-slate-500 font-sans">
-                  Sua sugestão, dúvida ou elogio será entregue diretamente na área privada de controle do treinador.
-                </p>
-              </div>
-
-              {feedbackSuccess ? (
-                <motion.div 
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="bg-emerald-50 border border-emerald-200 text-emerald-800 p-4 rounded-2xl text-center space-y-1"
-                >
-                  <p className="text-xs font-bold font-heading">Feedback Enviado com Sucesso!</p>
-                  <p className="text-[11px] text-emerald-600 font-sans">Seu treinador já pode visualizar sua mensagem no painel privado.</p>
-                </motion.div>
-              ) : (
-                <form onSubmit={handleSendFeedback} className="space-y-4">
-                  <div className="space-y-1">
-                    <label className="block text-[10px] uppercase font-bold tracking-wider text-slate-450">Mensagem de Feedback</label>
-                    <textarea
-                      placeholder="Ex: nos fale o que pode melhorar no aplicativo..."
-                      rows={4}
-                      value={feedbackText}
-                      onChange={(e) => setFeedbackText(e.target.value)}
-                      required
-                      className="w-full bg-slate-50 border border-slate-200 focus:border-slate-400 focus:bg-white rounded-xl p-3 text-xs outline-hidden transition-all text-slate-800 placeholder:text-slate-400 resize-none font-sans"
-                    />
-                  </div>
-
-                  <div className="flex gap-2.5">
-                    <button
-                      type="button"
-                      onClick={() => setShowFeedbackModal(false)}
-                      className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-650 font-bold rounded-xl text-xs uppercase tracking-wider transition-all cursor-pointer text-center border border-slate-150"
-                    >
-                      Cancelar
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={submittingFeedback || !feedbackText.trim()}
-                      className="flex-1 py-3 bg-slate-900 hover:bg-slate-850 text-lime-400 font-black rounded-xl text-xs uppercase tracking-wider transition-all cursor-pointer shadow-md disabled:opacity-50 text-center"
-                    >
-                      {submittingFeedback ? "Enviando..." : "Enviar Agora"}
-                    </button>
-                  </div>
-                </form>
-              )}
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+      <FeedbackModal feedbackSuccess={feedbackSuccess} feedbackText={feedbackText} handleSendFeedback={handleSendFeedback} setFeedbackText={setFeedbackText} setShowFeedbackModal={setShowFeedbackModal} showFeedbackModal={showFeedbackModal} submittingFeedback={submittingFeedback} />
 
       {/* Subscription Checkout Modal Dialog */}
-      <AnimatePresence>
-        {showSubscriptionCheckout && currentUser && (
-          <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              transition={{ duration: 0.25 }}
-              className="relative w-full max-w-4xl bg-slate-900 rounded-3xl border border-slate-800 p-2 sm:p-6 shadow-2xl my-auto max-h-[92vh] overflow-y-auto"
-            >
-              <button
-                onClick={() => setShowSubscriptionCheckout(false)}
-                className="absolute top-4 right-4 z-20 w-9 h-9 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center transition-all cursor-pointer border border-slate-700"
-              >
-                <X className="w-5 h-5" />
-              </button>
-
-              <SubscriptionWall 
-                userEmail={currentUser.email}
-                userName={profile.name || currentUser.profile?.name || "Atleta"}
-                currentStatus={accessInfo.accessType === "expired" ? "expired" : accessInfo.accessType === "trial_expired" ? "trial_expired" : "pending_payment"}
-                onActivated={(updatedProfile) => {
-                  setProfile(updatedProfile);
-                  if (currentUser) {
-                    refreshUserSession(currentUser.email);
-                  }
-                  setShowSubscriptionCheckout(false);
-                }}
-              />
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+      <SubscriptionCheckoutModal accessInfo={accessInfo} currentUser={currentUser} profile={profile} refreshUserSession={refreshUserSession} setProfile={setProfile} setShowSubscriptionCheckout={setShowSubscriptionCheckout} showSubscriptionCheckout={showSubscriptionCheckout} />
 
       {/* Workout Completion 5-Question Modal */}
       {completingWorkoutIndex !== null && plan && plan.workouts && plan.workouts[completingWorkoutIndex] && (

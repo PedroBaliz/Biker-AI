@@ -29,7 +29,7 @@ Antes de concluir qualquer mudança: `npm run lint && npm test`. O CI ([.github/
   - `routes/` — `users`, `ai`, `admin` e `payments`; cada um exporta `register*Routes(app)`.
 
   Rota nova vai no módulo da área, nunca de volta no `server.ts`.
-- [src/App.tsx](src/App.tsx) — orquestração do frontend; componentes em [src/components/](src/components/).
+- [src/App.tsx](src/App.tsx) — orquestração do frontend: estado, sessão e as telas (~2.400 linhas; a divisão continua na #8). Componentes em [src/components/](src/components/). Lógica sem UI vai em [src/lib/](src/lib/) (ex.: `exportPlanPdf.ts`). Bloco novo de tela vira componente com props tipadas, não mais JSX dentro do `App`.
 - [src/firebase.ts](src/firebase.ts) — cliente Firebase e `apiFetch`, que anexa o ID token às chamadas `/api/*`. Use sempre `apiFetch`, nunca `fetch` cru, para rotas autenticadas.
 - [firestore.rules](firestore.rules) — regras RBAC do Firestore.
 - [tests/](tests/) — testes de segurança e de acesso por assinatura; importam `app` e middlewares de `server.ts`, que os reexporta de `backend/`.
