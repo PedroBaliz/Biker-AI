@@ -123,8 +123,8 @@ export default function ContactModal({ isOpen, onClose, userEmail = "" }: Contac
                 className="w-full bg-slate-950 border border-slate-800 focus:border-lime-400 rounded-xl p-3 text-xs text-slate-200 outline-hidden transition-all"
               >
                 <option value="Dúvida sobre o Biker AI">Dúvida sobre o Biker AI</option>
-                <option value="Dúvida ou ajuda com assinatura / pagamento">Dúvida ou ajuda com assinatura / pagamento</option>
-                <option value="Solicitação de cancelamento de assinatura">Solicitação de cancelamento de assinatura</option>
+                <option value="Liberação de acesso à minha conta">Liberação de acesso à minha conta</option>
+                <option value="Solicitação de exclusão da conta">Solicitação de exclusão da conta</option>
                 <option value="Dúvida técnica sobre treinos e planilhas">Dúvida técnica sobre treinos e planilhas</option>
                 <option value="Sugestão de melhoria para o app">Sugestão de melhoria para o app</option>
                 <option value="Solicitação de privacidade e dados">Solicitação de privacidade e dados</option>
@@ -168,15 +168,15 @@ export default function ContactModal({ isOpen, onClose, userEmail = "" }: Contac
             </h4>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
               <div className="p-3 bg-slate-950 rounded-xl border border-slate-850 space-y-1">
-                <span className="font-bold text-white block">Como cancelar?</span>
+                <span className="font-bold text-white block">Quanto custa?</span>
                 <p className="text-slate-400 text-[11px] leading-relaxed">
-                  Você pode cancelar a qualquer momento no painel do Mercado Pago ou enviando um e-mail para nós. Não há multa nem fidelidade.
+                  Nada: nesta fase todos os recursos estão liberados, sem cobrança e sem cartão de crédito.
                 </p>
               </div>
               <div className="p-3 bg-slate-950 rounded-xl border border-slate-850 space-y-1">
-                <span className="font-bold text-white block">Como funciona a garantia?</span>
+                <span className="font-bold text-white block">Como excluir minha conta?</span>
                 <p className="text-slate-400 text-[11px] leading-relaxed">
-                  Oferecemos 7 dias de garantia incondicional após a assinatura. Se solicitar reembolso nesse período, devolvemos 100% do valor.
+                  Escolha o assunto "Solicitação de exclusão da conta" acima, ou escreva para nós. Removemos a conta e os dados.
                 </p>
               </div>
             </div>

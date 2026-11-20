@@ -1,9 +1,9 @@
-// Rotas do atleta: cadastro, login, sincronização de perfil, sessão, registro de treino e aviso de pagamento.
+// Rotas do atleta: cadastro, login, sincronização de perfil, sessão e registro de treino.
 import type { Express } from "express";
 import crypto from "crypto";
 import { createDefaultProfile, hasActiveAccess, isTrialActive, sanitizePlanForUser, sanitizeUserProfileInput } from "../access";
 import { hashPassword, isCoachProfile, requireAuth, verifyAdminSecret, verifyPassword, verifyUserMatch } from "../auth";
-import { SUBSCRIPTION_PRICE_BRL, isMasterAdminEmail, useFirestore } from "../config";
+import { isMasterAdminEmail, useFirestore } from "../config";
 import { fetchFirestoreUser, getDatabase, getDatabaseForUpdate, saveDatabase, setDatabaseCache } from "../db";
 import { findUserInDb, getAuthToken, normalizeEmail, sendServerError } from "../util";
 
@@ -344,36 +344,4 @@ export function registerUserRoutes(app: Express) {
     }
   });
 
-  app.post("/api/user/notify-payment", requireAuth, verifyUserMatch, async (req, res) => {
-    try {
-      const email = normalizeEmail(req.body?.email);
-      if (!email) return res.status(400).json({ error: "E-mail é obrigatório." });
-      // Texto livre exibido no painel admin: limitar tamanho para evitar abuso.
-      const method = typeof req.body.method === "string" ? req.body.method.trim().slice(0, 40) : "";
-      const note = typeof req.body.note === "string" ? req.body.note.trim().slice(0, 500) : "";
-      const db = await getDatabaseForUpdate(email, getAuthToken(req));
-      const userFound = findUserInDb(db, email);
-      if (!userFound) return res.status(404).json({ error: "Usuário não encontrado." });
-      const user = userFound.user;
-
-      const paymentFeedback = {
-        id: `pay_notify_${Date.now()}`,
-        userName: user.profile?.name || "Atleta",
-        userEmail: user.email,
-        text: `[AVISO DE PAGAMENTO - R$ ${SUBSCRIPTION_PRICE_BRL.toFixed(2).replace(".", ",")} Via Mercado Pago] Atleta informou que concluiu o pagamento via ${method || "Mercado Pago"}. ${note ? `Obs: ${note}` : "Aguardando ativação no painel privado."}`,
-        timestamp: new Date().toISOString()
-      };
-
-      // Substitui o registro em vez de mutar o objeto encontrado (evita escrita em protótipo).
-      db[userFound.key] = {
-        ...user,
-        feedbacks: [paymentFeedback, ...(Array.isArray(user.feedbacks) ? user.feedbacks : [])]
-      };
-      await saveDatabase(db, userFound.key, getAuthToken(req));
-
-      res.json({ success: true, message: "Aviso de pagamento registrado para análise do treinador." });
-    } catch (error: any) {
-      sendServerError(res, error);
-    }
-  });
 }

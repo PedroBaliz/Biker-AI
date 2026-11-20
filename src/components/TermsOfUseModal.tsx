@@ -50,7 +50,7 @@ export default function TermsOfUseModal({ isOpen, onClose }: TermsOfUseModalProp
                 <h2 className="text-xl sm:text-2xl font-heading font-black text-white">
                   Termos de Uso do Biker AI
                 </h2>
-                <p className="text-xs text-slate-400">Última atualização: Setembro de 2026</p>
+                <p className="text-xs text-slate-400">Última atualização: Novembro de 2026</p>
               </div>
             </div>
             <button
@@ -99,56 +99,34 @@ export default function TermsOfUseModal({ isOpen, onClose }: TermsOfUseModalProp
               </ul>
             </section>
 
-            {/* 3. Assinatura, Preço e Periodicidade */}
+            {/* 3. Acesso gratuito (sem meio de pagamento, ADR-008) */}
             <section className="space-y-2.5">
               <h3 className="text-sm sm:text-base font-heading font-extrabold text-white flex items-center gap-2">
-                <span className="text-lime-400 font-mono">3.</span> Assinatura, Preço e Periodicidade
+                <span className="text-lime-400 font-mono">3.</span> Acesso Gratuito
               </h3>
               <p className="text-slate-300">
-                O acesso contínuo aos recursos completos do Biker AI é disponibilizado mediante assinatura do plano Pro:
-              </p>
-              <div className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 space-y-2 font-mono text-xs">
-                <div className="flex justify-between items-center text-white">
-                  <span className="text-slate-400">Preço atual:</span>
-                  <span className="text-lime-400 font-bold font-heading text-sm">R$ 16,90</span>
-                </div>
-                <div className="flex justify-between items-center text-white">
-                  <span className="text-slate-400">Periodicidade de cobrança:</span>
-                  <span>Mensal recorrente (a cada 30 dias)</span>
-                </div>
-                <div className="flex justify-between items-center text-white">
-                  <span className="text-slate-400">Forma de pagamento:</span>
-                  <span>Pix ou Cartão via Mercado Pago</span>
-                </div>
-              </div>
-              <p className="text-slate-400 text-xs">
-                O valor é cobrado em moeda corrente nacional (Reais - BRL). Eventuais alterações de preço serão previamente comunicadas por e-mail aos usuários ativos com no mínimo 30 dias de antecedência.
+                Nesta fase, o acesso a todos os recursos do Biker AI é <strong>gratuito</strong>. Não solicitamos nem armazenamos dados de pagamento (cartão, Pix ou conta bancária) e nenhuma cobrança é realizada.
               </p>
             </section>
 
-            {/* 4. Como Funciona o Cancelamento */}
+            {/* 4. Encerramento da conta */}
             <section className="space-y-2.5 bg-slate-950 border border-slate-800 p-4 rounded-2xl">
               <h3 className="text-sm sm:text-base font-heading font-extrabold text-white flex items-center gap-2">
                 <RefreshCw className="w-4 h-4 text-lime-400 shrink-0" />
-                <span>4. Cancelamento sem Fidelidade ou Multas</span>
+                <span>4. Encerramento da Conta</span>
               </h3>
               <p className="text-slate-300 text-xs leading-relaxed">
-                Acreditamos na confiança e liberdade do atleta:
+                Você pode deixar de usar o Biker AI a qualquer momento, sem fidelidade ou multa. Para excluir sua conta e seus dados, envie um e-mail para <strong className="text-lime-400">bikeraisupport@gmail.com</strong>.
               </p>
-              <ul className="list-disc pl-5 space-y-1.5 text-xs text-slate-300">
-                <li><strong>Cancele quando quiser:</strong> Não há período de fidelidade, carência ou taxa rescisória.</li>
-                <li><strong>Como cancelar:</strong> O cancelamento da renovação pode ser realizado a qualquer instante diretamente na área de assinaturas do Mercado Pago ou enviando um e-mail simples para <strong className="text-lime-400">bikeraisupport@gmail.com</strong> solicitando o cancelamento.</li>
-                <li><strong>Acesso até o fim do ciclo:</strong> Ao cancelar, você continuará tendo acesso completo a todas as funções e treinos até o último dia do período mensal que já foi faturado. Não haverá novas cobranças futuras.</li>
-              </ul>
             </section>
 
-            {/* 5. Garantia Incondicional de 7 Dias */}
+            {/* 5. Eventual cobrança futura */}
             <section className="space-y-2">
               <h3 className="text-sm sm:text-base font-heading font-extrabold text-white flex items-center gap-2">
-                <span className="text-lime-400 font-mono">5.</span> Direito de Arrependimento e Garantia de 7 Dias
+                <span className="text-lime-400 font-mono">5.</span> Eventual Cobrança Futura
               </h3>
               <p className="text-slate-300">
-                Em conformidade com o artigo 49 do Código de Defesa do Consumidor, garantimos o direito de arrependimento em até <strong>7 (sete) dias corridos</strong> após a primeira adesão à assinatura. Caso solicite o reembolso dentro deste prazo enviando uma mensagem para <span className="text-lime-400">bikeraisupport@gmail.com</span>, devolveremos 100% do valor pago, sem qualquer burocracia.
+                Se um plano pago vier a ser criado, as novas condições (preço, periodicidade, forma de pagamento, cancelamento e o direito de arrependimento de 7 dias previsto no artigo 49 do Código de Defesa do Consumidor) serão comunicadas com antecedência mínima de 30 dias, e nenhuma cobrança será feita sem a sua adesão expressa.
               </p>
             </section>
 

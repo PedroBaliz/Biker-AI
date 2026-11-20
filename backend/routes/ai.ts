@@ -3,7 +3,6 @@ import type { Express } from "express";
 import { resolveRequesterAccess, sanitizePlanByAccess } from "../access";
 import { PLAN_RESPONSE_SCHEMA, buildPlanPrompt, callGeminiWithFallback, checkApiKey, clampInt, cleanAndParseJson, fallbackChat, fallbackEvaluateWorkout, fallbackGeneratePlan, fallbackOnboarding, getAiClient, normalizeAiPlan } from "../ai";
 import { requireAuth, verifyUserMatch } from "../auth";
-import { SUBSCRIPTION_PRICE_BRL } from "../config";
 
 export function registerAiRoutes(app: Express) {
   app.post("/api/onboard", requireAuth, verifyUserMatch, async (req, res) => {
@@ -50,7 +49,7 @@ export function registerAiRoutes(app: Express) {
     try {
       hasAccess = await resolveRequesterAccess(req);
       if (!hasAccess) {
-        return res.status(403).json({ error: "Acesso bloqueado. Assine o Biker AI.", isBlocked: true });
+        return res.status(403).json({ error: "Acesso bloqueado. Fale com o treinador para liberar.", isBlocked: true });
       }
       checkApiKey();
       const response = await callGeminiWithFallback((model) =>
@@ -91,7 +90,7 @@ export function registerAiRoutes(app: Express) {
     try {
       if (currentPlan && !(await resolveRequesterAccess(req))) {
         return res.json({
-          reply: `Olá, atleta! Notei que o seu período de teste gratuito de 3 dias expirou (ou sua conta está aguardando ativação). Para continuar recebendo acompanhamento do treinador e planilhas personalizadas, assine o Plano Pro por apenas R$ ${SUBSCRIPTION_PRICE_BRL.toFixed(2).replace(".", ",")}/mês!`,
+          reply: "Olá, atleta! Seu acesso ao acompanhamento do treinador está bloqueado no momento. Fale com o treinador pelo contato do site para liberar.",
           isBlocked: true
         });
       }

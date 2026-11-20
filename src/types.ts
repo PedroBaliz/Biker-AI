@@ -53,7 +53,6 @@ export interface Workout {
   actualDistance?: number;
   actualElevation?: number;
   actualCalories?: number;
-  actualStravaLink?: string;
   // Evolution tracking metrics
   completionStatus?: 'sim' | 'parcialmente' | 'nao';
   difficulty?: 'facil' | 'adequada' | 'dificil' | 'muito_dificil';

@@ -4,6 +4,13 @@ Mudanças visíveis ao usuário do Biker AI. Formato baseado em [Keep a Changelo
 
 ## [Não lançado]
 
+### Alterado
+- O Biker AI está gratuito: todos os recursos ficam liberados para qualquer atleta, sem período de teste nem bloqueio. A página inicial, os Termos de Uso, a Política de Privacidade, o contato e as Configurações da conta deixam de falar em assinatura, preço e Mercado Pago.
+
+### Removido
+- Pagamento pelo Mercado Pago (cartão, Pix e checkout) e o aviso de pagamento.
+- Campo "Link do pedal no Strava" e o botão "Ver atividade no Strava" no registro do treino. As métricas digitadas (distância, tempo, potência, FC) continuam.
+
 ## 2026-11-16
 
 ### Corrigido

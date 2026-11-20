@@ -10,8 +10,8 @@
 └──────────┬───────────┘                                └──┬──────────┬──────────┬───┘
            │ login                                        │          │          │
            ▼                                              ▼          ▼          ▼
-   Firebase Auth                                   Google Gemini  Firestore  Mercado Pago
-                                                   (@google/genai) (users)   (assinatura/Pix)
+   Firebase Auth                                   Google Gemini  Firestore
+                                                   (@google/genai) (users)
                                                                       │
                                                               fallback: users_db.json
 ```
@@ -42,7 +42,6 @@ O `server.ts` é só o ponto de entrada: cria o app, aplica os middlewares (JSON
 | `backend/routes/users.ts` | `/api/auth/{register,login,save-user,session,check-status}`, `/api/workout/log-completion`, `/api/user/notify-payment` |
 | `backend/routes/ai.ts` | `/api/{onboard,generate-plan,generate-next-week,evaluate-workout,chat}` |
 | `backend/routes/admin.ts` | `/api/admin/{diagnostics,verify-access,users,update-user-status,delete-user,backups*}` |
-| `backend/routes/payments.ts` | `/api/mercadopago/{config,create-subscription,create-preference,create-pix,webhook}`, `/api/admin/mercadopago/create-plan` |
 
 Dependências entre os módulos: `config` → `util`; os demais importam `config`/`util` e uns aos outros só dentro de funções. Não há uso de import em tempo de carga dentro de um ciclo. Cada módulo de rotas exporta `register*Routes(app)`, e o `server.ts` chama todos **depois** dos limitadores.
 
@@ -69,10 +68,10 @@ Dependências entre os módulos: `config` → `util`; os demais importam `config
 4. O plano é salvo e devolvido via `sanitizePlanForUser`: sem acesso ativo, a estrutura dos treinos vem mascarada.
 5. `/api/workout/log-completion` + `/api/evaluate-workout` registram e avaliam treinos; `/api/generate-next-week` usa esse histórico para a semana seguinte.
 
-### Assinatura (Mercado Pago)
-1. Novo usuário: `subscriptionStatus: pending_payment` + trial de 3 dias a partir de `createdAt`.
-2. Checkout: assinatura recorrente (`preapproval`), preferência (checkout) ou Pix (`/v1/payments`).
-3. O webhook `/api/mercadopago/webhook` consulta o recurso no MP e atualiza o status (`authorized` → `active`; `pending` → `pending_payment`; demais → `expired`). O vínculo com o usuário vem de `external_reference` ou `payer_email`.
+### Acesso (paywall desligado)
+- Não há meio de pagamento (ADR-008). Com `PAYWALL_ENABLED` (servidor) e `VITE_PAYWALL_ENABLED` (cliente) vazios — o padrão —, `hasActiveAccess` e `getUserAccessInfo` liberam tudo para qualquer atleta logado.
+- A lógica de trial de 3 dias e de `subscriptionStatus` continua no código e nos testes (que ligam as duas chaves), pronta para voltar quando um provedor for integrado. As duas chaves precisam ter o mesmo valor.
+- O painel admin ainda pode marcar `subscriptionStatus`, mas isso só tem efeito com o paywall ligado.
 
 ## Build e deploy
 
@@ -96,12 +95,11 @@ Ver [.env.example](../.env.example). Resumo:
 | --- | --- |
 | `GEMINI_API_KEY` | IA (obrigatória para planos reais; sem ela entram os fallbacks) |
 | `ADMIN_EMAIL`, `ADMIN_PASSWORD` | Conta master e credencial administrativa |
+| `PAYWALL_ENABLED`, `VITE_PAYWALL_ENABLED` | Paywall (desligado por padrão; os dois juntos, ADR-008) |
 | `FIREBASE_*` | Projeto e Firestore no servidor (obrigatórias na Vercel) |
 | `FIREBASE_SERVICE_ACCOUNT[_KEY]` / `GOOGLE_APPLICATION_CREDENTIALS` | Habilitam o Admin SDK (opcional) |
-| `MERCADO_PAGO_*` | Pagamentos e validação do webhook |
 | `VITE_FACEBOOK_PIXEL_ID` | Pixel (vai para o cliente) |
 
 ## Dívidas técnicas conhecidas
 
 - O rate limit fica em memória, por instância serverless: o limite efetivo é multiplicado pelo número de instâncias. Corrigir exige um store compartilhado, como o Redis ([#9](https://github.com/PedroBaliz/Biker-AI/issues/9)). As leituras de painel ainda podem ver dados com até 30 s de atraso, mas as gravações releem o usuário.
-- Não há integração com o Strava: o link da atividade é salvo apenas como referência.

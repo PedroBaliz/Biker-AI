@@ -1,9 +1,15 @@
 import { UserProfile } from "../types";
 
+/**
+ * Paywall desligado por padrão (ADR-008): sem meio de pagamento, todo atleta logado tem acesso
+ * completo. Para religar, VITE_PAYWALL_ENABLED=true aqui e PAYWALL_ENABLED=true no servidor.
+ */
+export const PAYWALL_ENABLED = import.meta.env.VITE_PAYWALL_ENABLED === "true";
+
 export const TRIAL_DURATION_DAYS = 3;
 export const TRIAL_DURATION_MS = TRIAL_DURATION_DAYS * 24 * 60 * 60 * 1000; // 72 hours (3 days)
 
-export type UserAccessType = 'coach' | 'active_subscriber' | 'trial' | 'trial_expired' | 'expired' | 'pending_payment';
+export type UserAccessType = 'coach' | 'free_access' | 'active_subscriber' | 'trial' | 'trial_expired' | 'expired' | 'pending_payment';
 
 export interface UserAccessInfo {
   hasFullAccess: boolean;
@@ -57,6 +63,22 @@ export function getUserAccessInfo(profile: UserProfile | null | undefined, email
       trialHoursRemaining: 0,
       accessType: 'coach',
       statusLabel: 'Coach (Admin)',
+      isPendingUser: false
+    };
+  }
+
+  // Paywall desligado: acesso completo para qualquer atleta (o coach já foi tratado acima).
+  if (!PAYWALL_ENABLED) {
+    return {
+      hasFullAccess: true,
+      isCoach: false,
+      isActiveSubscriber: false,
+      isInTrial: false,
+      isTrialExpired: false,
+      trialDaysRemaining: 0,
+      trialHoursRemaining: 0,
+      accessType: 'free_access',
+      statusLabel: 'Acesso liberado',
       isPendingUser: false
     };
   }

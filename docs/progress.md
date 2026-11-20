@@ -4,12 +4,12 @@ Estado atual do projeto. Leia no início de cada sessão e atualize no fim (ver 
 
 **Status atual:** manutenção. Produção em https://biker-ai.vercel.app.
 
-**Próximo passo:** continuar a [#8](https://github.com/PedroBaliz/Biker-AI/issues/8): extrair a navbar e as abas do corpo principal do `App.tsx`. Exige validar no navegador com login, porque não há teste de interface. As decisões #6 (pagamento) e #10 (Strava) e o Redis da #9 dependem do dono do projeto.
+**Próximo passo:** continuar a [#8](https://github.com/PedroBaliz/Biker-AI/issues/8): extrair a navbar e as abas do corpo principal do `App.tsx`. Exige validar no navegador com login, porque não há teste de interface. O Redis da #9 depende do dono do projeto.
 
 **Backlog:** [GitHub Issues](https://github.com/PedroBaliz/Biker-AI/issues). Pendências novas viram issue, não lista neste arquivo.
 
 **Bloqueios:**
-- Pagamentos: sem provedor definido (ADR-005, #6).
+- Nenhum. Pagamento e Strava foram removidos por decisão do dono (ADR-008); o acesso está liberado para todos.
 
 **Medição:** cada sessão termina com uma linha de medição, para avaliar com dados se o protocolo de sessão compensa. Use sempre os mesmos comandos:
 
@@ -22,6 +22,24 @@ Estado atual do projeto. Leia no início de cada sessão e atualize no fim (ver 
 | Tempo | duração da sessão, em minutos |
 
 ---
+
+## Sessão 2026-11-20 (continuação) — sem pagamento e sem Strava
+
+### Feito
+- Decisão do dono: remover por enquanto o meio de pagamento e o Strava, com acesso liberado para todos (ADR-008, substitui a ADR-005).
+- Paywall desligado por `PAYWALL_ENABLED`/`VITE_PAYWALL_ENABLED`, com a lógica de trial mantida e testada. Saíram Mercado Pago (rotas, SDK, `SubscriptionWall`, checkout) e `notify-payment`.
+- Textos públicos sem preço nem Mercado Pago: página inicial, Termos, Privacidade, contato, Configurações, rodapé e JSON-LD.
+- Strava: link e botão removidos do registro de treino.
+- Corrigido de passagem: a leitura da variável do cliente precisava ser `import.meta.env` literal.
+
+### Pendente
+- **Revisar os Termos de Uso e a Política de Privacidade:** o texto jurídico foi reescrito por agente.
+- O JSON-LD declara `aggregateRating` 4.9 com 158 avaliações: confirmar se esses números são reais.
+
+### Medição
+| Tokens | Reorientação | Reexplicações | Bugs pegos na revisão | Tempo |
+|---|---|---|---|---|
+| (pendente: `/cost`) | 0 (mesma sessão) | 0 | 1 (`import.meta` com cast nunca seria lido pelo Vite, pego pelos testes) | ~50 min |
 
 ## Sessão 2026-11-20 (continuação) — issues #7 e #8
 

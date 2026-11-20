@@ -72,12 +72,12 @@ export default function AppFooter({ setShowContact, setShowPrivacy, setShowTerms
           <div className="flex items-center gap-3 text-[11px] text-slate-500">
             <span className="flex items-center gap-1 text-slate-400">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-              Pagamento seguro
+              100% gratuito
             </span>
             <span>•</span>
             <span className="flex items-center gap-1 text-slate-400">
               <CheckCircle2 className="w-3.5 h-3.5 text-lime-400" />
-              Cancele quando quiser
+              Sem cartão de crédito
             </span>
             <span>•</span>
             <span className="flex items-center gap-1 text-slate-400">

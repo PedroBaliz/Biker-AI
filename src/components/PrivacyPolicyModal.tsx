@@ -49,7 +49,7 @@ export default function PrivacyPolicyModal({ isOpen, onClose }: PrivacyPolicyMod
                 <h2 className="text-xl sm:text-2xl font-heading font-black text-white">
                   Política de Privacidade do Biker AI
                 </h2>
-                <p className="text-xs text-slate-400">Última atualização: Setembro de 2026</p>
+                <p className="text-xs text-slate-400">Última atualização: Novembro de 2026</p>
               </div>
             </div>
             <button
@@ -120,21 +120,21 @@ export default function PrivacyPolicyModal({ isOpen, onClose }: PrivacyPolicyMod
                 <li>Calcular suas zonas de treinamento (potência, frequência cardíaca ou percepção subjetiva de esforço);</li>
                 <li>Exibir o histórico de treinos e métricas na aba Evolução;</li>
                 <li>Responder a perguntas ou orientações no chat do Treinador AI com o contexto do seu plano;</li>
-                <li>Identificar sua assinatura e liberar o acesso às funcionalidades completas.</li>
+                <li>Identificar sua conta e liberar o acesso às funcionalidades.</li>
               </ul>
             </section>
 
-            {/* 3. Pagamento Seguro e Dados Financeiros */}
+            {/* 3. Dados financeiros (nenhum: sem meio de pagamento, ADR-008) */}
             <section className="space-y-2.5 bg-slate-950 border border-slate-800 p-4 rounded-2xl">
               <div className="flex items-center gap-2 font-heading font-bold text-white text-sm">
                 <CreditCard className="w-4 h-4 text-emerald-400 shrink-0" />
-                <span>3. Processamento de Pagamento por Parceiro Especializado</span>
+                <span>3. Dados Financeiros</span>
               </div>
               <p className="text-xs leading-relaxed text-slate-300">
-                <strong>O Biker AI não armazena dados de cartão de crédito nem dados bancários nos seus servidores.</strong>
+                <strong>O Biker AI não coleta nem armazena dados de cartão de crédito, Pix ou dados bancários.</strong>
               </p>
               <p className="text-xs leading-relaxed text-slate-400">
-                Todas as operações financeiras de assinatura são processadas pelo intermediador de pagamento parceiro <strong>Mercado Pago</strong>. O Mercado Pago processa as transações diretamente e apenas nos notifica sobre a aprovação ou cancelamento da assinatura para liberação do acesso em sua conta.
+                Nesta fase o acesso é gratuito e não há nenhum processamento de pagamento. Se um plano pago vier a ser criado, esta política será atualizada antes, informando o intermediador de pagamento e quais dados ele trata.
               </p>
             </section>
 

@@ -32,7 +32,7 @@ import {
   Clock,
   AlertTriangle
 } from "lucide-react";
-import { getUserAccessInfo } from "../utils/subscriptionUtils";
+import { getUserAccessInfo, PAYWALL_ENABLED } from "../utils/subscriptionUtils";
 
 interface AdminUser {
   email: string;
@@ -394,11 +394,6 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
   const pendingCount = athletes.filter(u => u.profile.subscriptionStatus === 'pending_payment' && !getUserAccessInfo(u.profile, u.email).isInTrial).length;
   const avgFtp = (athletes.filter(u => u.profile.ftp).reduce((sum, u) => sum + (u.profile.ftp || 0), 0) / (athletes.filter(u => u.profile.ftp).length || 1)).toFixed(0);
 
-  // Estimativa de faturamento de MVP (apenas atletas pagantes ativos - R$ 16,90/mês, desconsiderando o coach)
-  const estimatedRevenue = athletes.reduce((sum, u) => {
-    if (u.profile.subscriptionStatus !== 'active') return sum;
-    return sum + 16.90; // Plano Pro
-  }, 0).toFixed(2);
 
   // Consolidated feedbacks across all subscribers
   const allFeedbacks = users.flatMap(u => 
@@ -550,14 +545,14 @@ export default function AdminSubscribersPanel({ currentUserEmail, onClose, onRef
           </div>
         </div>
 
-        {/* Estimativa Faturamento */}
+        {/* Cobrança: sem meio de pagamento por enquanto (ADR-008) */}
         <div className="bg-slate-900 border border-slate-850 rounded-2xl p-4 shadow-xs flex items-center gap-3 text-white">
           <div className="p-2.5 bg-lime-500 text-slate-950 rounded-xl shrink-0">
             <DollarSign className="w-5 h-5" />
           </div>
           <div>
-            <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Receita Mensal</span>
-            <span className="text-lg font-bold font-heading text-lime-400">R$ {estimatedRevenue}</span>
+            <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Cobrança</span>
+            <span className="text-lg font-bold font-heading text-lime-400">{PAYWALL_ENABLED ? "Paywall ativo" : "Acesso liberado"}</span>
           </div>
         </div>
       </div>
