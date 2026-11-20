@@ -4,7 +4,7 @@
 
 ```text
 ┌──────────────────────┐   apiFetch (Bearer ID token)   ┌────────────────────────────┐
-│  SPA React 19 (Vite) │ ─────────────────────────────▶ │  API Express (server.ts)   │
+│  SPA React 19 (Vite) │ ─────────────────────────────▶ │  API Express (backend/)    │
 │  src/App.tsx         │                                │  requireAuth / RBAC / rate │
 │  Firebase Auth (cli) │ ◀───── JSON (planos, perfil) ── │  limit                     │
 └──────────┬───────────┘                                └──┬──────────┬──────────┬───┘
@@ -27,21 +27,24 @@ Um único processo Node serve a API e, fora da Vercel, também os arquivos do fr
 - **SEO:** `SeoContentPage` + `src/data/seoArticlesData.ts`; `robots.txt` e `sitemap.xml` são estáticos em `public/`.
 - **Analytics:** Meta Pixel (`src/lib/metaPixel.ts`, `VITE_FACEBOOK_PIXEL_ID`).
 
-### Backend (`server.ts`)
-Organizado em seções, na ordem do arquivo:
+### Backend (`server.ts` + `backend/`)
+O `server.ts` é só o ponto de entrada: cria o app, aplica os middlewares (JSON, rewrite da Vercel, log e rate limit), registra as rotas e sobe o servidor fora da Vercel. Também reexporta o que os testes usam. A lógica fica em `backend/`:
 
-| Seção | Responsabilidade |
+| Módulo | Responsabilidade |
 | --- | --- |
-| Init Firebase | SDK cliente (`firestore/lite`) e, se houver service account, `firebase-admin` |
-| Crypto/Auth | PBKDF2 (100k, SHA-256), verificação RS256 do ID token com as chaves públicas do Google, `verifyAdminSecret` |
-| Middlewares | `requireAuth`, `verifyUserMatch`, `requireAdmin`, rate limiters (`express-rate-limit`, em memória) |
-| Regras de acesso | `isTrialActive` (3 dias), `hasActiveAccess`, `sanitizeUserProfileInput`, `sanitizePlanForUser` (paywall) |
-| Persistência | `getDatabase` / `saveDatabase`, cache em memória com TTL, backups |
-| Rotas auth | `/api/auth/{register,login,save-user,session,check-status}` |
-| Rotas IA | `/api/{onboard,generate-plan,generate-next-week,evaluate-workout,chat}` |
-| Rotas admin | `/api/admin/{users,update-user-status,delete-user,backups*,mercadopago/create-plan}` |
-| Pagamentos | `/api/mercadopago/{config,create-subscription,create-preference,create-pix,webhook}` |
-| Bootstrap | Vite middleware (dev) ou `express.static(dist)` (prod), porta 3000 |
+| `backend/config.ts` | Variáveis de ambiente, Firebase (SDK `firestore/lite` e, se houver service account, `firebase-admin`), caminhos locais, conta master (`MASTER_ADMIN_EMAIL`, `isMasterAdminEmail`) |
+| `backend/util.ts` | Funções puras: `normalizeEmail`, `findUserInDb`, `sendServerError`, `getAuthToken` |
+| `backend/auth.ts` | PBKDF2 (100k, SHA-256), verificação RS256 do ID token com as chaves públicas do Google, `verifyAdminSecret`, `requireAuth`, `verifyUserMatch`, `requireAdmin`, `isCoachProfile` |
+| `backend/access.ts` | `isTrialActive` (3 dias), `hasActiveAccess`, `sanitizeUserProfileInput`, `resolveRequesterAccess`, `sanitizePlanForUser` (paywall), `createDefaultProfile` |
+| `backend/db.ts` | `getDatabase` / `getDatabaseForUpdate` / `saveDatabase`, cache em memória com TTL, REST do Firestore, backups, migração inicial |
+| `backend/ai.ts` | Cliente Gemini, `callGeminiWithFallback`, `PLAN_RESPONSE_SCHEMA`, prompts e funções `fallback*` |
+| `backend/rateLimit.ts` | Limitadores `express-rate-limit` (em memória, por instância) |
+| `backend/routes/users.ts` | `/api/auth/{register,login,save-user,session,check-status}`, `/api/workout/log-completion`, `/api/user/notify-payment` |
+| `backend/routes/ai.ts` | `/api/{onboard,generate-plan,generate-next-week,evaluate-workout,chat}` |
+| `backend/routes/admin.ts` | `/api/admin/{diagnostics,verify-access,users,update-user-status,delete-user,backups*}` |
+| `backend/routes/payments.ts` | `/api/mercadopago/{config,create-subscription,create-preference,create-pix,webhook}`, `/api/admin/mercadopago/create-plan` |
+
+Dependências entre os módulos: `config` → `util`; os demais importam `config`/`util` e uns aos outros só dentro de funções. Não há uso de import em tempo de carga dentro de um ciclo. Cada módulo de rotas exporta `register*Routes(app)`, e o `server.ts` chama todos **depois** dos limitadores.
 
 ## Fluxos principais
 
@@ -100,6 +103,5 @@ Ver [.env.example](../.env.example). Resumo:
 
 ## Dívidas técnicas conhecidas
 
-- `server.ts` monolítico (~2400 linhas). Candidatos a módulos: `auth/`, `db/`, `ai/`, `payments/` e `admin/`.
 - O rate limit fica em memória, por instância serverless: o limite efetivo é multiplicado pelo número de instâncias. Corrigir exige um store compartilhado, como o Redis ([#9](https://github.com/PedroBaliz/Biker-AI/issues/9)). As leituras de painel ainda podem ver dados com até 30 s de atraso, mas as gravações releem o usuário.
 - Não há integração com o Strava: o link da atividade é salvo apenas como referência.

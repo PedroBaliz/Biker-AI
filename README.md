@@ -99,7 +99,8 @@ biker-ai/
 │   ├── lib/                   # Utilitários de API, pixel, analytics e formatação
 │   ├── App.tsx                # Container e orquestração do frontend
 │   └── firebase.ts            # Inicialização e cliente Firebase SDK (Auth & Firestore)
-├── server.ts                  # Servidor Express Full-Stack (IA Gemini, API, Proxy, Auth)
+├── server.ts                  # Ponto de entrada do servidor Express (middlewares, rotas, bootstrap)
+├── backend/                   # API em módulos: config, auth, access, db, ai, rateLimit e routes/
 ├── firestore.rules            # Regras de segurança RBAC publicadas no Firestore
 ├── tests/                     # Suíte de testes automatizados com Vitest
 └── .github/workflows/         # Pipeline de Integração Contínua (CI)
@@ -122,7 +123,7 @@ biker-ai/
 - **Defesa Contra Escalada de Privilégios no Firestore (`firestore.rules`):**  
   As regras do Cloud Firestore utilizam uma lista restrita de campos editáveis combinada com `diff().affectedKeys().hasOnly(...)`. Essa validação impede que um usuário conceda privilégios a si mesmo (como adicionar ou alterar `role`, `isCoach`, `subscriptionStatus`, `subscriptionPlan`, `subscriptionExpiresAt` ou `createdAt`), mesmo quando esses campos estiverem ausentes no documento original.
 
-- **Pipeline de Autorização no Servidor Express (`server.ts`):**
+- **Pipeline de Autorização no Servidor Express (`backend/auth.ts`):**
   - `requireAuth`: exige token JWT oficial assinado pelo Google Firebase (RS256) ou credencial administrativa validada via `crypto.timingSafeEqual`.
   - `verifyUserMatch`: garante que um atleta autenticado só consiga ler ou modificar seus próprios registros, bloqueando qualquer tentativa de scraping ou alteração de dados de terceiros.
   - Sanitização de perfil na rota real `/api/auth/save-user`: apenas campos não-privilegiados do atleta (`name`, `level`, `goal`, `ftp`, `maxHeartRate`, etc.) podem ser atualizados pelo cliente; status de assinatura e papéis administrativos são rigorosamente preservados do banco.
