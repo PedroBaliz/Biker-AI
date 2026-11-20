@@ -49,7 +49,7 @@ Organizado em seções, na ordem do arquivo:
 1. Usuário loga com Firebase Auth no cliente.
 2. Cada request leva o ID token; `requireAuth` valida assinatura RS256, emissor e audiência e extrai o e-mail.
 3. `verifyUserMatch` garante que o e-mail do token é o dono do recurso (ou coach).
-4. `/api/admin/*` exige `requireAdmin`: e-mail = `ADMIN_EMAIL`, perfil com `role: coach|admin`, ou header `x-admin-password` (= `ADMIN_PASSWORD`).
+4. `/api/admin/*` exige `requireAdmin`: e-mail = `ADMIN_EMAIL` (sem fallback no código: sem a variável, o modo master fica desligado), perfil com `role: coach|admin`, ou header `x-admin-password` (= `ADMIN_PASSWORD`).
 
 ### Persistência de dados
 - Modelo: documento por usuário (chave = e-mail) com `profile`, `plan`, `chatHistory`, `feedbacks` e `workoutLogs`.
@@ -57,7 +57,7 @@ Organizado em seções, na ordem do arquivo:
 - **Escrita:** rotas que alteram um usuário leem o banco com `getDatabaseForUpdate(email)`, que relê do Firestore o registro daquele usuário (o cache de 30 s não é compartilhado entre instâncias e causaria *lost update*). `saveDatabase(db, email)` grava no disco e no Firestore só o usuário alterado. Se ambos falham, o dado fica só em memória (com aviso no log). `saveDatabase` sem e-mail regrava todos os usuários: só para restauração de backup.
 - Na Vercel o arquivo local fica em `os.tmpdir()` (efêmero) → **em produção o Firestore é a única fonte durável.**
 - Em execução local direta, `runInitialMigration` copia `users_db.json` para o Firestore se a coleção estiver vazia.
-- Regras do Firestore (`firestore.rules`): negar por padrão; dono lê e escreve só os campos permitidos; admin tem acesso total.
+- Regras do Firestore (`firestore.rules`): negar por padrão; dono lê e escreve só os campos permitidos; admin (documento `admins/{uid}`) tem acesso total. As regras não são publicadas pelo deploy: depois de alterá-las, publique-as no console do Firebase.
 
 ### Geração de planos com IA
 1. Onboarding coleta nível, objetivo, disponibilidade e métricas (FTP / FC máx. / RPE).
@@ -103,4 +103,3 @@ Ver [.env.example](../.env.example). Resumo:
 - `server.ts` monolítico (~2400 linhas). Candidatos a módulos: `auth/`, `db/`, `ai/`, `payments/` e `admin/`.
 - O rate limit fica em memória, por instância serverless: o limite efetivo é multiplicado pelo número de instâncias. Corrigir exige um store compartilhado, como o Redis ([#9](https://github.com/PedroBaliz/Biker-AI/issues/9)). As leituras de painel ainda podem ver dados com até 30 s de atraso, mas as gravações releem o usuário.
 - Não há integração com o Strava: o link da atividade é salvo apenas como referência.
-- O e-mail do admin master está fixo como padrão em `server.ts` e em `firestore.rules`.

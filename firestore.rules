@@ -17,11 +17,11 @@ service cloud.firestore {
       );
     }
 
+    // Admin = existe o documento admins/{uid}. Sem e-mail fixo nas regras:
+    // para dar acesso, crie admins/<UID do Firebase Auth> no console do Firestore.
     function isAdmin() {
-      return isSignedIn() && (
-        request.auth.token.email.lower() == 'pedro.bramos@sempreceub.com' ||
-        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
-      );
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
 
     // Explicit list of athlete-editable profile fields

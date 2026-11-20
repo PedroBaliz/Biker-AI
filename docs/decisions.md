@@ -69,3 +69,20 @@ Formato: ID sequencial, status (`aceita` | `substituída por ADR-NNN` | `rejeita
 - `AccountSettings` mostra "Invalid Date" para expirações em ISO completo.
 
 **Consequências:** quando o provedor for escolhido, comece por esta lista ([#6](https://github.com/PedroBaliz/Biker-AI/issues/6)) e substitua esta ADR.
+
+---
+
+## ADR-006: Conta master só por variável de ambiente; admin no Firestore por `admins/{uid}`
+
+**Status:** aceita · **Data:** 2026-11-20 · **Issue:** [#11](https://github.com/PedroBaliz/Biker-AI/issues/11)
+
+**Contexto:** o e-mail da conta master estava fixo como fallback de `ADMIN_EMAIL` em `server.ts` e literal em `firestore.rules`. Trocar o admin exigia mudar o código, e o e-mail ficava exposto no repositório.
+
+**Decisão:**
+- `server.ts`: `MASTER_ADMIN_EMAIL` vem só de `ADMIN_EMAIL`, validado por `normalizeEmail`. Toda comparação passa por `isMasterAdminEmail`, que é sempre falso sem a variável.
+- `firestore.rules`: `isAdmin()` checa só a existência de `admins/{uid}`.
+
+**Consequências:**
+- Sem `ADMIN_EMAIL`, o modo master fica desligado. Coaches por `role` e o `ADMIN_PASSWORD` continuam funcionando.
+- `ADMIN_EMAIL` é obrigatório na Vercel.
+- Antes de publicar as regras, crie `admins/<UID>` no Firestore para cada admin. Sem o Admin SDK, o servidor lê o Firestore com o token do usuário, e o painel admin depende dessa regra.

@@ -287,7 +287,24 @@ async function verifyFirebaseIdToken(token: string, projectId: string): Promise<
   return decodedToken;
 }
 
-const MASTER_ADMIN_EMAIL = (process.env.ADMIN_EMAIL || "pedro.bramos@sempreceub.com").trim().toLowerCase();
+/**
+ * Conta master (treinador principal), definida só por variável de ambiente.
+ * Sem ADMIN_EMAIL válido o modo master fica desligado: nenhum e-mail recebe o privilégio
+ * (coach/admin por `role` no banco e a credencial x-admin-password continuam valendo).
+ */
+const MASTER_ADMIN_EMAIL: string | null = normalizeEmail(process.env.ADMIN_EMAIL);
+if (!MASTER_ADMIN_EMAIL && !IS_TEST_RUN) {
+  console.warn("[Config] ADMIN_EMAIL ausente ou inválido: conta master desativada.");
+}
+
+/** Identidade usada quando o acesso admin vem da credencial x-admin-password (sem e-mail master configurado). */
+const ADMIN_SECRET_IDENTITY = "admin-secret";
+
+/** Compara com a conta master; sempre falso quando ADMIN_EMAIL não está configurado. */
+function isMasterAdminEmail(email: unknown): boolean {
+  if (!MASTER_ADMIN_EMAIL || typeof email !== "string") return false;
+  return email.trim().toLowerCase() === MASTER_ADMIN_EMAIL;
+}
 
 function verifyAdminSecret(providedSecret?: string): boolean {
   const envSecret = process.env.ADMIN_PASSWORD;
@@ -313,7 +330,7 @@ async function requireAuth(req: any, res: any, next: any) {
 
     if (adminPassword && verifyAdminSecret(adminPassword)) {
       if (isAdminRoute || requestPath === "") {
-        req.user = { email: MASTER_ADMIN_EMAIL, isAdmin: true, role: "coach" };
+        req.user = { email: MASTER_ADMIN_EMAIL || ADMIN_SECRET_IDENTITY, isAdmin: true, role: "coach" };
         return next();
       }
       return res.status(403).json({ error: "Credencial administrativa não pode ser usada em rotas de usuário. Use um token de atleta ou a rota administrativa correta." });
@@ -398,7 +415,7 @@ async function verifyUserMatch(req: any, res: any, next: any) {
   }
 
   const bodyEmail = normalizeEmail(requestedEmail.toString()) || requestedEmail.toString().trim().toLowerCase();
-  const isMasterCoach = authEmail === MASTER_ADMIN_EMAIL;
+  const isMasterCoach = isMasterAdminEmail(authEmail);
 
   if (isMasterCoach || authEmail === bodyEmail) {
     return next();
@@ -423,7 +440,7 @@ async function verifyUserMatch(req: any, res: any, next: any) {
  */
 function isCoachProfile(profile: any, email?: string | null): boolean {
   const e = (email || profile?.email || "").toString().trim().toLowerCase();
-  return e === MASTER_ADMIN_EMAIL ||
+  return isMasterAdminEmail(e) ||
     profile?.role === "coach" ||
     profile?.role === "admin" ||
     profile?.isCoach === true;
@@ -494,7 +511,7 @@ function sanitizeUserProfileInput(incomingProfile: any, existingProfile: any = {
 async function resolveRequesterAccess(req: any): Promise<boolean> {
   const email = normalizeEmail(req.user?.email);
   if (!email) return false;
-  if (email === MASTER_ADMIN_EMAIL) return true;
+  if (isMasterAdminEmail(email)) return true;
   const db = await getDatabase(false, getAuthToken(req));
   const profile = findUserInDb(db, email)?.user?.profile;
   if (!profile) return false;
@@ -534,7 +551,7 @@ function sanitizePlanByAccess(plan: any, isSubscriber: boolean) {
  * Sem métricas inventadas: FTP, FC etc. ficam nulos até o atleta responder o onboarding.
  */
 function createDefaultProfile(email: string, name?: string): Record<string, any> {
-  const isCoach = email === MASTER_ADMIN_EMAIL;
+  const isCoach = isMasterAdminEmail(email);
   const profile: Record<string, any> = {
     name: (name || "").trim() || (isCoach ? "Treinador" : email.split("@")[0]),
     level: "",
@@ -565,7 +582,7 @@ async function requireAdmin(req: any, res: any, next: any) {
 
   if (adminPassword && verifyAdminSecret(adminPassword)) {
     req.user = req.user || {};
-    if (!req.user.email) req.user.email = MASTER_ADMIN_EMAIL;
+    if (!req.user.email) req.user.email = MASTER_ADMIN_EMAIL || ADMIN_SECRET_IDENTITY;
     return next();
   }
 
@@ -574,7 +591,7 @@ async function requireAdmin(req: any, res: any, next: any) {
     return res.status(401).json({ error: "Sessão inválida. Realize login para continuar." });
   }
 
-  if (authEmail === MASTER_ADMIN_EMAIL) {
+  if (isMasterAdminEmail(authEmail)) {
     return next();
   }
 
@@ -990,7 +1007,7 @@ async function getDatabaseWithSource(forceRefresh = false, idToken?: string): Pr
     } catch (localErr: any) {}
   }
 
-  if (!findUserInDb(localDb, MASTER_ADMIN_EMAIL)) {
+  if (MASTER_ADMIN_EMAIL && !findUserInDb(localDb, MASTER_ADMIN_EMAIL)) {
     localDb[MASTER_ADMIN_EMAIL] = {
       email: MASTER_ADMIN_EMAIL,
       profile: { ...createDefaultProfile(MASTER_ADMIN_EMAIL), createdAt: "2026-01-01T00:00:00.000Z" },
@@ -1285,7 +1302,7 @@ app.post("/api/auth/login", async (req, res) => {
     }
 
     if (user.profile) {
-      if (!user.profile.role) user.profile.role = email.trim().toLowerCase() === MASTER_ADMIN_EMAIL ? "coach" : "athlete";
+      if (!user.profile.role) user.profile.role = isMasterAdminEmail(email) ? "coach" : "athlete";
       if (!user.profile.subscriptionStatus) user.profile.subscriptionStatus = (user.profile.role === "coach") ? "active" : "pending_payment";
       if (!user.profile.subscriptionPlan) user.profile.subscriptionPlan = "Plano Pro";
       if (!user.profile.subscriptionExpiresAt) user.profile.subscriptionExpiresAt = "2026-12-31";
@@ -1342,7 +1359,7 @@ app.post("/api/auth/save-user", requireAuth, verifyUserMatch, async (req: any, r
     const adminSecretStr = typeof adminHeader === "string" ? adminHeader : undefined;
     const isAdminCaller = Boolean(
       (adminSecretStr && verifyAdminSecret(adminSecretStr)) ||
-      requesterEmail === MASTER_ADMIN_EMAIL
+      isMasterAdminEmail(requesterEmail)
     );
 
     const existingCreatedAt = existingUser?.profile?.createdAt || existingUser?.createdAt || new Date().toISOString();
@@ -1980,7 +1997,7 @@ app.post("/api/admin/verify-access", requireAuth, async (req: any, res: any) => 
     const { password } = req.body;
     const authEmail = (req.user?.email || "").toString().trim().toLowerCase();
 
-    if ((password && verifyAdminSecret(password)) || authEmail === MASTER_ADMIN_EMAIL) {
+    if ((password && verifyAdminSecret(password)) || isMasterAdminEmail(authEmail)) {
       return res.json({ success: true, authorized: true });
     }
 
@@ -2038,7 +2055,7 @@ app.post("/api/admin/update-user-status", requireAuth, requireAdmin, async (req,
     const db = await getDatabase(true, getAuthToken(req));
     const userFound = findUserInDb(db, email);
     if (!userFound) return res.status(404).json({ error: "Usuário não encontrado." });
-    if (email === MASTER_ADMIN_EMAIL && role === "athlete") {
+    if (isMasterAdminEmail(email) && role === "athlete") {
       return res.status(403).json({ error: "O treinador principal não pode ser rebaixado." });
     }
 
@@ -2079,7 +2096,7 @@ app.post("/api/admin/delete-user", requireAuth, requireAdmin, async (req, res) =
   try {
     const email = normalizeEmail(req.body?.email);
     if (!email) return res.status(400).json({ error: "E-mail do usuário é obrigatório." });
-    if (email === MASTER_ADMIN_EMAIL) return res.status(403).json({ error: "O treinador principal não pode ser excluído." });
+    if (isMasterAdminEmail(email)) return res.status(403).json({ error: "O treinador principal não pode ser excluído." });
 
     const db = await getDatabase(true, getAuthToken(req));
     const userFound = findUserInDb(db, email);
@@ -2477,7 +2494,8 @@ export {
   callGeminiWithFallback,
   fallbackGeneratePlan,
   createDefaultProfile,
-  MASTER_ADMIN_EMAIL
+  MASTER_ADMIN_EMAIL,
+  isMasterAdminEmail
 };
 
 export default app;
