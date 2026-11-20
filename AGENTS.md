@@ -1,7 +1,7 @@
 # AGENTS.md — Guia para agentes de IA e colaboradores
 
 Biker AI: treinador de ciclismo com IA (Gemini). SPA React + API Express num único repositório.
-Arquitetura detalhada: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+Arquitetura detalhada: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Estado atual: [docs/progress.md](docs/progress.md). Decisões (ADR): [docs/decisions.md](docs/decisions.md).
 
 ## Comandos
 
@@ -53,8 +53,18 @@ Antes de concluir qualquer mudança: `npm run lint && npm test`. O CI ([.github/
 - Acesso pago em rotas novas: use `resolveRequesterAccess(req)` (lê o perfil do banco). Nunca decida acesso pelo `profile` enviado no corpo da requisição.
 - Testes rodam com o Firestore desligado (`VITEST` definido) e usam só o `users_db.json` local; autenticação em testes via `setTestAuthToken`.
 
+## Protocolo de sessão
+
+**Início:** leia [docs/progress.md](docs/progress.md) (estado atual e próximo passo). Para mudanças estruturais, leia também [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) e [docs/decisions.md](docs/decisions.md). Nunca reverta uma decisão registrada sem criar uma ADR que a substitua.
+
+**Fim** (antes de commitar):
+1. Atualize `docs/progress.md`: o que foi feito, o que ficou pendente e um próximo passo específico.
+2. Decisão técnica nova ou revertida → nova ADR em `docs/decisions.md`.
+3. Mudança visível ao usuário → `CHANGELOG.md`, em `[Não lançado]`.
+4. Pendência ou dívida técnica nova → GitHub Issue (o backlog fica lá). Dívida estrutural também entra em "Dívidas técnicas conhecidas" do `docs/ARCHITECTURE.md`.
+
 ## Fluxo de trabalho
 
 - Branch a partir de `main`; commits no estilo Conventional Commits (`feat:`, `fix:`, `refactor:`, `build:`).
-- Mudanças visíveis ao usuário entram no `CHANGELOG.md` (quando existir).
+- Mudanças visíveis ao usuário entram no [CHANGELOG.md](CHANGELOG.md).
 - Deploy: push em `main` → Vercel roda `npm run vercel-build`. Rollback: "Promote" de um deploy anterior no painel da Vercel.
