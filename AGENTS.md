@@ -58,7 +58,7 @@ Antes de concluir qualquer mudança: `npm run lint && npm test`. O CI ([.github/
 **Início:** leia [docs/progress.md](docs/progress.md) (estado atual e próximo passo). Para mudanças estruturais, leia também [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) e [docs/decisions.md](docs/decisions.md). Nunca reverta uma decisão registrada sem criar uma ADR que a substitua.
 
 **Fim** (antes de commitar):
-1. Atualize `docs/progress.md`: o que foi feito, o que ficou pendente e um próximo passo específico.
+1. Atualize `docs/progress.md`: o que foi feito, o que ficou pendente, um próximo passo específico e a linha de **Medição** da sessão (como medir está no topo do arquivo).
 2. Decisão técnica nova ou revertida → nova ADR em `docs/decisions.md`.
 3. Mudança visível ao usuário → `CHANGELOG.md`, em `[Não lançado]`.
 4. Pendência ou dívida técnica nova → GitHub Issue (o backlog fica lá). Dívida estrutural também entra em "Dívidas técnicas conhecidas" do `docs/ARCHITECTURE.md`.
