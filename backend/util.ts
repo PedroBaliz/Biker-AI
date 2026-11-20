@@ -18,7 +18,11 @@ export function findUserInDb(db: Record<string, any>, email: string): { key: str
   if (!email || !db || typeof email !== "string") return null;
   const emailKey = normalizeEmail(email) || email.trim().toLowerCase();
   const cleanKey = emailKey.replace(/[^a-z0-9]/g, "_");
-  // Só chaves próprias do objeto: impede que "__proto__"/"constructor" retornem o protótipo.
+  // Nomes que dão acesso ao protótipo nunca são chave de usuário: quem chama altera o registro
+  // devolvido (user.profile = ...), e isso não pode alcançar Object.prototype.
+  if (emailKey === "__proto__" || emailKey === "constructor" || emailKey === "prototype") return null;
+  if (cleanKey === "__proto__" || cleanKey === "constructor" || cleanKey === "prototype") return null;
+  // Só chaves próprias do objeto.
   const own = (k: string) => Object.prototype.hasOwnProperty.call(db, k) && db[k];
 
   if (own(emailKey)) return { key: emailKey, user: db[emailKey] };
@@ -31,7 +35,8 @@ export function findUserInDb(db: Record<string, any>, email: string): { key: str
     return kLower === emailKey || kClean === cleanKey || userEmail === emailKey;
   });
 
-  if (targetKey && db[targetKey]) {
+  if (!targetKey || targetKey === "__proto__" || targetKey === "constructor" || targetKey === "prototype") return null;
+  if (db[targetKey]) {
     return { key: targetKey, user: db[targetKey] };
   }
   return null;

@@ -220,7 +220,12 @@ export function registerAdminRoutes(app: Express) {
       if (!/^users_db_backup_[A-Za-z0-9_.-]+\.json$/.test(filename)) {
         return res.status(400).json({ error: "Nome de backup inválido." });
       }
-      const backupPath = path.join(BACKUPS_DIR, filename);
+      // Além da regex (sem "/" nem "\"), confirma que o caminho resolvido fica dentro da pasta de backups.
+      const backupsRoot = path.resolve(BACKUPS_DIR);
+      const backupPath = path.resolve(backupsRoot, filename);
+      if (!backupPath.startsWith(backupsRoot + path.sep)) {
+        return res.status(400).json({ error: "Nome de backup inválido." });
+      }
       const backupDb = JSON.parse(await fs.promises.readFile(backupPath, "utf-8"));
       if (!backupDb || Array.isArray(backupDb) || typeof backupDb !== "object") {
         return res.status(400).json({ error: "Conteúdo de backup inválido." });
