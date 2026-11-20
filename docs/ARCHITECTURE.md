@@ -49,7 +49,7 @@ Organizado em seções, na ordem do arquivo:
 1. Usuário loga com Firebase Auth no cliente.
 2. Cada request leva o ID token; `requireAuth` valida assinatura RS256, emissor e audiência e extrai o e-mail.
 3. `verifyUserMatch` garante que o e-mail do token é o dono do recurso (ou coach).
-4. `/api/admin/*` exige `requireAdmin`: e-mail = `ADMIN_EMAIL`, perfil com `role: coach|admin`, ou header `x-admin-password` (= `ADMIN_PASSWORD`).
+4. `/api/admin/*` exige `requireAdmin`: e-mail = `ADMIN_EMAIL` (sem fallback no código: sem a variável, o modo master fica desligado), perfil com `role: coach|admin`, ou header `x-admin-password` (= `ADMIN_PASSWORD`).
 
 ### Persistência de dados
 - Modelo: documento por usuário (chave = e-mail) com `profile`, `plan`, `chatHistory`, `feedbacks` e `workoutLogs`.
@@ -57,7 +57,7 @@ Organizado em seções, na ordem do arquivo:
 - **Escrita:** `saveDatabase` grava no disco e no Firestore. Se ambos falham, o dado fica só em memória (com aviso no log).
 - Na Vercel o arquivo local fica em `os.tmpdir()` (efêmero) → **em produção o Firestore é a única fonte durável.**
 - Em execução local direta, `runInitialMigration` copia `users_db.json` para o Firestore se a coleção estiver vazia.
-- Regras do Firestore (`firestore.rules`): negar por padrão; dono lê e escreve só os campos permitidos; admin tem acesso total.
+- Regras do Firestore (`firestore.rules`): negar por padrão; dono lê e escreve só os campos permitidos; admin (documento `admins/{uid}`) tem acesso total. As regras não são publicadas pelo deploy: depois de alterá-las, publique-as no console do Firebase.
 
 ### Geração de planos com IA
 1. Onboarding coleta nível, objetivo, disponibilidade e métricas (FTP / FC máx. / RPE).
@@ -103,4 +103,3 @@ Ver [.env.example](../.env.example). Resumo:
 - `server.ts` monolítico (~2400 linhas). Candidatos a módulos: `auth/`, `db/`, `ai/`, `payments/` e `admin/`.
 - O rate limit e o cache do banco ficam em memória: não são compartilhados entre instâncias serverless.
 - Não há integração com o Strava: o link da atividade é salvo apenas como referência.
-- O e-mail do admin master está fixo como padrão em `server.ts` e em `firestore.rules`.
