@@ -34,10 +34,16 @@ Estado atual do projeto. Leia no início de cada sessão e atualize no fim (ver 
 - [#14](https://github.com/PedroBaliz/Biker-AI/issues/14) fechada: os alertas do `grpc-js` (#25, #23) e do `uuid` (#1) foram dispensados como código não usado em runtime. A correção real do `uuid` exige o `firebase-admin` 14 (Node 22+); o 13 foi testado e não resolve.
 - Caderno de produto "Biker AI" criado no MemorySmith: visão do produto, decisões de negócio abertas (DN-001 pagamento, DN-002 Strava) e casos (CASO-001 a 004).
 
+- [PR #16](https://github.com/PedroBaliz/Biker-AI/pull/16) mergeada (fecha #11): e-mail do admin master só via `ADMIN_EMAIL`, sem fallback; `firestore.rules` com `isAdmin()` só por `admins/{uid}` (ADR-006).
+- [PR #17](https://github.com/PedroBaliz/Biker-AI/pull/17) mergeada (parte da #9): `getDatabaseForUpdate` relê o usuário antes de alterar; `delete-user` não regrava mais todos os usuários.
+- Produção conferida após os merges (deploy `8a06e45`): página e API respondem.
+
 ### Pendente
-- [PR #16](https://github.com/PedroBaliz/Biker-AI/pull/16) (#11, e-mail do admin só via `ADMIN_EMAIL`), aberta. **Antes do merge:** definir `ADMIN_EMAIL` na Vercel. **Antes de publicar as regras:** criar `admins/<UID>` no Firestore.
-- [PR #17](https://github.com/PedroBaliz/Biker-AI/pull/17) (#9, lost update entre instâncias), aberta. Testar no deploy preview antes do merge: o caminho novo não roda nos testes.
-- #7 e #8 (quebrar `server.ts` e `App.tsx`): esperar o merge da #16 e da #17, que mexem no `server.ts`.
+- **Confirmar `ADMIN_EMAIL` na Vercel.** Sem ele, a conta master está sem privilégio em produção desde a #16. O painel admin continua acessível por `ADMIN_PASSWORD` e por perfis com `role: coach`.
+- **Antes de publicar o `firestore.rules` novo:** criar `admins/<UID>` no Firestore. As regras não vão com o deploy, então as de produção continuam as antigas até serem publicadas.
+- **Validar a #17 em produção:** salvar o perfil, gerar um plano, registrar um treino e excluir um usuário de teste. O caminho novo não roda nos testes (Firestore desligado).
+- #9 segue aberta só para o rate limit compartilhado, que precisa de um store externo (Redis).
+- #7 e #8 (quebrar `server.ts` e `App.tsx`) estão desbloqueadas: a #16 e a #17 já entraram.
 
 ### Decisões tomadas
 - Backlog nas GitHub Issues, sem `tasks/*.md`: o fluxo já é por PR.
@@ -48,7 +54,14 @@ Estado atual do projeto. Leia no início de cada sessão e atualize no fim (ver 
 ### Medição
 | Tokens | Reorientação | Reexplicações | Bugs pegos na revisão | Tempo |
 |---|---|---|---|---|
-| não medida | não medida | — | 2 (lost update, fallback de admin) | — |
+| (pendente: `/cost`) | não mensurável (sessão sem `progress.md` no início) | 0 | 2 no código (lost update, fallback de admin) + 3 erros do agente pegos | ~1h35 de escrita (14:59–16:34) |
+
+Sessão de **linha de base**: começou sem `progress.md`, então representa o cenário "sem protocolo". A primeira sessão que retomar por este arquivo é a primeira medição "com protocolo". Os 3 erros do agente pegos foram:
+- contagem de alertas do Dependabot incompleta, corrigida com `state=open&per_page=100`;
+- checklist de exemplo marcado como feito antes do merge;
+- este `progress.md` dando a #16 e a #17 como abertas depois de elas já terem sido mergeadas.
+
+Entregas da sessão: 7 PRs mergeadas (#12, #13, #15, #16, #17, #18 e esta), 7 issues criadas, 2 fechadas.
 
 ## Sessão 2026-11-16
 
