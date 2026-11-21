@@ -56,7 +56,7 @@ Formato: ID sequencial, status (`aceita` | `substituída por ADR-NNN` | `rejeita
 
 ## ADR-005: Trabalho de pagamentos em espera
 
-**Status:** aceita · **Data:** 2026-11-16
+**Status:** substituída por ADR-008 · **Data:** 2026-11-16
 
 **Contexto:** ainda não há meio de pagamento definido. O PR de pagamentos planejado na revisão de código foi cancelado. Corrigir a expiração agora cortaria o acesso, em 2027-01-01, de usuários ativados manualmente.
 
@@ -104,3 +104,26 @@ Formato: ID sequencial, status (`aceita` | `substituída por ADR-NNN` | `rejeita
 **Consequências:**
 - Rota nova vai no módulo da área. O `server.ts` não volta a crescer.
 - A divisão foi mecânica, sem mudança de comportamento: as mesmas 35 rotas com os mesmos middlewares, os mesmos 61 testes e o mesmo bundle (`build/`).
+
+---
+
+## ADR-008: Sem meio de pagamento por enquanto: acesso liberado e Strava removido
+
+**Status:** aceita · **Data:** 2026-11-20 · **Substitui:** ADR-005 · **Issues:** [#6](https://github.com/PedroBaliz/Biker-AI/issues/6), [#10](https://github.com/PedroBaliz/Biker-AI/issues/10)
+
+**Contexto:** não há meio de pagamento definido. A integração com o Mercado Pago nunca funcionou de ponta a ponta: a renovação mensal era ignorada pelo webhook e o Pix não notificava. Sem pagamento, o trial de 3 dias bloquearia todo atleta novo sem saída. O Strava só guardava um link, sem importar dados.
+
+**Decisão:**
+- **Paywall desligado por padrão.** `PAYWALL_ENABLED` (servidor, em `backend/config.ts`) e `VITE_PAYWALL_ENABLED` (cliente, em `src/utils/subscriptionUtils.ts`) ficam vazios. Assim, `hasActiveAccess` e `getUserAccessInfo` liberam tudo para qualquer atleta logado (`accessType: "free_access"`).
+- A lógica de trial e de `subscriptionStatus` **continua** no código, e os testes rodam com as duas chaves ligadas para mantê-la validada.
+- **Removidos:**
+  - rotas `/api/mercadopago/*`, `/api/admin/mercadopago/create-plan` e `/api/user/notify-payment`;
+  - `backend/routes/payments.ts`, `SubscriptionWall`, `SubscriptionCheckoutModal` e o SDK `@mercadopago/sdk-js`;
+  - as variáveis `MERCADO_PAGO_*`.
+- Onde o app abria o checkout (só alcançável com o paywall ligado), ele passa a abrir o contato com o treinador.
+- Textos públicos atualizados para "gratuito nesta fase": página inicial, Termos de Uso, Política de Privacidade, contato, Configurações, rodapé e o `price` do JSON-LD.
+- **Strava removido:** o campo do link e o botão "Ver atividade" saíram do registro de treino, e `actualStravaLink` saiu do tipo `Workout`. Links antigos ficam no banco, sem uso.
+
+**Consequências:**
+- Para cobrar de novo, é preciso primeiro integrar um provedor, com o webhook de renovação. Depois, ligar as duas chaves juntas, atualizar Termos e Privacidade com 30 dias de aviso (seção 5 dos Termos) e substituir esta ADR.
+- `VITE_PAYWALL_ENABLED` é lido como `import.meta.env.VITE_PAYWALL_ENABLED`, de forma literal: o Vite só substitui o padrão exato, e um `(import.meta as any).env` nunca seria lido.

@@ -69,7 +69,6 @@ O **Biker AI** auxilia na estruturação de treinos combinando a capacidade anal
 ### 4. Registro e Análise de Treinos Realizados
 
 - Registro manual das métricas do pedal: quilometragem, ganho de elevação, velocidade média, potência e batimentos cardíacos.
-- Link da atividade no Strava salvo como referência (a importação automática ainda não existe).
 - Avaliação por IA comparando o treino prescrito com o que o atleta registrou.
 
 ### 5. Exportação em PDF Formatado
@@ -83,10 +82,10 @@ O **Biker AI** auxilia na estruturação de treinos combinando a capacidade anal
 - Criação e restauração de backups instantâneos do banco de dados.
 - Moderação e controle de acessos com credenciais restritas e verificação criptográfica.
 
-### 7. Assinaturas & Período de Teste Gratuito
+### 7. Acesso
 
-- Teste gratuito (*trial*) de 3 dias sem bloqueio de funcionalidades.
-- Muro de assinatura transparente integrado ao Mercado Pago (Checkout transparente e Pix instantâneo com QR Code dinâmico).
+- Gratuito nesta fase: todos os recursos liberados para qualquer atleta, sem cartão de crédito.
+- A lógica de trial e assinatura continua no código, desligada (`PAYWALL_ENABLED`), para quando houver um meio de pagamento.
 
 ---
 

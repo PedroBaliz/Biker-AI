@@ -39,6 +39,7 @@ export default function AccountSettings({ currentUser, onUpdateAccount, onClose,
   // Tabs: 'account', 'athlete', or 'subscription'
   const [activeTab, setActiveTab] = useState<"account" | "athlete" | "subscription">("athlete");
   const accessInfo = getUserAccessInfo(currentUser.profile, currentUser.email);
+  const isFreeAccess = accessInfo.accessType === "free_access";
 
   // Account inputs
   const [name, setName] = useState(currentUser.profile.name);
@@ -221,8 +222,8 @@ export default function AccountSettings({ currentUser, onUpdateAccount, onClose,
           }`}
         >
           <CreditCard className="w-4 h-4" />
-          <span className="hidden sm:inline">Minha Assinatura</span>
-          <span className="inline sm:hidden">Plano</span>
+          <span className="hidden sm:inline">Meu Acesso</span>
+          <span className="inline sm:hidden">Acesso</span>
         </button>
       </div>
 
@@ -567,13 +568,15 @@ export default function AccountSettings({ currentUser, onUpdateAccount, onClose,
             <div className="bg-slate-900 text-white rounded-2xl p-5 border border-slate-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div className="space-y-1">
                 <span className="text-[10px] text-lime-400 uppercase font-bold tracking-wider font-mono">
-                  {accessInfo.isActiveSubscriber ? "Assinatura Pro Ativa" : accessInfo.isInTrial ? "Período de Teste Gratuito" : "Status da Assinatura"}
+                  {isFreeAccess ? "Acesso liberado" : accessInfo.isActiveSubscriber ? "Assinatura Pro Ativa" : accessInfo.isInTrial ? "Período de Teste Gratuito" : "Status da Assinatura"}
                 </span>
                 <h4 className="text-lg font-black font-heading leading-tight">
-                  Plano {currentUser.profile.subscriptionPlan || "Plano Pro Biker AI"}
+                  {isFreeAccess ? "Acesso completo ao Biker AI" : <>Plano {currentUser.profile.subscriptionPlan || "Plano Pro Biker AI"}</>}
                 </h4>
                 <p className="text-xs text-slate-400 font-sans">
-                  {accessInfo.isInTrial ? (
+                  {isFreeAccess ? (
+                    "Todos os recursos estão liberados para os atletas nesta fase, sem cobrança."
+                  ) : accessInfo.isInTrial ? (
                     <>Avaliação gratuita: <strong>{accessInfo.trialDaysRemaining > 1 ? `${accessInfo.trialDaysRemaining} dias restantes` : `${accessInfo.trialHoursRemaining}h restantes`}</strong></>
                   ) : currentUser.profile.subscriptionExpiresAt ? (
                     <>Válido até: <strong>{new Date(currentUser.profile.subscriptionExpiresAt + 'T00:00:00').toLocaleDateString('pt-BR')}</strong></>
@@ -587,14 +590,14 @@ export default function AccountSettings({ currentUser, onUpdateAccount, onClose,
 
               <div className="flex items-center gap-2 bg-slate-800/80 px-3 py-1.5 rounded-xl border border-slate-700">
                 <div className={`w-2 h-2 rounded-full ${
-                  accessInfo.isActiveSubscriber || accessInfo.isCoach
+                  isFreeAccess || accessInfo.isActiveSubscriber || accessInfo.isCoach
                     ? "bg-lime-400 animate-ping"
                     : accessInfo.isInTrial
                     ? "bg-sky-400 animate-pulse"
                     : "bg-amber-400 animate-pulse"
                 }`}></div>
                 <span className={`text-xs font-bold font-mono uppercase tracking-wide ${
-                  accessInfo.isActiveSubscriber || accessInfo.isCoach
+                  isFreeAccess || accessInfo.isActiveSubscriber || accessInfo.isCoach
                     ? "text-lime-400"
                     : accessInfo.isInTrial
                     ? "text-sky-300"
@@ -605,8 +608,8 @@ export default function AccountSettings({ currentUser, onUpdateAccount, onClose,
               </div>
             </div>
 
-            {/* Subscribe to plan button */}
-            {onOpenSubscriptionCheckout && (
+            {/* Sem meio de pagamento (ADR-008): quem estiver bloqueado fala com o treinador. */}
+            {onOpenSubscriptionCheckout && !isFreeAccess && !accessInfo.isActiveSubscriber && !accessInfo.isCoach && (
               <button
                 type="button"
                 id="account-settings-subscribe-btn"
@@ -617,11 +620,7 @@ export default function AccountSettings({ currentUser, onUpdateAccount, onClose,
                 className="w-full py-3.5 px-5 bg-gradient-to-r from-lime-400 via-lime-500 to-emerald-400 hover:from-lime-300 hover:to-emerald-300 text-slate-950 font-heading font-black text-xs uppercase tracking-wider rounded-xl transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2.5 cursor-pointer active:scale-98"
               >
                 <Sparkles className="w-4 h-4 text-slate-950 shrink-0" />
-                <span>
-                  {accessInfo.isActiveSubscriber 
-                    ? "Ver Informações da Assinatura / Pagamento" 
-                    : "Aderir ao Plano Pro • R$ 16,90/mês"}
-                </span>
+                <span>Falar com o treinador para liberar o acesso</span>
               </button>
             )}
 

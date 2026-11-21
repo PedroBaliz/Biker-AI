@@ -22,11 +22,11 @@ Antes de concluir qualquer mudança: `npm run lint && npm test`. O CI ([.github/
   - `config.ts` — env, Firebase, conta master;
   - `util.ts` — funções puras;
   - `auth.ts` — token e middlewares;
-  - `access.ts` — trial, paywall, campos editáveis;
+  - `access.ts` — trial, paywall (desligado, ADR-008), campos editáveis;
   - `db.ts` — cache, Firestore, backups;
   - `ai.ts` — Gemini e fallbacks;
   - `rateLimit.ts` — limitadores;
-  - `routes/` — `users`, `ai`, `admin` e `payments`; cada um exporta `register*Routes(app)`.
+  - `routes/` — `users`, `ai` e `admin`; cada um exporta `register*Routes(app)`.
 
   Rota nova vai no módulo da área, nunca de volta no `server.ts`.
 - [src/App.tsx](src/App.tsx) — orquestração do frontend: estado, sessão e as telas (~2.400 linhas; a divisão continua na #8). Componentes em [src/components/](src/components/). Lógica sem UI vai em [src/lib/](src/lib/) (ex.: `exportPlanPdf.ts`). Bloco novo de tela vira componente com props tipadas, não mais JSX dentro do `App`.
@@ -49,9 +49,9 @@ Antes de concluir qualquer mudança: `npm run lint && npm test`. O CI ([.github/
    Ao adicionar um campo de perfil editável, atualize **os dois** lugares e os testes.
 2. **Rotas de atleta** usam `requireAuth, verifyUserMatch` (o atleta só acessa os próprios dados). **Rotas admin** (`/api/admin/*`) usam `requireAuth, requireAdmin`. Rota nova sem middleware = bug.
 3. A credencial `x-admin-password` só vale em `/api/admin/*` — comparação sempre com `crypto.timingSafeEqual`.
-4. Conteúdo pago: planos passam por `sanitizePlanForUser` antes de sair para o cliente; acesso decidido por `hasActiveAccess` (coach, assinatura `active` ou trial de 3 dias).
+4. Conteúdo pago: planos passam por `sanitizePlanForUser` antes de sair para o cliente; acesso decidido só por `hasActiveAccess` (servidor) e `getUserAccessInfo` (cliente). **O paywall está desligado** (`PAYWALL_ENABLED` / `VITE_PAYWALL_ENABLED`, ADR-008): todo atleta tem acesso. Não há meio de pagamento; não religue o paywall sem integrar um.
 5. Logs registram só método, rota e status — nunca headers, tokens ou corpo.
-6. Segredos só via variáveis de ambiente (ver [.env.example](.env.example)). `GEMINI_API_KEY` e tokens do Mercado Pago são **server-side**; só variáveis `VITE_*` vão para o bundle do cliente.
+6. Segredos só via variáveis de ambiente (ver [.env.example](.env.example)). `GEMINI_API_KEY` e qualquer credencial de terceiros são **server-side**; só variáveis `VITE_*` vão para o bundle do cliente.
 
 ## Convenções
 

@@ -1,6 +1,7 @@
 // Regras de acesso pago: trial, assinatura, campos de perfil editáveis pelo atleta e mascaramento da planilha (paywall).
+// O paywall está desligado por padrão (PAYWALL_ENABLED, ADR-008).
 import { isCoachProfile } from "./auth";
-import { isMasterAdminEmail } from "./config";
+import { PAYWALL_ENABLED, isMasterAdminEmail } from "./config";
 import { getDatabase } from "./db";
 import { findUserInDb, getAuthToken, normalizeEmail } from "./util";
 
@@ -14,8 +15,10 @@ export function isTrialActive(profile: any): boolean {
   return (Date.now() - created) < TRIAL_DURATION_MS;
 }
 
+/** Ponto único da decisão de acesso pago. Com o paywall desligado, qualquer perfil existente tem acesso. */
 export function hasActiveAccess(profile: any, userEmail?: string): boolean {
   if (!profile) return false;
+  if (!PAYWALL_ENABLED) return true;
   if (isCoachProfile(profile, profile?.email || userEmail)) return true;
   if (profile.subscriptionStatus === "expired") return false;
   if (profile.subscriptionStatus === "active") return true;

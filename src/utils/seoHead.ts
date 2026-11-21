@@ -42,7 +42,7 @@ export const HOME_SEO_CONFIG: SeoMetaConfig = {
       "operatingSystem": "All",
       "offers": {
         "@type": "Offer",
-        "price": "16.90",
+        "price": "0",
         "priceCurrency": "BRL",
         "availability": "https://schema.org/InStock",
         "priceValidUntil": "2027-12-31"

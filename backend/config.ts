@@ -11,8 +11,12 @@ import { normalizeEmail } from "./util";
 
 dotenv.config();
 
-// Configurações globais e constantes de negócio
-export const SUBSCRIPTION_PRICE_BRL = 16.90;
+/**
+ * Paywall desligado por padrão (ADR-008): sem meio de pagamento, todo atleta logado tem acesso
+ * completo. A lógica de trial/assinatura continua no código, pronta para voltar com
+ * PAYWALL_ENABLED=true (e VITE_PAYWALL_ENABLED=true no frontend) quando houver um provedor.
+ */
+export const PAYWALL_ENABLED = process.env.PAYWALL_ENABLED === "true";
 
 // Carregar configuração do Firebase Applet
 export const configPath = path.join(process.cwd(), "firebase-applet-config.json");

@@ -440,9 +440,15 @@ describe("Security & Authentication Real Middleware Tests", () => {
       expect(res.status).toBe(403);
     });
 
-    it("/api/user/notify-payment exige autenticação", async () => {
-      const res = await request(app).post("/api/user/notify-payment").send({ email: MASTER_ADMIN_EMAIL, note: "spam" });
-      expect(res.status).toBe(401);
+    it("rotas de pagamento não existem mais (ADR-008)", async () => {
+      const token = "test-no-payments";
+      setTestAuthToken(token, { email: "atleta.pag@exemplo.com", uid: "pag", sub: "pag" });
+      for (const route of ["/api/user/notify-payment", "/api/mercadopago/create-pix", "/api/mercadopago/webhook", "/api/admin/mercadopago/create-plan"]) {
+        const res = await request(app).post(route).set("Authorization", `Bearer ${token}`).send({ email: "atleta.pag@exemplo.com" });
+        expect(res.status, route).toBe(404);
+      }
+      const config = await request(app).get("/api/mercadopago/config");
+      expect(config.status).toBe(404);
     });
 
     it("/api/admin/diagnostics exige admin e a rota antiga deixou de existir", async () => {

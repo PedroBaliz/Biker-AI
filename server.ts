@@ -10,7 +10,6 @@ import { ensureAllAthletesArePending, fetchFirestoreUser, fetchFirestoreUsers, g
 import { aiChatLimiter, aiGenerationLimiter, authLimiter, generalApiLimiter } from "./backend/rateLimit";
 import { registerAdminRoutes } from "./backend/routes/admin";
 import { registerAiRoutes } from "./backend/routes/ai";
-import { registerPaymentRoutes } from "./backend/routes/payments";
 import { registerUserRoutes } from "./backend/routes/users";
 import { findUserInDb } from "./backend/util";
 
@@ -60,7 +59,6 @@ app.use("/api", generalApiLimiter);
 registerUserRoutes(app);
 registerAiRoutes(app);
 registerAdminRoutes(app);
-registerPaymentRoutes(app);
 
 if (isDirectRun && process.env.NODE_ENV !== "test" && !process.env.VITEST && !process.env.VERCEL) {
   runInitialMigration().then(() => ensureAllAthletesArePending()).catch(() => {});

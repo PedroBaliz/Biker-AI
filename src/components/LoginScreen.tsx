@@ -385,7 +385,7 @@ export default function LoginScreen({ onLoginSuccess, onNavigateSlug }: LoginScr
               onClick={() => scrollToSection("planos")} 
               className="text-xs font-semibold text-slate-400 hover:text-slate-200 transition-colors cursor-pointer bg-transparent border-none p-0"
             >
-              Ver Planos
+              Quanto Custa
             </button>
             <button 
               type="button" 
@@ -452,7 +452,7 @@ export default function LoginScreen({ onLoginSuccess, onNavigateSlug }: LoginScr
                 onClick={() => scrollToSection("planos")} 
                 className="inline-flex items-center justify-center gap-1.5 px-4 py-4 text-xs font-semibold text-slate-400 hover:text-slate-200 transition-colors cursor-pointer bg-transparent border-none"
               >
-                <span>Ver planos</span>
+                <span>Quanto custa</span>
                 <ChevronRight className="w-3.5 h-3.5" />
               </button>
             </div>
@@ -477,12 +477,12 @@ export default function LoginScreen({ onLoginSuccess, onNavigateSlug }: LoginScr
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 pt-2 text-[11px] text-slate-400">
               <span className="flex items-center gap-1.5 text-slate-300">
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                Pagamento seguro
+                100% gratuito
               </span>
               <span className="text-slate-700 hidden sm:inline">•</span>
               <span className="flex items-center gap-1.5 text-slate-300">
                 <CheckCircle className="w-3.5 h-3.5 text-lime-400 shrink-0" />
-                Cancele quando quiser
+                Sem cartão de crédito
               </span>
               <span className="text-slate-700 hidden sm:inline">•</span>
               <span className="flex items-center gap-1.5 text-slate-300">
@@ -790,7 +790,7 @@ export default function LoginScreen({ onLoginSuccess, onNavigateSlug }: LoginScr
               onClick={() => scrollToSection("planos")}
               className="inline-flex items-center justify-center gap-1 px-4 py-3 text-xs font-semibold text-slate-400 hover:text-slate-200 transition-colors cursor-pointer bg-transparent border-none"
             >
-              <span>Ver planos</span>
+              <span>Quanto custa</span>
               <ChevronRight className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -1336,7 +1336,7 @@ export default function LoginScreen({ onLoginSuccess, onNavigateSlug }: LoginScr
               onClick={() => scrollToSection("planos")}
               className="inline-flex items-center justify-center gap-1 px-4 py-3 text-xs font-semibold text-slate-400 hover:text-slate-200 transition-colors cursor-pointer bg-transparent border-none"
             >
-              <span>Ver planos</span>
+              <span>Quanto custa</span>
               <ChevronRight className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -1344,26 +1344,26 @@ export default function LoginScreen({ onLoginSuccess, onNavigateSlug }: LoginScr
         </div>
       </section>
 
-      {/* Seção de Planos e Valores (Secundária no Funil) */}
+      {/* Seção "Quanto custa": gratuito nesta fase (ADR-008) */}
       <section id="planos" className="py-20 px-4 sm:px-6 md:px-12 bg-slate-950 border-t border-slate-800/80 text-left scroll-mt-24 relative">
         <div id="garantia" className="max-w-5xl mx-auto w-full space-y-10">
           
           <div className="text-center space-y-2.5 max-w-2xl mx-auto">
             <span className="text-[10px] bg-lime-500/10 border border-lime-500/20 text-lime-400 font-black px-3.5 py-1 rounded-full uppercase tracking-wider font-mono">
-              Planos & Valores
+              Quanto custa
             </span>
             <h3 className="text-2xl sm:text-4xl font-heading font-black text-white tracking-tight">
-              Experimente grátis antes de pagar
+              Grátis nesta fase
             </h3>
             <p className="text-xs sm:text-sm text-slate-300 font-sans leading-relaxed">
-              Crie seu primeiro treino personalizado sem custo e sem cadastrar cartão. Quando quiser acompanhamento contínuo e evolução todas as semanas, assine o plano Pro.
+              Todos os recursos do Biker AI estão liberados sem custo e sem cadastrar cartão: planilhas semanais, Coach AI, zonas de treino, histórico e PDF.
             </p>
           </div>
 
-          {/* Cards de Comparação de Planos: Degustação vs Pro */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
+          {/* Card de acesso (sem meio de pagamento por enquanto, ADR-008) */}
+          <div className="grid grid-cols-1 gap-6 items-stretch max-w-xl mx-auto w-full">
             
-            {/* Card 1: Treino Grátis (Ação Principal Incentivada) */}
+            {/* Acesso grátis */}
             <div className="p-6 sm:p-8 rounded-3xl bg-slate-900/90 border-2 border-lime-400/50 hover:border-lime-400 transition-all flex flex-col justify-between space-y-6 shadow-xl relative">
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
@@ -1374,13 +1374,13 @@ export default function LoginScreen({ onLoginSuccess, onNavigateSlug }: LoginScr
                 </div>
 
                 <div>
-                  <h4 className="text-xl font-heading font-black text-white">Primeiro Treino Grátis</h4>
-                  <p className="text-xs text-slate-300 mt-1">Experimente a inteligência artificial sem nenhum compromisso financeiro.</p>
+                  <h4 className="text-xl font-heading font-black text-white">Biker AI completo</h4>
+                  <p className="text-xs text-slate-300 mt-1">Todos os recursos liberados, sem nenhum compromisso financeiro.</p>
                 </div>
 
                 <div className="pt-2 flex items-baseline gap-1.5">
                   <span className="text-3xl sm:text-4xl font-heading font-black text-lime-400">R$ 0</span>
-                  <span className="text-xs text-slate-400 font-sans">/ para começar</span>
+                  <span className="text-xs text-slate-400 font-sans">/ nesta fase</span>
                 </div>
 
                 <ul className="space-y-2.5 pt-4 border-t border-slate-800 text-xs text-slate-300 font-sans">
@@ -1395,6 +1395,18 @@ export default function LoginScreen({ onLoginSuccess, onNavigateSlug }: LoginScr
                   <li className="flex items-center gap-2.5">
                     <Check className="w-4 h-4 text-lime-400 shrink-0 stroke-[3]" />
                     <span>Acesso ao Coach AI para dúvidas técnicas</span>
+                  </li>
+                  <li className="flex items-center gap-2.5">
+                    <Check className="w-4 h-4 text-lime-400 shrink-0 stroke-[3]" />
+                    <span>Nova semana recalibrada a partir dos seus treinos</span>
+                  </li>
+                  <li className="flex items-center gap-2.5">
+                    <Check className="w-4 h-4 text-lime-400 shrink-0 stroke-[3]" />
+                    <span>Histórico de evolução e questionário pós-treino</span>
+                  </li>
+                  <li className="flex items-center gap-2.5">
+                    <Check className="w-4 h-4 text-lime-400 shrink-0 stroke-[3]" />
+                    <span>Exportação das planilhas em PDF</span>
                   </li>
                   <li className="flex items-center gap-2.5">
                     <Check className="w-4 h-4 text-lime-400 shrink-0 stroke-[3]" />
@@ -1416,122 +1428,20 @@ export default function LoginScreen({ onLoginSuccess, onNavigateSlug }: LoginScr
               </div>
             </div>
 
-            {/* Card 2: Assinatura Biker AI Pro (Transparência Completa) */}
-            <div className="p-6 sm:p-8 rounded-3xl bg-slate-900/50 border border-slate-800 hover:border-slate-700 transition-all flex flex-col justify-between space-y-6 shadow-md relative">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-mono font-bold uppercase tracking-wider bg-lime-500/10 text-lime-400 border border-lime-500/20 px-3 py-1 rounded-full">
-                    Plano Pro • Sem Fidelidade
-                  </span>
-                  <span className="text-[10px] text-amber-400 font-mono font-bold bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded">
-                    R$ 0,56 / dia
-                  </span>
-                </div>
-
-                <div>
-                  <h4 className="text-xl font-heading font-black text-white">Biker AI Pro</h4>
-                  <p className="text-xs text-slate-400 mt-1">Evolução contínua semanal com apoio permanente do treinador.</p>
-                </div>
-
-                {/* Preço e Periodicidade Claros */}
-                <div className="pt-2">
-                  <div className="flex items-baseline gap-1.5">
-                    <span className="text-3xl sm:text-4xl font-heading font-black text-white">R$ 16,90</span>
-                    <span className="text-xs text-slate-400 font-sans">/ mês</span>
-                  </div>
-                  <span className="text-[11px] font-mono text-slate-400 block mt-1">
-                    Cobrança mensal recorrente a cada 30 dias
-                  </span>
-                </div>
-
-                {/* O que está incluído */}
-                <div className="space-y-2 pt-3 border-t border-slate-800">
-                  <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block font-heading">
-                    O que está incluído:
-                  </span>
-                  <ul className="space-y-2 text-xs text-slate-300 font-sans">
-                    <li className="flex items-center gap-2.5">
-                      <Check className="w-4 h-4 text-emerald-400 shrink-0 stroke-[3]" />
-                      <span>Treinos minuto a minuto estruturados para seu fôlego</span>
-                    </li>
-                    <li className="flex items-center gap-2.5">
-                      <Check className="w-4 h-4 text-emerald-400 shrink-0 stroke-[3]" />
-                      <span>Recalibração automática quando sua rotina mudar</span>
-                    </li>
-                    <li className="flex items-center gap-2.5">
-                      <Check className="w-4 h-4 text-emerald-400 shrink-0 stroke-[3]" />
-                      <span>Calculadora de zonas (potência FTP, FC e PSE)</span>
-                    </li>
-                    <li className="flex items-center gap-2.5">
-                      <Check className="w-4 h-4 text-emerald-400 shrink-0 stroke-[3]" />
-                      <span>Histórico de evolução e questionário pós-treino</span>
-                    </li>
-                    <li className="flex items-center gap-2.5">
-                      <Check className="w-4 h-4 text-emerald-400 shrink-0 stroke-[3]" />
-                      <span>Treinador AI no chat com orientações ilimitadas</span>
-                    </li>
-                    <li className="flex items-center gap-2.5">
-                      <Check className="w-4 h-4 text-emerald-400 shrink-0 stroke-[3]" />
-                      <span>Exportação e impressão das planilhas em PDF</span>
-                    </li>
-                  </ul>
-                </div>
-
-                {/* Como funciona o cancelamento */}
-                <div className="p-3 bg-slate-950/80 rounded-2xl border border-slate-800/80 space-y-1 text-left">
-                  <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-lime-400 block">
-                    Como funciona o cancelamento?
-                  </span>
-                  <p className="text-[11px] text-slate-300 leading-relaxed font-sans">
-                    Cancele a qualquer momento em 1 clique na sua conta do Mercado Pago ou enviando um e-mail para <span className="text-white">bikeraisupport@gmail.com</span>. Sem multas, sem taxas rescisórias e você continua com acesso até o fim dos 30 dias já pagos.
-                  </p>
-                </div>
-              </div>
-
-              <div className="pt-2 space-y-2">
-                <button
-                  type="button"
-                  onClick={() => scrollToSection("auth-section", false)}
-                  className="w-full inline-flex items-center justify-center gap-2 py-3.5 px-6 bg-lime-400 hover:bg-lime-300 text-slate-950 text-xs font-heading font-black uppercase tracking-wider rounded-2xl transition-all shadow-md cursor-pointer"
-                >
-                  <span>Criar conta e assinar Pro • R$ 16,90/mês</span>
-                  <ArrowRight className="w-3.5 h-3.5 stroke-[2.5]" />
-                </button>
-
-                {/* Informações Discretas Próximo da Assinatura */}
-                <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[11px] text-slate-400 text-center font-medium pt-1">
-                  <span className="flex items-center gap-1 text-slate-300">
-                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                    Pagamento seguro
-                  </span>
-                  <span>•</span>
-                  <span className="flex items-center gap-1 text-slate-300">
-                    <CheckCircle className="w-3.5 h-3.5 text-lime-400 shrink-0" />
-                    Cancele quando quiser
-                  </span>
-                  <span>•</span>
-                  <span className="flex items-center gap-1 text-slate-300">
-                    <Lock className="w-3.5 h-3.5 text-sky-400 shrink-0" />
-                    Seus dados protegidos
-                  </span>
-                </div>
-              </div>
-            </div>
-
           </div>
 
           {/* Selos de Confiança e Garantias */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4">
-            {/* Card 1: Garantia */}
+            {/* Card 1: Sem cobrança */}
             <div className="p-4 rounded-2xl bg-slate-900/60 border border-slate-800/80 space-y-2 shadow-xs">
               <div className="flex items-center gap-2.5">
                 <div className="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center">
                   <ShieldCheck className="w-4 h-4" />
                 </div>
-                <h5 className="font-heading font-bold text-xs text-white">Garantia de 7 Dias</h5>
+                <h5 className="font-heading font-bold text-xs text-white">Sem Cobrança</h5>
               </div>
               <p className="text-[11px] text-slate-400 font-sans leading-relaxed">
-                Se não gostar da sua experiência, devolvemos 100% do seu valor dentro de 7 dias. Basta solicitar ao suporte.
+                O Biker AI não pede nenhum dado de pagamento. Todos os recursos estão liberados nesta fase.
               </p>
             </div>
 
@@ -1541,23 +1451,23 @@ export default function LoginScreen({ onLoginSuccess, onNavigateSlug }: LoginScr
                 <div className="w-7 h-7 rounded-lg bg-lime-500/10 border border-lime-500/20 text-lime-400 flex items-center justify-center">
                   <CheckCircle className="w-4 h-4" />
                 </div>
-                <h5 className="font-heading font-bold text-xs text-white">Cancele Quando Quiser</h5>
+                <h5 className="font-heading font-bold text-xs text-white">Feito para a Sua Rotina</h5>
               </div>
               <p className="text-[11px] text-slate-400 font-sans leading-relaxed">
-                Sem contrato de fidelidade ou taxas de rescisão. Você tem autonomia total sobre a sua assinatura.
+                Planilhas ajustadas ao seu nível, ao seu objetivo e aos dias e minutos que você tem para pedalar.
               </p>
             </div>
 
-            {/* Card 3: Pagamento Seguro */}
+            {/* Card 3: Dados protegidos */}
             <div className="p-4 rounded-2xl bg-slate-900/60 border border-slate-800/80 space-y-2 shadow-xs">
               <div className="flex items-center gap-2.5">
                 <div className="w-7 h-7 rounded-lg bg-sky-500/10 border border-sky-500/20 text-sky-400 flex items-center justify-center">
                   <Lock className="w-4 h-4" />
                 </div>
-                <h5 className="font-heading font-bold text-xs text-white">Pagamento Seguro</h5>
+                <h5 className="font-heading font-bold text-xs text-white">Dados Protegidos</h5>
               </div>
               <p className="text-[11px] text-slate-400 font-sans leading-relaxed">
-                Processado com segurança pelo Mercado Pago via Pix ou Cartão. Seus dados financeiros não ficam nos nossos servidores.
+                Login com Firebase e acesso restrito: cada atleta vê e altera só os próprios dados.
               </p>
             </div>
           </div>
@@ -1752,15 +1662,15 @@ export default function LoginScreen({ onLoginSuccess, onNavigateSlug }: LoginScr
               <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[10px] text-slate-400 font-sans font-medium">
                 <span className="flex items-center gap-1">
                   <ShieldCheck className="w-3.5 h-3.5 text-lime-400" />
-                  Garantia de 7 Dias
+                  100% Gratuito
                 </span>
                 <span className="flex items-center gap-1">
                   <CheckCircle className="w-3.5 h-3.5 text-lime-400" />
-                  Cancele Quando Quiser
+                  Sem Cartão de Crédito
                 </span>
                 <span className="flex items-center gap-1">
                   <Lock className="w-3.5 h-3.5 text-lime-400" />
-                  Pagamento Seguro Mercado Pago
+                  Dados Protegidos
                 </span>
               </div>
             </div>
@@ -1818,7 +1728,7 @@ export default function LoginScreen({ onLoginSuccess, onNavigateSlug }: LoginScr
             <span className="text-slate-700 hidden xs:inline">•</span>
             <button type="button" onClick={() => scrollToSection("beneficios")} className="hover:text-white transition-colors cursor-pointer bg-transparent border-none p-0 text-slate-400">Benefícios</button>
             <span className="text-slate-700 hidden xs:inline">•</span>
-            <button type="button" onClick={() => scrollToSection("planos")} className="hover:text-white transition-colors cursor-pointer bg-transparent border-none p-0 text-slate-400">Ver planos</button>
+            <button type="button" onClick={() => scrollToSection("planos")} className="hover:text-white transition-colors cursor-pointer bg-transparent border-none p-0 text-slate-400">Quanto custa</button>
             <span className="text-slate-700 hidden xs:inline">•</span>
             <button type="button" onClick={() => scrollToSection("auth-section", false)} className="hover:text-white transition-colors cursor-pointer bg-transparent border-none p-0 text-slate-400">Entrar</button>
             <span className="text-slate-700 hidden xs:inline">•</span>
@@ -1947,12 +1857,12 @@ export default function LoginScreen({ onLoginSuccess, onNavigateSlug }: LoginScr
           <div className="flex items-center gap-3 text-[11px] text-slate-400">
             <span className="flex items-center gap-1.5">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-              Pagamento seguro
+              100% gratuito
             </span>
             <span>•</span>
             <span className="flex items-center gap-1.5">
               <CheckCircle className="w-3.5 h-3.5 text-lime-400" />
-              Cancele quando quiser
+              Sem cartão de crédito
             </span>
             <span>•</span>
             <span className="flex items-center gap-1.5">

@@ -41,7 +41,6 @@ import ApiErrorBanner from "./components/ApiErrorBanner";
 import AppFooter from "./components/AppFooter";
 import FeedbackModal from "./components/FeedbackModal";
 import InstallGuideModal from "./components/InstallGuideModal";
-import SubscriptionCheckoutModal from "./components/SubscriptionCheckoutModal";
 import { updateSeoMeta, HOME_SEO_CONFIG } from "./utils/seoHead";
 import {
   ShieldCheck,
@@ -201,7 +200,6 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<"planilha" | "desempenho" | "zonas" | "chat">("planilha");
   const [showMyWorkouts, setShowMyWorkouts] = useState(true);
   const [showPseExplanation, setShowPseExplanation] = useState(false);
-  const [showSubscriptionCheckout, setShowSubscriptionCheckout] = useState(false);
 
   const safeReadLocalStorage = <T,>(key: string, fallback: T): T => {
     if (typeof window === "undefined") return fallback;
@@ -317,7 +315,7 @@ export default function App() {
   const handleUpdateWorkout = useCallback((index: number, updatedWorkout: Workout) => {
     if (!plan) return;
     if (isPendingUser) {
-      setShowSubscriptionCheckout(true);
+      openUnlockContact();
       return;
     }
     const previousWorkout = plan.workouts[index];
@@ -348,7 +346,7 @@ export default function App() {
   const handleDeleteWorkout = useCallback((index: number) => {
     if (!plan) return;
     if (isPendingUser) {
-      setShowSubscriptionCheckout(true);
+      openUnlockContact();
       return;
     }
     const updatedWorkouts = plan.workouts.filter((_, i) => i !== index);
@@ -425,7 +423,7 @@ export default function App() {
   const handleExportPDF = useCallback(() => {
     if (!plan) return;
     if (isPendingUser) {
-      setShowSubscriptionCheckout(true);
+      openUnlockContact();
       return;
     }
     
@@ -441,7 +439,7 @@ export default function App() {
   const handleGenerateNextWeek = async () => {
     if (!plan) return;
     if (isPendingUser) {
-      setShowSubscriptionCheckout(true);
+      openUnlockContact();
       return;
     }
     setIsGeneratingNextWeek(true);
@@ -524,6 +522,9 @@ export default function App() {
   const [showTerms, setShowTerms] = useState(false);
   const [showPrivacy, setShowPrivacy] = useState(false);
   const [showContact, setShowContact] = useState(false);
+  // Sem meio de pagamento (ADR-008), quem estiver bloqueado fala com o treinador. Com o paywall
+  // desligado (padrão), os pontos que chamam isto nem aparecem.
+  const openUnlockContact = () => setShowContact(true);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -1150,7 +1151,7 @@ export default function App() {
                           <span className={`inline-block mt-1 text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded-md ${
                             accessInfo.isCoach
                               ? "bg-amber-400/15 text-amber-300 border border-amber-400/30"
-                              : accessInfo.isActiveSubscriber
+                              : accessInfo.accessType === "free_access" || accessInfo.isActiveSubscriber
                               ? "bg-emerald-400/15 text-emerald-300 border border-emerald-400/30"
                               : accessInfo.isInTrial
                               ? "bg-sky-400/15 text-sky-300 border border-sky-400/30"
@@ -1158,6 +1159,8 @@ export default function App() {
                           }`}>
                             {accessInfo.isCoach
                               ? "Coach / Admin"
+                              : accessInfo.accessType === "free_access"
+                              ? "Acesso liberado"
                               : accessInfo.isActiveSubscriber
                               ? "Assinante Ativo"
                               : accessInfo.isInTrial
@@ -1271,7 +1274,7 @@ export default function App() {
             currentUser={currentUser} 
             onUpdateAccount={handleUpdateAccount} 
             onClose={() => setShowAccountSettings(false)}
-            onOpenSubscriptionCheckout={() => setShowSubscriptionCheckout(true)}
+            onOpenSubscriptionCheckout={openUnlockContact}
           />
         </main>
       ) : showAdminPanel ? (
@@ -1311,21 +1314,21 @@ export default function App() {
                     Acesso aos Treinos Bloqueado
                   </span>
                   <span className="bg-rose-500/30 border border-rose-500/40 text-rose-200 font-mono text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">
-                    Assinatura Inativa
+                    Acesso Suspenso
                   </span>
                 </div>
                 <p className="text-rose-200/90 text-xs">
-                  Sua assinatura está inativa ou o acesso foi suspenso. As estruturas minuto a minuto, conclusões de treinos e evolução semanal estão bloqueadas.
+                  Seu acesso foi suspenso pelo treinador. As estruturas minuto a minuto, conclusões de treinos e evolução semanal estão bloqueadas.
                 </p>
               </div>
             </div>
             <button
               type="button"
               id="account-blocked-subscribe-btn"
-              onClick={() => setShowSubscriptionCheckout(true)}
+              onClick={openUnlockContact}
               className="px-4 py-2.5 bg-lime-500 hover:bg-lime-400 text-slate-950 font-heading font-black text-xs uppercase tracking-wider rounded-xl transition-all shadow-sm hover:shadow-md shrink-0 self-start sm:self-auto cursor-pointer active:scale-98"
             >
-              Aderir ao Plano • R$ 16,90
+              Falar com o treinador
             </button>
           </motion.div>
         )}
@@ -1352,17 +1355,17 @@ export default function App() {
                   </span>
                 </div>
                 <p className="text-amber-200/90 text-xs">
-                  Seu período de teste gratuito de 3 dias terminou. Para continuar registrando pedaladas, destravando as estruturas e evoluindo de semana, ative sua assinatura.
+                  Seu período de teste gratuito de 3 dias terminou. Para continuar registrando pedaladas, destravando as estruturas e evoluindo de semana, fale com o treinador para liberar o acesso.
                 </p>
               </div>
             </div>
             <button
               type="button"
               id="trial-expired-subscribe-btn"
-              onClick={() => setShowSubscriptionCheckout(true)}
+              onClick={openUnlockContact}
               className="px-4 py-2.5 bg-lime-500 hover:bg-lime-400 text-slate-950 font-heading font-black text-xs uppercase tracking-wider rounded-xl transition-all shadow-sm hover:shadow-md shrink-0 self-start sm:self-auto cursor-pointer active:scale-98"
             >
-              Aderir ao Plano • R$ 16,90
+              Falar com o treinador
             </button>
           </motion.div>
         )}
@@ -1398,10 +1401,10 @@ export default function App() {
             <button
               type="button"
               id="trial-banner-subscribe-btn"
-              onClick={() => setShowSubscriptionCheckout(true)}
+              onClick={openUnlockContact}
               className="px-4 py-2.5 bg-lime-500 hover:bg-lime-400 text-slate-950 font-heading font-black text-xs uppercase tracking-wider rounded-xl transition-all shadow-sm hover:shadow-md shrink-0 self-start sm:self-auto cursor-pointer active:scale-98"
             >
-              Aderir ao Plano • R$ 16,90
+              Falar com o treinador
             </button>
           </motion.div>
         )}
@@ -1571,7 +1574,7 @@ export default function App() {
                       <WorkoutPlanPreview 
                         plan={plan} 
                         profile={profile} 
-                        onUnlockClick={() => setShowSubscriptionCheckout(true)} 
+                        onUnlockClick={openUnlockContact} 
                       />
                     )}
 
@@ -1734,7 +1737,7 @@ export default function App() {
                                   type="button"
                                   onClick={() => {
                                     if (isPendingUser) {
-                                      setShowSubscriptionCheckout(true);
+                                      openUnlockContact();
                                     } else {
                                       setShowNextWeekForm(prev => !prev);
                                     }
@@ -1904,7 +1907,7 @@ export default function App() {
                                         disabled={isGeneratingNextWeek}
                                         onClick={() => {
                                           if (isPendingUser) {
-                                            setShowSubscriptionCheckout(true);
+                                            openUnlockContact();
                                             return;
                                           }
                                           handleGenerateNextWeek();
@@ -1919,7 +1922,7 @@ export default function App() {
                                         ) : isPendingUser ? (
                                           <>
                                             <Lock className="w-4 h-4 text-slate-950 shrink-0" />
-                                            <span className="text-slate-950 font-black">Desbloquear Assinatura p/ Evoluir</span>
+                                            <span className="text-slate-950 font-black">Liberar acesso para evoluir</span>
                                           </>
                                         ) : (
                                           <>
@@ -2122,7 +2125,7 @@ export default function App() {
                                   onUpdate={(updatedWorkout) => handleUpdateWorkout(index, updatedWorkout)}
                                   onDelete={() => handleDeleteWorkout(index)}
                                   isSimpleMode={displayMode === "simples"}
-                                  onUnlockClick={() => setShowSubscriptionCheckout(true)}
+                                  onUnlockClick={openUnlockContact}
                                   onOpenCompleteModal={() => setCompletingWorkoutIndex(index)}
                                 />
                               </motion.div>
@@ -2303,7 +2306,7 @@ export default function App() {
                       plan={plan}
                       onApplyPlanUpdate={(updatedPlan) => setPlan(updatedPlan)}
                       isPendingUser={isPendingUser}
-                      onUnlockClick={() => setShowSubscriptionCheckout(true)}
+                      onUnlockClick={openUnlockContact}
                     />
                   </motion.div>
                 )}
@@ -2349,9 +2352,6 @@ export default function App() {
 
       {/* Premium Feedback Modal for Athletes */}
       <FeedbackModal feedbackSuccess={feedbackSuccess} feedbackText={feedbackText} handleSendFeedback={handleSendFeedback} setFeedbackText={setFeedbackText} setShowFeedbackModal={setShowFeedbackModal} showFeedbackModal={showFeedbackModal} submittingFeedback={submittingFeedback} />
-
-      {/* Subscription Checkout Modal Dialog */}
-      <SubscriptionCheckoutModal accessInfo={accessInfo} currentUser={currentUser} profile={profile} refreshUserSession={refreshUserSession} setProfile={setProfile} setShowSubscriptionCheckout={setShowSubscriptionCheckout} showSubscriptionCheckout={showSubscriptionCheckout} />
 
       {/* Workout Completion 5-Question Modal */}
       {completingWorkoutIndex !== null && plan && plan.workouts && plan.workouts[completingWorkoutIndex] && (

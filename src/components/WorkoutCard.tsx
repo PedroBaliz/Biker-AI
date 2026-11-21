@@ -18,8 +18,7 @@ import {
   Zap, 
   BookOpen, 
   Smile,
-  ShieldAlert,
-  ExternalLink,
+  ShieldAlert,
   Lock,
   XCircle,
   Info
@@ -209,7 +208,6 @@ function WorkoutCardInner({ workout, onUpdate, onDelete, profile, allWorkouts, i
   const [actualDistance, setActualDistance] = useState<string>(workout.actualDistance ? String(workout.actualDistance) : "");
   const [actualElevation, setActualElevation] = useState<string>(workout.actualElevation ? String(workout.actualElevation) : "");
   const [actualCalories, setActualCalories] = useState<string>(workout.actualCalories ? String(workout.actualCalories) : "");
-  const [actualStravaLink, setActualStravaLink] = useState<string>(workout.actualStravaLink || "");
   const [athleteNotes, setAthleteNotes] = useState<string>(workout.athleteNotes || "");
   const [isEvaluating, setIsEvaluating] = useState(false);
 
@@ -348,7 +346,6 @@ function WorkoutCardInner({ workout, onUpdate, onDelete, profile, allWorkouts, i
       setActualDistance(workout.actualDistance ? String(workout.actualDistance) : "");
       setActualElevation(workout.actualElevation ? String(workout.actualElevation) : "");
       setActualCalories(workout.actualCalories ? String(workout.actualCalories) : "");
-      setActualStravaLink(workout.actualStravaLink || "");
       setAthleteNotes(workout.athleteNotes || "");
       setIsCompleting(true);
     }
@@ -371,7 +368,6 @@ function WorkoutCardInner({ workout, onUpdate, onDelete, profile, allWorkouts, i
       actualDistance: actualDistance ? Number(actualDistance) : undefined,
       actualElevation: actualElevation ? Number(actualElevation) : undefined,
       actualCalories: actualCalories ? Number(actualCalories) : undefined,
-      actualStravaLink: actualStravaLink.trim() || undefined,
       athleteNotes: athleteNotes.trim() || undefined,
     });
     setIsCompleting(false);
@@ -395,7 +391,6 @@ function WorkoutCardInner({ workout, onUpdate, onDelete, profile, allWorkouts, i
       actualDistance: actualDistance ? Number(actualDistance) : undefined,
       actualElevation: actualElevation ? Number(actualElevation) : undefined,
       actualCalories: actualCalories ? Number(actualCalories) : undefined,
-      actualStravaLink: actualStravaLink.trim() || undefined,
       athleteNotes: athleteNotes.trim() || undefined,
     };
 
@@ -675,11 +670,11 @@ function WorkoutCardInner({ workout, onUpdate, onDelete, profile, allWorkouts, i
             </div>
           </div>
 
-          {/* Strava / Ciclocomputador Telemetry */}
+          {/* Métricas do GPS / ciclocomputador, digitadas pelo atleta */}
           <div className="bg-slate-50 border border-slate-200/50 p-3.5 rounded-2xl space-y-3">
             <div className="flex items-center gap-1">
               <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">
-                Métricas do Pedal (Strava / GPS)
+                Métricas do Pedal (GPS / Ciclocomputador)
               </span>
             </div>
             
@@ -739,20 +734,6 @@ function WorkoutCardInner({ workout, onUpdate, onDelete, profile, allWorkouts, i
               </div>
             </div>
 
-            <div className="space-y-1 pt-0.5">
-              {/* O link é salvo só como referência. Importar métricas exige a API do Strava (OAuth);
-                  a antiga "Sincronizar Dados" chamava uma rota inexistente (/api/parse-strava). */}
-              <label className="block text-[9.5px] font-bold text-slate-500 uppercase tracking-wide">
-                Link do Pedal no Strava (Opcional)
-              </label>
-              <input 
-                type="url" 
-                placeholder="https://strava.com/activities/..."
-                value={actualStravaLink} 
-                onChange={(e) => setActualStravaLink(e.target.value)}
-                className="w-full bg-white border border-slate-200 focus:border-sky-500 rounded-xl px-2.5 py-1.5 text-xs text-slate-800 outline-hidden placeholder:text-slate-400 font-sans"
-              />
-            </div>
           </div>
 
           <div className="space-y-1">
@@ -915,12 +896,11 @@ function WorkoutCardInner({ workout, onUpdate, onDelete, profile, allWorkouts, i
           workout.actualDistance !== undefined || 
           workout.actualAvgSpeed !== undefined || 
           workout.actualElevation !== undefined || 
-          workout.actualCalories !== undefined ||
-          workout.actualStravaLink
+          workout.actualCalories !== undefined
         ) && (
           <div className="bg-slate-50 border border-slate-200/50 rounded-2xl p-3.5 mb-5 space-y-3">
             <div className="flex justify-between items-center">
-              <span className="text-[9px] text-slate-400 font-extrabold uppercase tracking-wider block">Métricas de Realização (GPS / Strava)</span>
+              <span className="text-[9px] text-slate-400 font-extrabold uppercase tracking-wider block">Métricas de Realização (GPS / Ciclocomputador)</span>
               <button 
                 type="button"
                 onClick={() => {
@@ -932,12 +912,11 @@ function WorkoutCardInner({ workout, onUpdate, onDelete, profile, allWorkouts, i
                   setActualDistance(workout.actualDistance ? String(workout.actualDistance) : "");
                   setActualElevation(workout.actualElevation ? String(workout.actualElevation) : "");
                   setActualCalories(workout.actualCalories ? String(workout.actualCalories) : "");
-                  setActualStravaLink(workout.actualStravaLink || "");
                   setAthleteNotes(workout.athleteNotes || "");
                   setIsCompleting(true);
                 }}
                 className="text-[10px] text-sky-650 hover:text-sky-700 font-extrabold uppercase tracking-wider flex items-center gap-1 cursor-pointer transition-colors"
-                title="Editar métricas do Strava / Pedal"
+                title="Editar métricas do pedal"
               >
                 <Edit2 className="w-3 h-3" />
                 <span>Editar</span>
@@ -1012,24 +991,6 @@ function WorkoutCardInner({ workout, onUpdate, onDelete, profile, allWorkouts, i
               )}
             </div>
 
-            {workout.actualStravaLink && (
-              <a 
-                href={workout.actualStravaLink.startsWith("http") ? workout.actualStravaLink : `https://${workout.actualStravaLink}`}
-                target="_blank"
-                referrerPolicy="no-referrer"
-                rel="noopener noreferrer"
-                className="mt-2 text-[10px] py-1.5 px-3 bg-[#FC6100]/10 hover:bg-[#FC6100]/15 text-[#FC6100] font-heading font-extrabold uppercase tracking-wider rounded-xl flex items-center justify-center gap-1.5 transition-all w-full border border-[#FC6100]/15 text-center cursor-pointer hover:shadow-3xs focus:outline-hidden"
-              >
-                <img 
-                  src="https://cdn-icons-png.flaticon.com/512/5968/5968817.png" 
-                  alt="Strava" 
-                  className="w-3.5 h-3.5 object-contain"
-                  referrerPolicy="no-referrer"
-                />
-                <span>Ver Atividade no Strava</span>
-                <ExternalLink className="w-3 h-3 text-[#FC6100]" />
-              </a>
-            )}
           </div>
         )}
 
@@ -1199,7 +1160,6 @@ function WorkoutCardInner({ workout, onUpdate, onDelete, profile, allWorkouts, i
               setActualDistance(workout.actualDistance ? String(workout.actualDistance) : "");
               setActualElevation(workout.actualElevation ? String(workout.actualElevation) : "");
               setActualCalories(workout.actualCalories ? String(workout.actualCalories) : "");
-              setActualStravaLink(workout.actualStravaLink || "");
               setAthleteNotes(workout.athleteNotes || "");
               setIsCompleting(true);
             } else {
